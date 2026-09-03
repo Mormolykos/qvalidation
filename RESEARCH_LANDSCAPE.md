@@ -734,6 +734,105 @@ variable. If it exists, C1 is next in line.
 
 ---
 
+## 35. TOPOLOGY SENSITIVITY — not a `linear` artifact; worse on `square` — 2026-09-03
+
+Qiskit 2.0.2, 58 circuits, 12 seeds, Benchpress apparatus. Both topologies are members
+of `Configuration.options["general"]["abstract_topologies"]`, so both are part of the
+suite as shipped.
+
+| topology | <1% | 1–5% | **≥5%** | median spread | max spread | source file |
+|---|---:|---:|---:|---:|---:|---|
+| `linear` | 31 | 12 | **14** | 0.87% | 106.92% | `bp_large_linear_q202.jsonl` |
+| **`square`** | 21 | 8 | **29** | **4.70%** | 32.71% | `bp_large_square_q202.jsonl` |
+
+### The "it's only linear" objection is dead
+
+**On `square`, 29 of 58 circuits — more than half — show ≥5% seed spread, against 14 on
+`linear`. The median spread is 5.4× higher.** The effect is not confined to the one
+topology where #14402 reported its worst cases; it is *more widespread* on the other
+routed topology tested.
+
+The shape differs: `square` affects more circuits but has a smaller extreme
+(32.7% vs 106.9%). Plausibly because a 2-D grid gives the router more freedom than a
+line, so more circuits have multiple viable routings while no single circuit is as
+catastrophically constrained as `qft_n320` on a line. **That explanation is a
+conjecture and is not established.**
+
+### ⚠ Provenance note — two `linear` censuses exist and they differ slightly
+
+§30 reports 32/12/14 with median 0.77% from the **first** 2.0.2 linear census (587 run
+rows). This section reports 31/12/14 with median 0.87% from the **re-run** with the
+provenance fix (639 run rows). The difference is **which circuits hit their wall-clock
+budget**, not the measurements — values for a given (circuit, seed) are deterministic
+and reproduce across machines (§29).
+
+**This is the sample-reproducibility limitation stated in the method: our harness is
+value-reproducible but not sample-reproducible, because the per-circuit budget is a time
+budget.** Every figure must therefore cite its source file. The re-run file
+(`bp_large_linear_q202.jsonl`, qiskit_version recorded) is the one to use going forward,
+since the earlier file cannot name its own toolchain.
+
+### Still outstanding
+
+- [ ] `square` on 2.0.0 → enables the flip analysis on a second topology
+- [ ] `heavy-hex` on both versions → the third routed topology
+- [ ] `all-to-all` needs no run: routing-free, verified constant (§27)
+
+---
+
+## 34. ⭐ RUNS SENSITIVITY AND AGGREGATE MASKING — the practical result — 2026-09-03
+
+Two questions, answered from the existing 2.0.2 linear census with no new
+transpilation: *how many runs does the unseeded protocol need?* and *does the
+suite-level mean hide per-circuit failure?*
+
+False-positive rate at **zero real change**, threshold +10%, 51 circuits, 3,000 trials:
+
+| circuit | k=1 | k=3 | k=5 | k=10 | k=20 | k=50 |
+|---|---:|---:|---:|---:|---:|---:|
+| `qft_n320` | 25.0% | **27.3%** | 21.3% | 12.8% | **5.2%** | 0.8% |
+| `cc_n64` | 8.3% | 19.2% | 4.2% | 2.3% | 0.3% | 0.0% |
+| `bv_n140` | 29.4% | 17.4% | 12.4% | 5.5% | 0.9% | 0.0% |
+| `bv_n70` | 23.1% | 15.0% | 8.8% | 2.9% | 0.1% | 0.0% |
+| `cc_n32` | 9.2% | 11.8% | 4.0% | 1.0% | 0.1% | 0.0% |
+| `bv_n30` | 20.5% | 12.6% | 8.2% | 2.4% | 0.4% | 0.0% |
+| **SUITE MEAN** | **2.7%** | **2.1%** | **1.2%** | **0.5%** | **0.1%** | **0.0%** |
+| circuits still ≥5% FP | 8/51 | 6/51 | 4/51 | 2/51 | 1/51 | 0/51 |
+
+### ⚠ Aggregate masking is severe and is a reporting trap
+
+**At the real protocol (k=3) the suite mean is 2.1% — which reads as acceptable — while
+`qft_n320` sits at 27.3%, thirteen times worse.** At k=20 the suite mean is 0.14%,
+which reads as essentially perfect, and that circuit is still wrong 5.2% of the time.
+
+A benchmark that reports suite-level aggregates can therefore look healthy while
+individual circuits are unusable for regression detection. **Any published summary
+statistic here understates the per-circuit error by more than an order of magnitude.**
+
+### The cost argument — this is the sentence for the maintainers
+
+**~50 runs per version are needed before every circuit falls below a 5% false-positive
+rate.** `nonhermitian` states in #14402 that a full suite run takes *"about 2 hours
+each"*. Fifty runs per version is therefore on the order of **200 hours of compute for a
+single version comparison.**
+
+**Pairing achieves 0.0% at k=1.** One `seed_transpiler` argument, one run per version,
+outperforms fifty unseeded runs — at 1/50th the compute.
+
+### ⚠ An unexplained non-monotonicity — reported, not explained
+
+For three of the six worst circuits, **k=3 is WORSE than k=1**: `cc_n64` 8.3% → 19.2%,
+`cc_n32` 9.2% → 11.8%, `qft_n320` 25.0% → 27.3%. With 3,000 trials the standard error is
+≈0.7%, so these are real, not sampling noise.
+
+Averaging more draws would normally reduce the false-positive rate monotonically. It
+does not here at small k. These circuits are strongly skewed (`cc_n64` skew **+2.99**,
+§30), which is the obvious suspect — **but the mechanism is not established and is not
+claimed.** It is flagged as an open question because "take more runs" is the intuitive
+remedy and on this evidence it can make matters worse before it makes them better.
+
+---
+
 ## 33. CROSS-SDK AUDIT — what the source establishes, and what it does not — 2026-09-03
 
 Traced through the actual execution path in every gym's
