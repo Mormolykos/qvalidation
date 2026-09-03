@@ -34,6 +34,8 @@ variance rather than version drift.
 | what a single 3-run comparison of it can return | **−10.5% to +100.0%** | §48 |
 | #14402 reproduced, low-seed-spread circuits | `bv_n280` +0.5 pp, `knn_341` +2.4 pp | §48 |
 | decision instability, real change, forward direction | **5 of 51** circuits, Wilson [4.3%, 21.0%] | §48 |
+| the error is not a threshold artifact | nonzero at **every** cut from +2% to +25% | §49 |
+| ⚠ but it IS underpowering: error vs runs/version | k=1 16.1% → k=3 2.98% → **k=8 0.09%** | §49 |
 | Benchpress gyms passing `seed_transpiler` | **0 of 8**, source-verified | §33 |
 | Benchpress unseeded, `bv_n140-linear`, 20 runs | **17 distinct 2Q gate counts**, 244–340 | §27 |
 | the seed is the entropy source | cross-process control, seeded 324×6 vs unseeded 6 values | §28 |
@@ -210,6 +212,14 @@ reproduce across machines.
   `heavy-hex` (§47). An additive change fits better. The band was recomputed under both
   and moves by ≤1.34 pp, always narrower, so the reported figure is the conservative
   end of an 11.5–14.0 pp range.
+- **Not** that Benchpress is broken or unfixable. The error is **underpowering, not
+  incorrectness**: it falls from 16.1% at one run per version to 2.98% at three and
+  **0.09% at eight** (§49). Anyone running eight times does not have this problem. The
+  argument for `seed_transpiler` is therefore about **cost** — one argument versus ~16
+  hours of extra compute per version comparison — not about correctness.
+- **Not** that the 2.98% is precise. Split-half at n=100 gives 3.90% and 2.20%; the
+  reported 95% CI [1.72%, 4.99%] covers every split, but the magnitude is known only to
+  about a factor of two. **The existence of the error is established; its size is not.**
 - **Not** that pairing fixes everything. `seed_transpiler` removes false positives and
   narrows the ambiguity band 6.8×, but on the four circuits with real missed
   regressions it is **worse on three of them** (§48).

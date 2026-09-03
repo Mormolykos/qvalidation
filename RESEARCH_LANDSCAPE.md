@@ -766,6 +766,68 @@ variable. If it exists, C1 is next in line.
 
 ---
 
+## 49. ROBUSTNESS OF §48 — one attack strengthens it, one weakens it — 2026-09-03
+
+`robust.py`. Three analyst choices sit under §48's headline. All three are attacked with
+data already on disk — no new measurement, so no opportunity to tune anything.
+
+### R1 — the threshold is ours, not Benchpress's (§45 B2). ✅ SURVIVES.
+
+| threshold | +2% | +5% | +7.5% | **+10%** | +12.5% | +15% | +20% | +25% | +30% |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| error rate | 0.25% | 0.74% | 1.57% | **2.98%** | 5.14% | 8.27% | 17.65% | 31.10% | boundary |
+
+**Nonzero and monotone across the entire defensible range.** At the most conservative
+threshold anyone would pick (+2%), a +31% regression is still missed 1 time in 400. The
+finding is not an artifact of the +10% we chose. The +30% row is excluded: the true
+change is +31.0%, so that is a boundary case by this record's own D-1.6 rule.
+
+### R2 — ⚠ runs per version. THIS WEAKENS THE FRAMING, and it must be said.
+
+| k | 1 | 2 | **3** | 4 | 5 | 8 | 10 | 20 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| error rate | 16.09% | 6.53% | **2.98%** | 1.42% | 0.69% | 0.09% | 0.02% | ~0 |
+
+**The error is not irreducible. At k=8 it is essentially gone.** Anyone who runs eight
+times instead of three does not have this problem. The honest claim is therefore
+narrow and specific:
+
+> *At the protocol actually used in issue #14402 — three unseeded runs per version —
+> a +31.0% regression on `bv_n140` is missed 2.98% of the time. The protocol is
+> underpowered, not broken.*
+
+Any sentence implying Benchpress is unfixable is refuted by this table. What survives is
+the cost argument: k=8 is ~16 hours of compute per version comparison at the issue's own
+"about 2 hours each", while `seed_transpiler` costs one argument. That is the
+recommendation, and it is now a recommendation about **efficiency**, not correctness.
+
+⚠ Note this is monotone in k, whereas §34 reported k=3 *worse* than k=1 for three
+circuits. Different statistic (false negative here, false positive there), different
+version pair. Not a contradiction, but §34's non-monotonicity has not been re-tested on
+this pair and should not be quoted alongside this table.
+
+### R3 — is 200 seeds enough? Truth yes, error rate only to within a factor of ~2.
+
+| split | n | true change | error rate |
+|---|---:|---|---:|
+| first half | 100 | +29.80% [+25.82, +33.71] | 3.90% |
+| second half | 100 | +32.28% [+28.53, +36.12] | 2.20% |
+| odd seeds | 100 | +30.14% | 3.91% |
+| even seeds | 100 | +31.94% | 2.16% |
+| **full** | **200** | **+31.03% [+28.37, +33.84]** | **2.98%** |
+
+**The ground truth is stable** — every split lands in +29.8% to +32.3% with overlapping
+intervals, and odd/even agrees with first/second, so there is no run-order drift.
+
+**The error rate is not.** It ranges 2.16%–3.91% across halves, nearly 2×. The reported
+95% CI [1.72%, 4.99%] covers every split, so the interval is honest — but it is a factor
+of ~3 wide. **Only the existence of the error is firmly established; its magnitude is
+known to about a factor of two.** Any sentence quoting "2.98%" without its interval
+overstates what 200 seeds support — the same mistake as D-1.1, one order of magnitude
+further along.
+
+---
+
 ## 48. ⭐⭐ PRIORITY A1 — A REAL WRONG DECISION IS DEMONSTRATED — 2026-09-03
 
 **§45 A1 said: "no real decision has been shown to be wrong." That is no longer true.**
