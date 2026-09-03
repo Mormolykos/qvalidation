@@ -128,3 +128,76 @@ least one real decision flip"* — is **not met**. What exists is a decision
 
 **Nothing is published. No claim has left this folder.** That is the one piece of luck
 in this: every defect above was caught before it reached anyone.
+
+---
+
+# Second pass — 2026-09-03, priorities 1–6
+
+The statuses above are the state at the time of the review and are **not rewritten**.
+This section supersedes them. Where a defect was resolved, the resolution is named so it
+can be checked; where it was not, it says so.
+
+## Status after this pass
+
+| id | status now | where |
+|---|---|---|
+| D-1.1 | **FIXED** — every probability now carries an interval; the headline was withdrawn | §38, `intervals.py` |
+| D-1.2 | **FIXED** — one inclusion rule (≥12 seeds in both arms, exact enumeration) used everywhere; counts regenerate from the named file | §38, `intervals.py`, `paired.py` |
+| D-1.3 | **SUPERSEDED** — the table it concerned is withdrawn by D-8.1 | §41 |
+| D-1.4 | **NARROWED, still open** — k=3 is external and quoted verbatim from the issue; the *averaging basis* for per-test figures is not stated in the issue and remains an assumption | §43 |
+| D-1.5 | **FIXED** — claim proven false: 31 commits, 64 files | §39 |
+| D-1.6 | **SUPERSEDED and generalised** — boundary proximity is not an edge case, it is the whole effect | §41 |
+| D-1.7 | **CONFIRMED by a stronger route** — the cut selects the members; direction selects them too | §41 |
+| D-1.8 | **SUPERSEDED** — the threshold-robustness table rests on the withdrawn statistic | §41 |
+| D-1.9 | **STANDS** — `qft_n320` is still not one of #14402's reported cases | — |
+| D-2.1 / D-2.2 | **FIXED** — column removed, tautology proven, replacement built, 4 regression tests mutation-tested | §40, §42 |
+| D-2.3 | **FIXED by removal** — the both-arms-from-one-version sampling only existed in the withdrawn calibration | §40 |
+| D-2.4 | **FIXED by removal** — §32's independence claim is withdrawn with the column | §40 |
+| D-3.1 / D-3.2 / D-3.3 | **SUPERSEDED** — §33's ambiguity window is replaced by §42's band, which is direction-free, carries a version stamp and is computed per topology | §42 |
+| D-5.1 | **FIXED** — `replication/replicate.py` exists, was executed from clean, passed 144/144, and its failure path was tested | §44 |
+| D-5.2 | **FIXED, and a second half found** — commit SHA + module hashes + 58 circuit hashes; `qasm_sha256` was hashing the *output* | §44 |
+| D-6.1 / D-6.2 | **FIXED** — behavioural tests; both mutations now fail the suite | previous commit `7f0b232` |
+| D-6.3 / D-6.4 | **FIXED** — fixtures replaced with circuits that have measured variance | `tests/test_harness.py` §3 |
+| D-6.5 / D-6.6 | **FIXED** — the observable test executes `sweep_bp.py` | `tests/test_harness.py` §4 |
+| D-6.7 | **PARTLY FIXED** — single-version and require-qiskit consistency are asserted; a mixed-version *merged* file is still only caught if the first child's env row disagrees | `tests/test_harness.py` §7 |
+| D-6.8 | **FIXED** — unset `BENCHPRESS_PATH` now raises, it does not skip | `tests/test_harness.py` |
+| D-7.1 / D-7.2 | **FIXED** — §30 regenerated from its own file; a test enforces it | previous commit `7f0b232` |
+| D-7.3 | **STANDS** — §24 and §30 remain one measurement run twice | — |
+
+## New defects found in this pass
+
+### D-8.1 — the corpus headline is an artifact of which version is the baseline · CONFIRMED · FIXED by withdrawal
+
+Found while building the D-2.1 replacement. The flip analysis ran with **2.0.2 as
+baseline and 2.0.0 as candidate**, and no section said so. In the historically real
+direction the same data gives **0 of 52 unstable on heavy-hex**, against the recorded
+14 of 52. The 26.9% headline is withdrawn; §42 replaces it with a direction-free
+statistic. **This is more serious than anything in the original review.**
+
+### D-8.2 — `qasm_sha256` fingerprints the transpiled output, not the input · CONFIRMED · FIXED
+
+Present on 3,561 of 3,849 rows and read throughout as a circuit fingerprint. All 54
+hashable circuits carry many distinct values, because the field hashes `pm.run(circuit)`.
+The input circuits were never pinned. `input_qasm_sha256` added; the old field keeps its
+name and meaning.
+
+### D-8.3 — `intervals.py` resampled the two arms independently · CONFIRMED · FIXED
+
+Both arms came from the **same 12 seeds** (1000–1011, verified aligned in every file),
+so the outer bootstrap must resample seed indices once and carry `(old_i, new_i)`
+together. `paired.py` does, and exposes `--bootstrap-mode` so the difference is visible
+rather than assumed.
+
+### D-8.4 — the seed bootstrap is biased low for band width · CONFIRMED · DISCLOSED
+
+Resampling seeds with replacement duplicates draws and shrinks the empirical spread, so
+band intervals sit below their own point estimate (square: point 9.78 pp, interval
+[6.99, 9.85]). Not corrected; stated in §42 as a floor rather than a symmetric interval.
+
+### D-8.5 — degenerate circuits inflate the measured benefit of pairing · CONFIRMED · FIXED
+
+20 of 52 heavy-hex circuits (27 of 51 on linear) are byte-identical at every seed across
+the two versions, so ρ ≡ 1 and the paired band is 0.00 pp **by construction** — D-2.1
+again. Including them made pairing look infinitely better; excluding them gives 6.8×.
+Every §42 figure is on the heterogeneous subset, and a regression test enforces the
+split.

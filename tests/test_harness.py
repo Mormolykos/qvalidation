@@ -349,3 +349,126 @@ def test_summary_numbers_regenerate_from_raw():
         assert recomputed["spread_pct"] == pytest.approx(
             float(row["spread_pct"]), abs=0.01), (
             f"{circuit}: summary CSV does not regenerate from raw")
+
+
+# ==========================================================================
+# 8. The paired calibration tautology must not come back
+#    (D-2.1 / D-2.2 -- Priority 2 of the 2026-09-03 audit)
+# ==========================================================================
+
+def _is_data_independent(fn, datasets):
+    """True if `fn` returns the same value on datasets that share nothing.
+
+    This is the generic shape of the defect: a 'measurement' whose answer does not
+    move when the data is replaced wholesale is not a measurement. The check is
+    written once, here, so it can be pointed at any future estimator.
+    """
+    return len({round(fn(d), 9) for d in datasets}) == 1
+
+
+DATASETS = [
+    [161608, 161608, 161608, 118440, 161608, 161608,
+     161608, 118440, 161608, 118440, 161608, 161608],     # qft_n320, real
+    [1000] * 12,                                          # no variance at all
+    [1] * 11 + [10 ** 6],                                 # one extreme outlier
+    list(range(50, 50 + 12)),                             # smooth ramp
+]
+
+
+def test_calibrate_paired_arm_is_provably_a_tautology():
+    """Documents the defect by executing it. If someone 'fixes' detect_rate so this
+    fails, that is fine -- but they must then delete this test deliberately and read
+    why it existed, instead of silently restoring a column that measures nothing.
+    """
+    import random
+    from calibrate import detect_rate
+
+    for effect in (0.0, 0.02, 0.05, 0.15, 0.30):
+        rate = lambda vals: detect_rate(          # noqa: E731  (bound per effect)
+            vals, effect, 0.10, 3, 300, random.Random(1), paired=True)
+        assert _is_data_independent(rate, DATASETS), (
+            f"effect {effect}: paired arm now varies with the data -- if that is "
+            f"intentional, update DEFECTS.md D-2.1 and remove this test on purpose")
+        expected = 1.0 if effect >= 0.10 else 0.0
+        assert rate(DATASETS[0]) == expected, (
+            f"effect {effect}: paired arm is not the step function 1[e >= t]")
+
+
+def test_calibrate_no_longer_reports_a_paired_column():
+    """The tautology's only route into a published table was calibrate.py's CSV
+    header. It must not reappear there.
+    """
+    import csv
+    import random
+    import sys as _sys
+    out = os.path.join(tempfile.mkdtemp(), "cal.csv")
+    argv = _sys.argv
+    try:
+        _sys.argv = ["calibrate.py",
+                     "--raw", os.path.join(ROOT, "results", "raw",
+                                           "bp_large_linear_q202.jsonl"),
+                     "--trials", "20", "--out", out]
+        if not os.path.isfile(_sys.argv[2]):
+            pytest.skip("census not present")
+        import calibrate
+        random.seed(0)
+        calibrate.main()
+    finally:
+        _sys.argv = argv
+
+    header = next(csv.reader(open(out)))
+    offenders = [h for h in header if h.startswith("paired")]
+    assert not offenders, (
+        f"calibrate.py is emitting {offenders} again -- that column is "
+        f"1[effect >= threshold] and was withdrawn as evidence (D-2.1/D-2.2)")
+
+
+def test_real_paired_comparison_is_NOT_a_tautology():
+    """The replacement must have the property the old column lacked: on real data,
+    where the between-version change differs from seed to seed, the paired call rate
+    must actually depend on the data. If this ever becomes data-independent, the
+    replacement has silently degenerated back into the defect.
+    """
+    from paired import exact_paired_rate
+
+    base = DATASETS[0]
+    heterogeneous = [
+        [v * m for v, m in zip(base, [1.02, 0.94, 1.11, 0.97, 1.05, 0.90,
+                                      1.13, 1.00, 0.96, 1.08, 0.93, 1.07])],
+        [v * m for v, m in zip(base, [1.00, 1.20, 0.85, 1.15, 0.92, 1.09,
+                                      0.88, 1.18, 1.03, 0.95, 1.12, 0.99])],
+        [v * 1.06 for v in base],                     # uniform: degenerate on purpose
+    ]
+    rates = [exact_paired_rate(base, h, 0.05, 3) for h in heterogeneous]
+    assert len(set(round(r, 9) for r in rates)) > 1, (
+        "paired rate did not move when the per-seed change was replaced -- the "
+        "replacement has collapsed back into the D-2.1 identity")
+    assert 0.0 < rates[0] < 1.0, (
+        f"expected a genuinely uncertain verdict on heterogeneous data, got "
+        f"{rates[0]} -- a paired arm that only ever answers 0 or 1 is the old defect")
+    assert rates[2] in (0.0, 1.0), (
+        "a uniform multiplicative change SHOULD be degenerate; if it is not, "
+        "exact_paired_rate is no longer computing what its docstring says")
+
+
+def test_paired_band_reports_the_identity_circuits_separately():
+    """A circuit whose two versions agree at every seed has rho == 1, and its paired
+    band is 0 by construction, not by measurement. Counting those as evidence that
+    pairing works is the original defect wearing a new hat. The band CSV must carry
+    rho_spread_pct so they can be excluded, and some circuits must actually have it.
+    """
+    import csv
+    path = os.path.join(ROOT, "results", "summary", "band_heavy-hex.csv")
+    if not os.path.isfile(path):
+        pytest.skip("band CSV not present")
+    rows = list(csv.DictReader(open(path)))
+    assert rows and "rho_spread_pct" in rows[0], (
+        "band output must record the per-seed spread of the measured change, or the "
+        "degenerate circuits cannot be separated from the real ones")
+    degenerate = [r for r in rows if float(r["rho_spread_pct"]) == 0.0]
+    for r in degenerate:
+        assert float(r["paired_band_pp"]) == 0.0, (
+            f"{r['circuit']}: rho spread is 0 so the paired band must be exactly 0; "
+            f"anything else means the band solver is not exact")
+    assert len(degenerate) < len(rows), (
+        "every circuit is degenerate -- the paired column would be a tautology again")

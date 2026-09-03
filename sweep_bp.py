@@ -52,6 +52,46 @@ if not BENCHPRESS or not os.path.isdir(BENCHPRESS):
     sys.exit("ERROR: set BENCHPRESS_PATH to the benchpress repo root")
 sys.path.insert(0, BENCHPRESS)
 
+# D-5.2: Benchpress supplies the circuits, the backend, the topologies AND the
+# observable. It is as much of the toolchain as Qiskit is, and every provenance record
+# named it only by a scratchpad PATH -- which is not a version. Our own standard, from
+# flip_analysis.py: "a measurement file that cannot name its own toolchain is not
+# evidence." These three files are the ones we actually call into; hashing them means a
+# silent edit to the clone cannot pass unnoticed even if git metadata is absent.
+PINNED_MODULES = [
+    "benchpress/utilities/backends/flexible_backend.py",  # FlexibleBackend
+    "benchpress/utilities/io/qasmbench.py",               # get_qasmbench_circuits
+    "benchpress/qiskit_gym/utils/io.py",                  # the 2q-count observable
+    "benchpress/config.py",                               # basis gates, qasm dirs
+    "default.conf",                                       # two_q_gate_type, opt level
+]
+
+
+def benchpress_pin():
+    """Commit SHA, dirty flag and per-module hashes for the benchpress checkout."""
+    import subprocess
+    pin = {"benchpress_commit": None, "benchpress_dirty": None,
+           "benchpress_module_sha256": {}}
+    try:
+        pin["benchpress_commit"] = subprocess.run(
+            ["git", "-C", BENCHPRESS, "rev-parse", "HEAD"],
+            capture_output=True, text=True, timeout=30).stdout.strip() or None
+        status = subprocess.run(
+            ["git", "-C", BENCHPRESS, "status", "--porcelain"],
+            capture_output=True, text=True, timeout=30).stdout.strip()
+        pin["benchpress_dirty"] = bool(status)
+    except Exception as exc:                          # git absent is not fatal
+        pin["benchpress_pin_error"] = f"{type(exc).__name__}: {exc}"
+    for rel in PINNED_MODULES:
+        path = os.path.join(BENCHPRESS, rel)
+        try:
+            with open(path, "rb") as fh:
+                pin["benchpress_module_sha256"][rel] = hashlib.sha256(
+                    fh.read()).hexdigest()
+        except OSError as exc:
+            pin["benchpress_module_sha256"][rel] = f"ERROR: {exc}"
+    return pin
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -114,6 +154,7 @@ def main():
         "platform": platform.platform(),
         "cpu_count": os.cpu_count(),
         "benchpress_path": BENCHPRESS,
+        **benchpress_pin(),
         "opt_level": opt_level,
         "basis_gates": Configuration.options["general"]["basis_gates"],
         "all_topologies": all_topologies,
@@ -149,6 +190,17 @@ def main():
                     print(f"  [{topo}] {name}: LOAD FAILED — {type(exc).__name__}",
                           flush=True)
                     continue
+
+                # D-5.2 second half, found 2026-09-03: `qasm_sha256` below hashes the
+                # TRANSPILED OUTPUT, so it fingerprints a result and pins no input. The
+                # source QASM -- which Benchpress supplies and which a replicator must
+                # match byte for byte -- was never hashed at all. It is now, from the
+                # file on disk, before Qiskit touches it.
+                try:
+                    with open(qasm_path, "rb") as fh:
+                        input_hash = hashlib.sha256(fh.read()).hexdigest()
+                except OSError as exc:
+                    input_hash = f"ERROR: {exc}"
 
                 n_qubits = circuit.num_qubits
                 try:
@@ -203,7 +255,9 @@ def main():
                             "seed": seed, "two_q_gate": two_q_gate,
                             "two_q": two_q, "depth_2q": depth_2q,
                             "depth": out.depth(), "size": out.size(),
-                            "qasm_sha256": qasm_hash, "hash_error": hash_error,
+                            "input_qasm_sha256": input_hash,   # the SOURCE circuit
+                            "qasm_sha256": qasm_hash,          # the TRANSPILED output
+                            "hash_error": hash_error,
                             "seconds": round(elapsed, 3),
                         }
                         values.append(two_q)

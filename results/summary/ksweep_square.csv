@@ -1,0 +1,5 @@
+topology,k,exact,n_circuits,n_heterogeneous,unpaired_median_band_pp,paired_median_band_pp,narrowing_factor,frac_band_ge_wide,wide_band_pp,unpaired_max_band_pp,qiskit_old,qiskit_new,threshold
+square,1,True,52,30,16.704,4.225,3.95,0.5962,5.0,46.581,2.0.0,2.0.2,0.1
+square,2,True,52,30,12.024,2.988,4.02,0.5577,5.0,32.669,2.0.0,2.0.2,0.1
+square,3,True,52,30,9.775,2.407,4.06,0.5192,5.0,26.678,2.0.0,2.0.2,0.1
+square,5,True,52,30,7.551,1.842,4.1,0.4423,5.0,20.552,2.0.0,2.0.2,0.1

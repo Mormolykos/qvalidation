@@ -1,0 +1,5 @@
+topology,k,exact,n_circuits,n_heterogeneous,unpaired_median_band_pp,paired_median_band_pp,narrowing_factor,frac_band_ge_wide,wide_band_pp,unpaired_max_band_pp,qiskit_old,qiskit_new,threshold
+heavy-hex,1,True,52,32,23.803,3.402,7.0,0.6923,5.0,50.889,2.0.0,2.0.2,0.1
+heavy-hex,2,True,52,32,17.222,2.512,6.86,0.6923,5.0,36.995,2.0.0,2.0.2,0.1
+heavy-hex,3,True,52,32,14.043,2.06,6.82,0.6538,5.0,30.041,2.0.0,2.0.2,0.1
+heavy-hex,5,True,52,32,10.862,1.566,6.93,0.5962,5.0,23.181,2.0.0,2.0.2,0.1

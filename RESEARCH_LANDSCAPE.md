@@ -734,6 +734,309 @@ variable. If it exists, C1 is next in line.
 
 ---
 
+## 44. PRIORITIES 5 & 6 — the replication artifact RAN, and Benchpress is pinned — 2026-09-03
+
+### D-5.2 — Benchpress was never versioned anywhere, and it is half the toolchain
+
+Every provenance record named Benchpress by a **scratchpad path**. A path is not a
+version. Benchpress supplies the circuits, the backend, the topologies and the
+observable; our own rule (`flip_analysis.py`) is that a measurement file which cannot
+name its own toolchain is not evidence. It named Qiskit and nothing else.
+
+`sweep_bp.py` now emits, in every `env` record: the commit SHA, whether the working
+tree is dirty, and sha256 of the five files this study calls into —
+`flexible_backend.py`, `qasmbench.py`, `qiskit_gym/utils/io.py`, `config.py`,
+`default.conf`. `pin_benchpress.py` writes `results/raw/benchpress_pin.json`, which adds
+the sha256 of **all 58 `qasmbench-large` circuits** plus a single `corpus_sha256`.
+
+```
+benchpress commit : b695f30e83a32bac05b9b4d8e98d37ba9aae5236   (2026-07-29)
+working tree dirty: False
+circuits pinned   : 58
+corpus sha256     : a02a41468e1a6a19505cc929f087c7f6008c6699724cfcaf84194c55e1330866
+```
+
+> ⚠ **The existing censuses predate the pin and do not carry it.** The clone was clean
+> at this commit throughout and was never pulled, but for those files that is an
+> assertion about our process, not a fact stamped into the data. It is recorded as such
+> in `benchpress_pin.json` (`"applies_retroactively": false`). Runs made from now on
+> carry it.
+
+### ⛔ And a second half to D-5.2, found while fixing the first
+
+`qasm_sha256` — present on 3,561 of 3,849 run rows and read as a circuit fingerprint —
+**hashes the transpiled OUTPUT**, not the input. Checked directly: all 54 hashable
+circuits have many distinct values across the corpus, because the output changes with
+the seed. That field pins a *result*. **Nothing in the entire corpus ever pinned the
+input circuits.** `sweep_bp.py` now records `input_qasm_sha256` from the file on disk
+before Qiskit touches it, alongside the existing field, which keeps its meaning and its
+continuity with the old data.
+
+### D-5.1 — the replication artifact exists, and it was executed
+
+Not a document describing a replication. `replication/replicate.py` + `expected.json` +
+`REPLICATE.md`. Six circuits × 12 seeds × 2 Qiskit versions on `heavy-hex`, **about
+three seconds per arm**, run from a clean state on 2026-09-03:
+
+```
+  per-seed values : 144/144 match exactly
+  seed-sensitive  : 4/6 (bv_n30, knn_n31, adder_n28, dnn_n33)
+  negative control: 2/6 constant across all 12 seeds (cat_n35, ghz_n40)
+  every band matched the reference to within 0.01 pp   REPLICATION PASSED
+```
+
+It verifies the pin **before** measuring, then the circuit hashes, then determinism,
+then seed sensitivity, then the negative control, then the derived statistic. `dnn_n33`
+returns **12 distinct gate counts from 12 seeds**; `cat_n35` and `ghz_n40` return one.
+
+**The failure path was tested, not assumed.** Corrupting one reference value and one
+control band produces `2.0.2 bv_n30 seed 1003: 52 != 53` and
+`cat_n35: unpaired band 0.00 pp != 4.00 pp`, exit code **1**; the clean run exits **0**.
+
+Six circuits on one topology cannot support a corpus proportion, and `REPLICATE.md`
+says so in a scope section. The full censuses remain the evidence; this is the door.
+
+---
+
+## 43. PRIORITY 3 — where k=3 came from, and it does not matter — 2026-09-03
+
+### Provenance: external, half-verified. D-1.4 stands, narrowed.
+
+Issue #14402, **verbatim from the issue itself**: *"This was verified by running
+Benchpress several times for each version to get statistics. E.g. over the full test
+suite the values returned for 3 runs was:"*. Three runs per version is stated by the
+reporter, so k=3 is **not arbitrary and not ours**.
+
+**Benchpress has no run-count knob at all.** Searched the whole repo for `n_runs`,
+`num_runs`, `repeat`, and pytest `addoption`: nothing. k is not a property of the tool.
+
+**What is still not established:** the issue calls the per-test figures *"the avg.
+percent increase in 2Q gate counts"* without saying what the average is over. Whether
+`bv_n140-linear +46%` is a 3-run mean, a single run, or something else **is not stated
+in the issue**. We assume 3-run means. That assumption is load-bearing and is labelled
+as an assumption wherever it appears.
+
+### Sensitivity — every k requested is printed, none is selected
+
+Swept on the direction-free band (§42), not on the old false-positive rate, because
+that statistic inherited the §41 defect.
+
+| topology | k=1 | k=2 | **k=3** | k=5 | pairing narrows by |
+|---|---:|---:|---:|---:|---|
+| `linear` | 4.48 pp | 3.46 pp | **2.55 pp** | 2.11 pp | 2.6× → 3.1× |
+| `square` | 16.70 pp | 12.02 pp | **9.78 pp** | 7.55 pp | 4.0× → 4.1× |
+| `heavy-hex` | 23.80 pp | 17.22 pp | **14.04 pp** | 10.86 pp | 7.0× → 6.9× |
+
+Median unpaired ambiguity band, exact enumeration over all n^k index tuples.
+
+**Three things, and none of them favours k=3.** The band shrinks monotonically as
+1/√k — 23.80/√3 = 13.74 against a measured 14.04. k=3 sits on a smooth curve and is
+neither the best nor the worst case. And **pairing's advantage is flat in k**: about
+6.9× on heavy-hex whether you take one run or five, so the remedy does not depend on
+the assumption we could not verify.
+
+### The cost argument, re-derived from a statistic that shares no machinery with §34
+
+To reach heavy-hex's *paired k=1* band of 3.40 pp by adding unseeded runs instead:
+(23.80/3.40)² = **k ≈ 49**. §34 got "~50 runs" from per-circuit false-positive rates —
+a different statistic, a different direction convention, the same number. That
+agreement was not designed and is the strongest internal consistency check in the
+study.
+
+---
+
+## 42. ⭐ THE DIRECTION-FREE REPLACEMENT — the ambiguity band — 2026-09-03
+
+§41 kills every claim of the form *"X% of circuits are unstable"*. This is what is left,
+and it is a better statistic than the one it replaces.
+
+**Definition.** Sweep a synthetic true change `r` and find the interval of `r` over
+which the call rate runs 0.05 → 0.95. That width — the **ambiguity band**, in
+percentage points — is how large a change must be before the protocol can resolve it.
+It has no baseline to pick, so it cannot have §41's defect.
+
+The candidate is built as `new_i = old_i · r · ρ_i`, where ρ is the **measured** per-seed
+change between 2.0.0 and 2.0.2, re-centred to mean 1. Both arms see the identical
+candidate; only the comparison differs — independent index draws (Benchpress) versus one
+index draw used on both sides (`seed_transpiler`). Exact enumeration over all 1,728
+index tuples, bisection to 1e-4 in `r`.
+
+| topology | unpaired median | paired median | narrowing | circuits with band ≥ 5 pp |
+|---|---:|---:|---:|---|
+| `linear` | 2.55 pp | 0.86 pp | 3.0× | 11/51 = 0.216 Wilson [0.125, 0.346] |
+| `square` | 9.78 pp | 2.41 pp | 4.1× | 27/52 = 0.519 Wilson [0.387, 0.649] |
+| **`heavy-hex`** | **14.04 pp** | **2.06 pp** | **6.8×** | 34/52 = 0.654 Wilson [0.518, 0.768] |
+
+Seed bootstrap, B=200, **shared** resampling, 95%: heavy-hex unpaired median
+[9.82, 13.70] pp, paired [1.60, 2.07] pp, fraction ≥5 pp [0.577, 0.673].
+
+### ⚠ Three things that must be said with it
+
+1. **The medians exclude the degenerate circuits, and that halves the apparent
+   benefit.** 20 of 52 heavy-hex circuits (27 of 51 on linear) are byte-identical at
+   every seed between the two versions. For those ρ ≡ 1, so the paired band is 0.00 pp
+   **by construction** — the same identity that invalidated §32. Counting them would
+   restate the tautology. Every figure above is on the heterogeneous subset.
+2. **Pairing does not always help.** On `linear`, five circuits — `bv_n280`, `cc_n151`,
+   `cc_n301`, `cc_n32`, `cc_n64` — have paired bands equal to their unpaired bands
+   (`cc_n32`: 17.25 pp both ways). Where the version change itself is strongly
+   seed-dependent, pairing removes nothing.
+3. **The bootstrap is biased low for this statistic.** Resampling seeds with
+   replacement duplicates draws and shrinks the empirical spread, so the intervals sit
+   below the point estimate (square: point 9.78 pp, interval [6.99, 9.85]). Read them
+   as a floor, not as symmetric error bars.
+
+### The claim, stated so it cannot be dismissed on direction
+
+> On `heavy-hex`, IBM's own hardware connectivity, Benchpress's unseeded 3-run protocol
+> cannot resolve a change smaller than a **median 14.0 pp wide window** around its own
+> +10% decision threshold. Passing `seed_transpiler` narrows that window **6.8×**, on
+> the circuits where the comparison is a measurement rather than an identity.
+
+No version is baseline. No pull request is implicated. Nothing depends on which of the
+two Qiskit releases came first.
+
+---
+
+## 41. ⛔⛔ PRIORITY 2 SIDE-EFFECT — the corpus headline is a DIRECTION ARTIFACT — 2026-09-03
+
+**This is the most serious defect found in the study, and it was found by building the
+fix for a smaller one.** It supersedes §38's surviving claim, §37, §36 and §35.
+
+`paired.py --measure` was written to compare paired against unpaired on real data. Run
+in the historically real direction — 2.0.0 as baseline, 2.0.2 as candidate — it returned
+**zero unstable circuits on every topology**, flatly contradicting §38's 14/52 on
+heavy-hex. The CSVs explain why: `ci_heavy-hex.csv` records `qiskit_old = 2.0.2`,
+`qiskit_new = 2.0.0`. **The entire flip analysis was run with the newer release as the
+baseline and the older one as the candidate, and the record never says so.**
+
+Same data, same circuits, same threshold, arms swapped:
+
+| topology | direction | circuits | UNSTABLE | boundary | genuine | mean FP |
+|---|---|---:|---:|---:|---:|---:|
+| `linear` | 2.0.0 → 2.0.2 *(what happened)* | 51 | 1 | 0 | **1** | 0.0057 |
+| `linear` | 2.0.2 → 2.0.0 *(what was run)* | 51 | 5 | 3 | **2** | 0.0290 |
+| `square` | 2.0.0 → 2.0.2 | 52 | 0 | 0 | **0** | 0.0012 |
+| `square` | 2.0.2 → 2.0.0 | 52 | 15 | 5 | **10** | 0.0605 |
+| **`heavy-hex`** | **2.0.0 → 2.0.2** | 52 | **0** | 0 | **0** | 0.0013 |
+| **`heavy-hex`** | **2.0.2 → 2.0.0** | 52 | 24 | 10 | **14** | 0.1074 |
+
+### The cause is arithmetic, and it generalises D-1.6 to the whole corpus
+
+A one-sided rule "flag if the candidate is ≥ +10%" measures the **distance from the true
+change to the cut**. 2.0.2 reduced 2-qubit counts on most circuits, so forward the
+changes sit at −4% to −6% — fifteen points from +10%, unreachable by seed noise.
+Reversed, the same circuits sit at +4% to +6%, five points away, and seed noise reaches
+it often:
+
+| circuit | forward Δ | forward P | reverse Δ | reverse P |
+|---|---:|---:|---:|---:|
+| `cc_n32` | −5.9% | 0.030 | +6.3% | **0.344** |
+| `bv_n140` | −4.7% | 0.007 | +4.9% | **0.220** |
+| `bv_n280` | −3.6% | 0.003 | +3.7% | **0.112** |
+| `bv_n30` | −8.0% | 0.011 | +8.6% | **0.458** |
+
+D-1.6 said three of five unstable circuits sat on the cut. It is worse than that: **the
+instability rate is a function of where this particular version pair happened to land
+relative to the threshold.** It is not a property of the harness, the corpus, or the
+topology.
+
+### ⛔ Withdrawn
+
+> *"On heavy-hex, 26.9% of circuits (95% CI 16.8%–40.3%) have a regression verdict that
+> depends on which seeds were drawn"* — **WITHDRAWN.** In the direction that actually
+> occurred the figure is **0 of 52**. The 26.9% is conditional on treating 2.0.2 as
+> baseline, which the record never disclosed.
+
+The topology *ordering* (linear < square < heavy-hex) survives, because §42 reproduces
+it from a statistic with no direction at all. The **proportions do not**, in either
+direction: forward they are ~0 and say nothing; reversed they describe an accident of
+this version pair.
+
+**Not a fabrication and not a rigged direction** — 2.0.2 → 2.0.0 is a legitimate
+question (a revert *is* a regression, and it is the same measured data). The defect is
+that it was **run in one direction, reported without naming it, and interpreted as a
+property of the benchmark.**
+
+### What this does NOT touch
+
+§28's cross-process entropy control, §30's within-version seed spread, the source
+reading that no Benchpress gym passes `seed_transpiler`, and §44's replication are all
+single-version or direction-free. **The mechanism is untouched. The consequence
+measurement is rebuilt.**
+
+---
+
+## 40. PRIORITY 2 — the paired calibration column is a tautology. Withdrawn. — 2026-09-03
+
+**D-2.1 / D-2.2 CONFIRMED, and the resolution is removal, not repair.**
+
+`calibrate.py` built its paired arm from the same k indices on both sides:
+
+```
+a = (1/k) Σ_{i∈I} v_i
+b = (1/k) Σ_{i∈I} v_i(1+e) = (1+e)·a        ⇒   (b−a)/a ≡ e
+```
+
+The decision rule `(b−a)/a ≥ t` therefore collapses to `e ≥ t`. **The column was the
+indicator function `1[e ≥ t]`.** It never touched a compiler and did not depend on the
+data.
+
+`paired.py --prove` executes `calibrate.detect_rate` — the real function, imported, not
+a copy — on four datasets that share nothing:
+
+| true effect | `qft_n320` (real) | constant 1000s | 1 vs 10⁶ | uniform noise |
+|---:|---:|---:|---:|---:|
+| 0%, 2%, 5% | 0.0000 | 0.0000 | 0.0000 | 0.0000 |
+| **10% = t** | 1.0000 | 1.0000 | **0.9300** | 1.0000 |
+| 15%, 30% | 1.0000 | 1.0000 | 1.0000 | 1.0000 |
+
+The one row that moves is `e == t`, and exact rational arithmetic settles it:
+`(b−a)/a = 1/10` exactly, so the true value is 1.000 and 0.9300 is float residue —
+which also confirms §32's honesty note 2.
+
+### ⛔ Withdrawn with it
+
+> §32: *"passing `seed_transpiler` removes every false positive across all 51 circuits
+> and raises power at every effect size"* — **WITHDRAWN.**
+> §34: *"Pairing achieves 0.0% at k=1"* — **WITHDRAWN.**
+
+Neither is a measurement. Both restate `1[e ≥ t]`.
+
+### The resolution
+
+**Removed, not repaired.** `calibrate.py` no longer computes or emits a paired column,
+and its docstring records why. Its **unpaired** column was always legitimate — there the
+two sides are drawn independently and the ratio genuinely scatters — and is unchanged.
+`detect_rate(..., paired=True)` is kept solely so the proof can execute the defect.
+The already-written `results/summary/cal_*.csv` keep their paired columns as historical
+record and are **not** rewritten; the record says they must not be quoted.
+
+The honest replacement is §42, which builds the candidate arm from the measured
+per-seed change so that the paired comparison carries real variance.
+
+### The regression tests, and their mutation test
+
+Four tests in `tests/test_harness.py` §8. The generic check is
+`_is_data_independent(fn, datasets)` — a "measurement" whose answer does not move when
+the data is replaced wholesale is not a measurement.
+
+- `test_calibrate_paired_arm_is_provably_a_tautology` — documents the defect by
+  executing it.
+- `test_calibrate_no_longer_reports_a_paired_column` — runs `calibrate.main()` and
+  inspects the CSV header.
+- `test_real_paired_comparison_is_NOT_a_tautology` — the replacement must move when the
+  per-seed change moves, and must land strictly between 0 and 1 on heterogeneous data.
+- `test_paired_band_reports_the_identity_circuits_separately` — the band CSV must carry
+  `rho_spread_pct`, and circuits with ρ spread 0 must have a paired band of exactly 0.
+
+**Both were mutation-tested, as the reviewer mutation-tested ours.** Restoring the
+paired column to `calibrate.py` fails test 2. Rebuilding the paired arm as a constant
+multiple of `a` fails test 3 with *"a paired arm that only ever answers 0 or 1 is the
+old defect"*. Suite: **16 passed, 1 skipped.**
+
+---
+
 ## 39. ⛔ PRIORITY 4 — the "single commit" claim is FALSE — 2026-09-03
 
 **D-1.5 CONFIRMED.** §31 asserted that *"2.0.0 vs 2.0.2 isolates a single commit —

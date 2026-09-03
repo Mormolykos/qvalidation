@@ -23,13 +23,37 @@ WHY INJECT AFTER COMPILATION
     given realistic noise. It does not model how a real code change would interact with
     routing. Those are different questions and only the first is claimed.
 
-THE TWO ARMS
+THE ARM THIS SCRIPT REPORTS
     unpaired : draw k seeds for A and k INDEPENDENT seeds for B  -- what Benchpress does
-    paired   : draw k seed INDICES and use the same ones for A and B -- what passing
-               seed_transpiler would give you
 
     At a true effect of ZERO, any call is a false positive. At a true effect at or above
-    the threshold, any miss is a false negative.
+    the threshold, any miss is a false negative. Both are genuine here: the two sides are
+    drawn independently, so the ratio really does scatter.
+
+⛔ THE PAIRED ARM IS WITHDRAWN -- 2026-09-03, DEFECTS.md D-2.1 / D-2.2
+    This script used to report a second column built as
+
+        idx = k random indices;  a = mean(vals[idx]);  b = mean(vals[idx] * (1+e))
+
+    Both sides are the SAME values, so b = (1+e)*a and (b-a)/a = e EXACTLY, for every
+    index set, every circuit, every k. That column was the indicator 1[e >= threshold].
+    It never touched a compiler and did not depend on the data at all -- feeding it a
+    real circuit, a constant vector or pure noise returned identical numbers.
+
+    Two claims rested on it and are withdrawn with it:
+        sec 32  "passing seed_transpiler removes every false positive across all 51
+                 circuits and raises power at every effect size"
+        sec 34  "Pairing achieves 0.0% at k=1"
+
+    `detect_rate(..., paired=True)` is KEPT so `paired.py --prove` can execute the
+    defect and show it, but nothing in this script calls it and no output column
+    reports it. The honest replacement is `paired.py`, which builds the candidate arm
+    from the MEASURED per-seed change between two Qiskit versions, so the paired
+    comparison carries real variance.
+
+    The already-written results/summary/cal_*.csv keep their paired columns: they are
+    the historical record and are not rewritten. Their paired columns are that
+    indicator function and must not be quoted.
 
 USAGE
     python calibrate.py --raw results/raw/bp_large_linear_q202.jsonl --threshold 0.10
@@ -58,7 +82,12 @@ def load(path):
 
 
 def detect_rate(vals, effect, threshold, k, trials, rng, paired):
-    """Fraction of trials calling a regression when the true effect is `effect`."""
+    """Fraction of trials calling a regression when the true effect is `effect`.
+
+    ⛔ paired=True IS A TAUTOLOGY. It is retained only so `paired.py --prove` can run
+    the real function and demonstrate that it returns 1[effect >= threshold]
+    irrespective of `vals`. Do not use it for evidence. See this module's docstring.
+    """
     n, hits = len(vals), 0
     for _ in range(trials):
         if paired:
@@ -96,6 +125,10 @@ def main():
     print(f"  {len(usable)} circuits with >= {args.min_seeds} seeds "
           f"(of {len(vals_by_circuit)})\n")
 
+    print("  ⛔ The paired column is WITHDRAWN (D-2.1/D-2.2): it was 1[effect >= "
+          "threshold],\n     not a measurement. Use paired.py for the real paired "
+          "comparison.\n")
+
     rows = []
     for circuit, vals in sorted(usable.items()):
         row = {"circuit": circuit, "n_seeds": len(vals)}
@@ -103,18 +136,15 @@ def main():
             row[f"unpaired_{eff:g}"] = round(
                 detect_rate(vals, eff, args.threshold, args.runs_per_version,
                             args.trials, rng, paired=False), 4)
-            row[f"paired_{eff:g}"] = round(
-                detect_rate(vals, eff, args.threshold, args.runs_per_version,
-                            args.trials, rng, paired=True), 4)
         rows.append(row)
 
     def mean(key):
         return sum(r[key] for r in rows) / len(rows)
 
     print(f"  Detection rate averaged over {len(rows)} circuits")
-    print(f"  {'true effect':>12s} {'UNPAIRED':>10s} {'PAIRED':>10s}   interpretation")
+    print(f"  {'true effect':>12s} {'UNPAIRED':>10s}   interpretation")
     for eff in effects:
-        u, p = mean(f"unpaired_{eff:g}"), mean(f"paired_{eff:g}")
+        u = mean(f"unpaired_{eff:g}")
         if eff == 0.0:
             note = "FALSE POSITIVE rate"
         elif eff < args.threshold:
@@ -123,18 +153,15 @@ def main():
             note = "at threshold"
         else:
             note = f"POWER (miss rate = {1-u:.1%} unpaired)"
-        print(f"  {eff:>11.0%} {u:>10.3f} {p:>10.3f}   {note}")
+        print(f"  {eff:>11.0%} {u:>10.3f}   {note}")
 
-    fp_u = mean("unpaired_0")
-    fp_p = mean("paired_0")
-    print(f"\n  FALSE POSITIVE at zero real change: "
-          f"unpaired {fp_u:.1%}  vs  paired {fp_p:.1%}")
+    print(f"\n  FALSE POSITIVE at zero real change, unpaired: {mean('unpaired_0'):.1%}")
 
     worst = sorted(rows, key=lambda r: -r["unpaired_0"])[:8]
     print(f"\n  Worst circuits by false-positive rate (true effect = 0):")
-    print(f"  {'circuit':<24s} {'unpaired':>9s} {'paired':>8s}")
+    print(f"  {'circuit':<24s} {'unpaired':>9s}")
     for r in worst:
-        print(f"  {r['circuit']:<24s} {r['unpaired_0']:>9.3f} {r['paired_0']:>8.3f}")
+        print(f"  {r['circuit']:<24s} {r['unpaired_0']:>9.3f}")
 
     if args.out:
         os.makedirs(os.path.dirname(args.out), exist_ok=True)
