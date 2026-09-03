@@ -734,6 +734,76 @@ variable. If it exists, C1 is next in line.
 
 ---
 
+## 37. ALL THREE ROUTED TOPOLOGIES — complete, and heavy-hex is the worst — 2026-09-03
+
+All four censuses finished: `square` and `heavy-hex` on 2.0.0 and 2.0.2, 58 circuits ×
+12 seeds each, **0 crashes across all four**. `all-to-all` needs no run (routing-free,
+verified constant, §27).
+
+### Seed spread by topology, Qiskit 2.0.2
+
+| topology | <1% | 1–5% | **≥5%** | median spread | max |
+|---|---:|---:|---:|---:|---:|
+| `linear` | 31 | 12 | 14 | 0.87% | 106.92% |
+| `square` | 21 | 8 | 29 | 4.70% | 32.71% |
+| **`heavy-hex`** | 17 | 4 | **37** | **10.11%** | 53.68% |
+
+**On heavy-hex, 37 of 58 circuits exceed 5% seed spread and the median circuit varies by
+over 10%.**
+
+### Decision instability, D-1.6 boundary filter applied
+
+| topology | UNSTABLE (k=3) | boundary artifact | **genuine** |
+|---|---:|---:|---:|
+| `linear` | 5 | 3 | **2** |
+| `square` | 15 | 5 | **10** |
+| **`heavy-hex`** | **26** | 11 | **15** |
+
+### ⭐ Why heavy-hex is the operationally important case
+
+**Heavy-hex is IBM's actual hardware connectivity.** `linear` and `square` are abstract
+stress topologies; heavy-hex is what real IBM devices are. It is also the topology where
+the regression protocol is least reliable.
+
+### The pattern across topologies — instability is not driven by spread alone
+
+`linear` has the **largest** single spread (106.9%) and the **fewest** genuine unstable
+verdicts (2). `heavy-hex` has a smaller maximum (53.7%) and the **most** (15). The reason
+is visible in the data: on `linear` the ConsolidateBlocks effect is large (24 stable
+regressions, most circuits clearly over the cut), while on `heavy-hex` the true effect is
+small — mostly +3% to +10% — and the noise is high.
+
+**Verdicts become unreliable where the true effect is comparable to the noise, not where
+the noise is largest.** That is why §31's threshold-table reasoning was wrong in the way
+D-1.7 identified, and it is the correct general statement.
+
+### #14402's own circuits, across topologies
+
+| circuit | reported in #14402 | genuine unstable on |
+|---|---|---|
+| `bv_n140` | ✅ +46% | `square` (+3.0%, P=0.12), `heavy-hex` (+4.9%, P=0.22) |
+| `bv_n280` | ✅ +44% | `square` (+2.2%, P=0.07), `heavy-hex` (+3.7%, P=0.11) |
+| `swap_test_n361` | used by `mtreinish` as **evidence the fix worked** | `heavy-hex` (+5.7%, P=0.10) |
+
+`swap_test_n361` is the test `mtreinish` cited in the issue thread — *"2334 on my old run
+with 2.0.0 and 1622 in my new run today"* — to demonstrate #14417 had fixed the
+regression. On heavy-hex that same test's verdict is seed-dependent 10% of the time.
+
+**This retires D-1.9 properly.** The evidence no longer rests on `qft_n320`, a circuit
+nobody implicated. It rests on the circuits the maintainers themselves reported, and on
+the one they used to close the issue.
+
+### Limits
+
+1. 12 seeds per circuit; **D-1.1's interval problem is unaddressed for every P value in
+   this section.** No confidence intervals have been computed.
+2. The 3 pp boundary band is a judgement; raw tables are committed so it can be re-cut.
+3. Census coverage differs between arms in places (§30 table).
+4. D-1.4 (k=3 assumed), D-1.5 (single-commit unverified), D-2.1/2.2, D-5.1, D-5.2 all
+   remain open and gate any writeup.
+
+---
+
 ## 36. SQUARE FLIP ANALYSIS — and the review's D-1.6 applied to both topologies — 2026-09-03
 
 `flip_square_q202_vs_q200.csv`. Same pre-registered rule as §31, threshold +10%,
