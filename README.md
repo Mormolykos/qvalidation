@@ -3,11 +3,18 @@
 Benchpress pins the seeds used to **build** circuits and passes no seed to the code that
 **compiles** them. This repository measures what that costs.
 
-**Headline:** on `bv_n140-linear` — a circuit Qiskit issue
-[#14402](https://github.com/Qiskit/qiskit/issues/14402) itself names — the change from
-Qiskit 1.4.3 to 2.0.0 is a genuine **+31.0% regression** (95% CI +28.4% to +33.8%,
-200 seeds per version). The suite's own protocol, **three unseeded runs per version,
-misses it 2.98% of the time** (95% CI 1.72%–4.99%).
+**Headline:** on `bv_n140` — a circuit Qiskit issue
+[#14402](https://github.com/Qiskit/qiskit/issues/14402) itself names — mapped to a
+heavy-hex lattice, the change from Qiskit 1.4.3 to 2.0.0 is **+5.75%** (95% CI +4.10% to
++7.38%, 200 seeds per version). The suite's own protocol — **three unseeded runs per
+version — reports it as a ≥+10% regression 26.3% of the time** (95% CI 18.9%–34.9%).
+
+**Running more does not fix it.** Twenty runs per version, about 40 hours of compute at
+the issue's own "about 2 hours each", still leaves a **4.8%** false-positive rate. One
+`seed_transpiler` argument removes it at one run.
+
+The same circuit on `linear` changes **+31.0%** and is *missed* 2.98% of the time — a
+false negative, which eight runs per version does remove.
 
 And the issue's own reported figure for that circuit, **+46.1%**, is a single draw from a
 distribution running from **−10.5% to +100.0%**. Its 95% range reaches **below the +10%

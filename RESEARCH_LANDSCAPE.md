@@ -19,7 +19,9 @@ file without checking it here first.
 | ✅ **LIVE** | Benchpress passes no `seed_transpiler` in any of its 8 SDK gyms | §33, source-verified |
 | ✅ **LIVE** | The transpiler seed is the dominant entropy source | §28, cross-process control |
 | ✅ **LIVE** | A fixed seed reproduces bit-identically; different seeds do not | §44, re-run from clean |
-| ⭐ **LIVE** | **A REAL WRONG DECISION: `bv_n140` (+31.0% regression) is MISSED 2.98% of the time, 95% CI [1.72%, 4.99%], 200 seeds/arm, non-boundary** | §48 |
+| ⭐ **LIVE** | **`bv_n140` on heavy-hex truly changes +5.75% [+4.10, +7.38] and is FALSELY CALLED a ≥+10% regression 26.3% of the time [18.9, 34.9]** | §50 |
+| ⭐ **LIVE** | **That false positive is NOT fixed by running more: k=20 (~40 h compute) still leaves 4.84%** | §50 |
+| ✅ **LIVE** | `bv_n140` on linear (+31.0% real regression) is MISSED 2.98% [1.59, 4.91] — but k=8 removes this one | §48, §49 |
 | ⭐ **LIVE** | #14402's own **+46.1%** for `bv_n140` is one draw from a range spanning **−10.5% to +100%**; the truth is **+31.0%** | §48 |
 | ✅ **LIVE** | #14402's numbers **reproduce independently** — within 0.5 pp and 2.4 pp on the two low-variance circuits | §48 |
 | ✅ **LIVE** | Unseeded 3-run comparison cannot resolve a change inside an **11.5–14.0 pp** window on heavy-hex (range across modelling choices) | §42, §47 |
@@ -763,6 +765,119 @@ direct evidence of how hard. It is also direct evidence that the problem is real
 **Phase 0 for C2 before anything is built:** search specifically for a study treating
 SDK version as the independent variable and transpiler output quality as the dependent
 variable. If it exists, C1 is next in line.
+
+---
+
+## 50. ⭐⭐⭐ TWO CRITICS ATTACKED §48, AND THE ANSWER IS A BIGGER RESULT — 2026-09-03
+
+`second_opinion` was run on the finished §48 claim: Gemini Pro (63.2 s) and ChatGPT
+(9.8 s), independently, **not merged**. Then the objection both of them circled was
+tested with new measurement. It changed the headline.
+
+### Gemini Pro's central objection — and why it was right to make it
+
+> *"Claiming a WRONG regression decision for `bv_n140` is a false contradiction; observed
+> (+46.1%) and true (+31.0%) both exceed 10%, making it a true positive. Restrict
+> conclusions to magnitude estimation failure rather than binary decision failure."*
+
+**Half rejected, half accepted, and then answered with data.**
+
+**Rejected:** it conflates *the single draw #14402 published* with *the protocol's error
+rate*. #14402's decision on `bv_n140` was **correct**, and this record never said
+otherwise. The 2.98% is P(a 3-run comparison returns "no regression" | the truth is
++31%) — a property of the procedure, measured over its own draw space, not a claim that
+anyone's published call was wrong.
+
+**Accepted, and the record was wrong to risk the reading:** §48 was phrased so that a
+reader could take it as saying the issue got `bv_n140` wrong. It did not. **That is now
+stated explicitly.**
+
+**Answered:** Gemini's real point is that a false *negative* on a +31% change is a weak
+demonstration, because direction is never in doubt. Correct. So the same circuit was run
+at 200 seeds per arm on the other two topologies — the attack §45 B-limits had flagged
+and nobody had run.
+
+### ⛔ The same circuit, the same version pair, the other two topologies
+
+`bv_n140`, 200 seeds/arm, 1.4.3 → 2.0.0, +10% cut, k=3:
+
+| topology | true change | 95% CI (bootstrap) | per-seed t-CI | verdict | **error** | 95% CI |
+|---|---:|---|---|---|---:|---|
+| `linear` | +31.03% | [+28.27, +33.74] | — | REGRESSION | 2.98% FN | [1.59, 4.91] |
+| **`square`** | **+2.96%** | [+1.48, +4.47] | [+2.11, +5.23] | NO_REGRESSION | **13.29% FP** | [8.48, 19.16] |
+| **`heavy-hex`** | **+5.75%** | [+4.10, +7.38] | [+4.79, +8.05] | NO_REGRESSION | **26.28% FP** | [18.89, 34.89] |
+
+**On `square` and `heavy-hex` the truth is nowhere near the cut — and the protocol
+reports a ≥+10% regression anyway, 13.3% and 26.3% of the time.** Both are FALSE
+POSITIVES, both are below the threshold under *both* interval methods, and neither has
+any directional ambiguity. Gemini's "it is a true positive" objection does not reach
+them.
+
+The same circuit changed **+31% on `linear` and +3% on `square`**. The regression itself
+is topology-specific.
+
+### ⛔ And this is the one that "just run more" does NOT fix
+
+| k | 1 | 3 | 5 | 8 | 10 | 20 |
+|---|---:|---:|---:|---:|---:|---:|
+| `linear` false negative | 16.09% | 2.98% | 0.69% | **0.09%** | 0.02% | ~0 |
+| `square` false positive | 25.39% | 13.29% | 7.68% | 3.59% | 2.24% | 0.23% |
+| **`heavy-hex` false positive** | **36.04%** | **26.28%** | **20.46%** | **14.78%** | **12.09%** | **4.84%** |
+
+§49 R2 said the error was underpowering and k=8 removed it. **That was true only for the
+false negative.** On `heavy-hex`, twenty runs per version — roughly **40 hours** of
+compute at the issue's own "about 2 hours each" — still leaves a **4.84%** false-positive
+rate. The remedy this record recommended in §49 is refuted for the false-positive case,
+by this record, one section later.
+
+### Split-half stability — heavy-hex is the most stable number in the study
+
+| split | `heavy-hex` FP | `square` FP | `linear` FN |
+|---|---:|---:|---:|
+| first half (n=100) | 26.35% | 8.89% | 3.90% |
+| second half (n=100) | 26.13% | 18.31% | 2.20% |
+| odd seeds | 31.44% | 11.16% | 3.91% |
+| even seeds | 21.58% | 16.08% | 2.16% |
+| **full (n=200)** | **26.28%** | **13.29%** | **2.98%** |
+
+Heavy-hex's halves agree to **0.2 pp**. §49 R3's warning that the magnitude is known only
+to a factor of two applies to the linear false negative, not to this.
+
+### ChatGPT's four points, judged
+
+1. **"200 seeds estimate the distribution; they do not independently establish the true
+   regression. Call it estimated distributional truth."** — **ACCEPTED.** Correct and
+   precise. "+31.0%" is the estimated **population mean** of the same stochastic process,
+   not an external ground truth. The claim is properly a self-consistency statement: *the
+   protocol disagrees with its own long-run mean at a measured rate.* That is not
+   circular, but it must be worded that way, and the wording is now fixed throughout.
+2. **"The CI must account for finite-seed estimation, not just bootstrap resampling."** —
+   **ACCEPTED, partially addressed.** The seed bootstrap does resample seeds, so it does
+   carry finite-seed error for the rate. What is *not* propagated is uncertainty in the
+   **truth classification** into the error rate. Mitigated here by requiring the verdict
+   to hold under two independent interval methods; not yet a joint interval. **OPEN.**
+3. **"k=8 does not negate the defect, but 'wrong decision' requires the +10% rule to be
+   justified."** — **ACCEPTED**, and both models raised it independently, which is the
+   signal worth acting on. Answered by §49 R1 (nonzero at every cut from +2% to +25%) and
+   now much more strongly: on `heavy-hex` the truth is +5.75%, so the finding survives any
+   threshold between about +8% and +30%.
+4. **"Strongest threat: your 200 seeds may not represent the real unseeded distribution if
+   the RNG or environment differs across executions."** — **PARTIALLY ACCEPTED.** §44
+   reproduced 144/144 values across fresh processes, so the seed→value map is
+   process-independent at n=12. But all 200 seeds for a given arm came from **one
+   process**, and they are a contiguous block 1000–1199. §46 attack 8 tested contiguous
+   vs scattered only at n=12. **A scattered 200-seed set across fresh processes is not
+   yet run. OPEN, and it is the best remaining attack.**
+
+### What the headline is now
+
+> **`bv_n140` on a heavy-hex lattice changes by +5.75% (95% CI +4.10% to +7.38%) between
+> Qiskit 1.4.3 and 2.0.0. Benchpress's own 3-run unseeded protocol reports it as a
+> ≥+10% regression 26.3% of the time (95% CI 18.9%–34.9%). Running twenty times instead
+> of three — about 40 hours of compute — still leaves 4.8%.**
+
+Not a magnitude-estimation failure. A binary decision failure, on a false positive, where
+the truth is 4 pp clear of the threshold and running more does not fix it.
 
 ---
 
