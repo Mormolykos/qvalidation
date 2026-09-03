@@ -1,0 +1,10 @@
+# Virtual environments — regenerable from the pinned commands in the README
+envs/
+# Python noise
+__pycache__/
+*.pyc
+.pytest_cache/
+# Intermediate per-circuit census fragments; the merged .jsonl is the record
+results/raw/_parts/
+# Downloaded third-party artifacts
+hbr_paper.*

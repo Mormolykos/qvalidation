@@ -1,0 +1,67 @@
+{
+  "experiment": "exp1_backend_randomness",
+  "utc": "2026-09-02T18:22:56.656894+00:00",
+  "circuit": "bv_n140.qasm",
+  "n_qubits": 140,
+  "topology": "linear",
+  "opt_level": 2,
+  "transpiler_seed": 12345,
+  "repeats": 10,
+  "qiskit_version": "2.5.2",
+  "two_q_gate": "cz",
+  "verdict": "REFUTED \u2014 backend construction does not change the result",
+  "A_same_backend_fixed_seed": {
+    "values": [
+      352,
+      352,
+      352,
+      352,
+      352,
+      352,
+      352,
+      352,
+      352,
+      352
+    ],
+    "min": 352,
+    "max": 352,
+    "spread_pct": 0.0,
+    "distinct": 1
+  },
+  "B_new_backend_fixed_seed": {
+    "values": [
+      352,
+      352,
+      352,
+      352,
+      352,
+      352,
+      352,
+      352,
+      352,
+      352
+    ],
+    "min": 352,
+    "max": 352,
+    "spread_pct": 0.0,
+    "distinct": 1
+  },
+  "C_same_backend_varying_seed": {
+    "values": [
+      352,
+      362,
+      347,
+      358,
+      352,
+      347,
+      347,
+      361,
+      358,
+      352
+    ],
+    "min": 347,
+    "max": 362,
+    "spread_pct": 4.323,
+    "distinct": 5
+  }
+}

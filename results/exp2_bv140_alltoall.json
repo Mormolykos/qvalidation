@@ -1,0 +1,49 @@
+{
+  "experiment": "exp2_equivalence",
+  "utc": "2026-09-02T18:48:02.944848+00:00",
+  "circuit": "bv_n140.qasm",
+  "n_qubits": 140,
+  "topology": "all-to-all",
+  "opt_level": 2,
+  "qiskit_version": "2.0.2",
+  "two_q_gate": "cz",
+  "n_runs": 12,
+  "unseeded": [
+    72,
+    72,
+    72,
+    72,
+    72,
+    72,
+    72,
+    72,
+    72,
+    72,
+    72,
+    72
+  ],
+  "seeded": [
+    72,
+    72,
+    72,
+    72,
+    72,
+    72,
+    72,
+    72,
+    72,
+    72,
+    72,
+    72
+  ],
+  "unseeded_range": [
+    72,
+    72
+  ],
+  "seeded_range": [
+    72,
+    72
+  ],
+  "contained": true,
+  "overlap": true
+}

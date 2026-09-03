@@ -1,0 +1,2 @@
+  58 circuits, topology=square, 12 seeds, one process each
+

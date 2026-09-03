@@ -1,0 +1,73 @@
+{
+  "experiment": "exp0_determinism",
+  "utc": "2026-09-02T16:58:58.941099+00:00",
+  "qasm": "bv_n140.qasm",
+  "n_qubits": 140,
+  "seed_transpiler": 12345,
+  "optimization_level": 2,
+  "basis_gates": [
+    "id",
+    "sx",
+    "x",
+    "rz",
+    "cz"
+  ],
+  "topology": "linear",
+  "repeats": 5,
+  "env": {
+    "RAYON_NUM_THREADS": "1",
+    "QISKIT_NUM_PROCS": "<unset>",
+    "qiskit_version": "2.0.2",
+    "python": "3.10.10",
+    "platform": "Windows-10-10.0.26200-SP0",
+    "cpu_count": 16
+  },
+  "runs": [
+    {
+      "repeat": 0,
+      "two_q": 292,
+      "depth": 690,
+      "size": 2110,
+      "qasm_sha256": "6b8b50a284be1aa380d77c19e44abca9dd347a4d18b1d5903c0ec22dcd825c2c",
+      "seconds": 0.146
+    },
+    {
+      "repeat": 1,
+      "two_q": 292,
+      "depth": 690,
+      "size": 2110,
+      "qasm_sha256": "6b8b50a284be1aa380d77c19e44abca9dd347a4d18b1d5903c0ec22dcd825c2c",
+      "seconds": 0.138
+    },
+    {
+      "repeat": 2,
+      "two_q": 292,
+      "depth": 690,
+      "size": 2110,
+      "qasm_sha256": "6b8b50a284be1aa380d77c19e44abca9dd347a4d18b1d5903c0ec22dcd825c2c",
+      "seconds": 0.138
+    },
+    {
+      "repeat": 3,
+      "two_q": 292,
+      "depth": 690,
+      "size": 2110,
+      "qasm_sha256": "6b8b50a284be1aa380d77c19e44abca9dd347a4d18b1d5903c0ec22dcd825c2c",
+      "seconds": 0.139
+    },
+    {
+      "repeat": 4,
+      "two_q": 292,
+      "depth": 690,
+      "size": 2110,
+      "qasm_sha256": "6b8b50a284be1aa380d77c19e44abca9dd347a4d18b1d5903c0ec22dcd825c2c",
+      "seconds": 0.138
+    }
+  ],
+  "distinct_qasm_hashes": 1,
+  "distinct_two_q_counts": 1,
+  "two_q_values": [
+    292
+  ],
+  "deterministic": true
+}
