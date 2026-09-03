@@ -3,11 +3,19 @@
 Benchpress pins the seeds used to **build** circuits and passes no seed to the code that
 **compiles** them. This repository measures what that costs.
 
-**Headline:** the suite's regression protocol — three unseeded runs per version, as used
-in Qiskit issue [#14402](https://github.com/Qiskit/qiskit/issues/14402) — **cannot
-resolve a change smaller than a median 14-percentage-point window** around a +10%
-decision threshold on a heavy-hex lattice. Passing `seed_transpiler` narrows that window
-**6.8×**. One argument, one run per version, instead of roughly fifty.
+**Headline:** on `bv_n140-linear` — a circuit Qiskit issue
+[#14402](https://github.com/Qiskit/qiskit/issues/14402) itself names — the change from
+Qiskit 1.4.3 to 2.0.0 is a genuine **+31.0% regression** (95% CI +28.4% to +33.8%,
+200 seeds per version). The suite's own protocol, **three unseeded runs per version,
+misses it 2.98% of the time** (95% CI 1.72%–4.99%).
+
+And the issue's own reported figure for that circuit, **+46.1%**, is a single draw from a
+distribution running from **−10.5% to +100.0%**. Its 95% range reaches **below the +10%
+threshold**: the same real regression could have been reported as no regression at all.
+
+The two circuits in that issue with near-zero seed spread reproduce here to within
+**0.5 pp** and **2.4 pp**. Only the noisy one disagrees — which is what makes this seed
+variance rather than version drift.
 
 > ⚠ **An earlier headline here claimed a 27% false-positive rate on `qft_n320`. It is
 > WITHDRAWN** — its 95% interval was [1.7%, 63.1%] at n=12, and the corpus statistic
@@ -21,11 +29,18 @@ decision threshold on a heavy-hex lattice. Passing `seed_transpiler` narrows tha
 
 | result | value | where |
 |---|---|---|
+| **`bv_n140` real regression MISSED by the 3-run protocol** | **2.98%** of the time, 95% CI [1.72%, 4.99%] | §48 |
+| `bv_n140` true change, 1.4.3 → 2.0.0, 200 seeds/arm | **+31.0%**, 95% CI [+28.4%, +33.8%] | §48 |
+| what a single 3-run comparison of it can return | **−10.5% to +100.0%** | §48 |
+| #14402 reproduced, low-seed-spread circuits | `bv_n280` +0.5 pp, `knn_341` +2.4 pp | §48 |
+| decision instability, real change, forward direction | **5 of 51** circuits, Wilson [4.3%, 21.0%] | §48 |
 | Benchpress gyms passing `seed_transpiler` | **0 of 8**, source-verified | §33 |
 | Benchpress unseeded, `bv_n140-linear`, 20 runs | **17 distinct 2Q gate counts**, 244–340 | §27 |
 | the seed is the entropy source | cross-process control, seeded 324×6 vs unseeded 6 values | §28 |
-| **unpaired ambiguity band, heavy-hex** | **median 14.04 pp** | §42 |
+| **unpaired ambiguity band, heavy-hex** | **11.5–14.0 pp** across modelling choices | §42, §47 |
 | **paired ambiguity band, heavy-hex** | **median 2.06 pp — 6.8× narrower** | §42 |
+| ⚠ pairing on large-regression false negatives | **worse on 3 of 4 circuits** | §48 |
+| backend error rates unseeded — effect on observable | **none**, 0 of 24 cases | §46 |
 | circuits with an unpaired band ≥5 pp | **34 of 52**, Wilson 95% [0.518, 0.768] | §42 |
 | unpaired band scales as | **1/√k** — k=1 → 23.8 pp, k=5 → 10.9 pp | §43 |
 | runs needed to match paired k=1 unseeded | **≈49 per version** (≈200 h compute) | §43 |
@@ -99,7 +114,28 @@ python analyze.py --raw results/raw/bp_large_linear_q202.jsonl --out results/sum
 python flip_analysis.py --old results/raw/bp_large_linear_q200.jsonl \
     --new results/raw/bp_large_linear_q202.jsonl --threshold 0.10
 python calibrate.py --raw results/raw/bp_large_linear_q202.jsonl --threshold 0.10
+
+# the direction-free band, and the proof that the old paired column was a tautology
+python paired.py --prove
+python paired.py --band --band-ci 200 --topology heavy-hex     --old results/raw/bp_large_heavy-hex_q200.jsonl     --new results/raw/bp_large_heavy-hex_q202.jsonl
+
+# A1: does the ambiguity cause a REAL wrong decision?  (needs the 1.4.3 arm)
+python decision_error.py --old results/raw/bp_large_linear_q143.jsonl     --new results/raw/bp_large_linear_q200.jsonl --topology linear
+python deep.py                    # 200 seeds/arm on the five decisive circuits
+
+# A2: is the multiplicative noise model true?  (answer: no, and it does not matter)
+python model_check.py --topology heavy-hex --pair 200:202
+python model_check.py --topology heavy-hex --pair 200:202 --band-compare
 ```
+
+### Everything at once
+
+```bash
+BENCHPRESS_PATH=<repo> envs/bp202/Scripts/python.exe verify.py
+```
+
+Five read-only checks — toolchain pin, test suite, inventory, replication, tautology
+proof — in about 45 seconds. Exit 0 means the repository is intact.
 
 ### 4. Tests
 
@@ -164,11 +200,19 @@ reproduce across machines.
   **In the direction that actually occurred — 2.0.0 → 2.0.2 — no circuit on any topology
   has an ambiguous verdict.** The exposure is to changes of a size that has not yet
   happened, not to one that has.
-- **Not** that any real decision was ever wrong. No wrong call has been demonstrated on
-  Qiskit, and #14402's own cases have never been reproduced as verdict flips (§45 A1).
-- **Not** that a real code change behaves like the injected one. §42's band sweeps a
-  multiplicative change with a *measured* per-seed residual. Nothing here verifies that
-  real compiler changes act that way (§45 A2).
+- ✅ **Superseded 2026-09-03.** This used to read "not that any real decision was ever
+  wrong." §48 demonstrates one: `bv_n140`'s +31.0% regression is missed 2.98% of the
+  time, 95% CI [1.72%, 4.99%], 21 pp clear of the threshold, at 200 seeds per arm.
+  What is still **not** claimed is that any *published* Qiskit decision was wrong — we
+  show the protocol errs at a measurable rate, not that a specific merge went the wrong
+  way.
+- **Not** that the multiplicative model is right — it is **rejected** on `linear` and
+  `heavy-hex` (§47). An additive change fits better. The band was recomputed under both
+  and moves by ≤1.34 pp, always narrower, so the reported figure is the conservative
+  end of an 11.5–14.0 pp range.
+- **Not** that pairing fixes everything. `seed_transpiler` removes false positives and
+  narrows the ambiguity band 6.8×, but on the four circuits with real missed
+  regressions it is **worse on three of them** (§48).
 - **Not** a claim about IBM hardware. `heavy-hex` here is
   `rustworkx.generators.heavy_hex_graph(dim)` sized to the circuit — the lattice family
   IBM uses, generated synthetically, with no device coupling map and no calibration.

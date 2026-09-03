@@ -201,3 +201,67 @@ the two versions, so ρ ≡ 1 and the paired band is 0.00 pp **by construction**
 again. Including them made pairing look infinitely better; excluding them gives 6.8×.
 Every §42 figure is on the heterogeneous subset, and a regression test enforces the
 split.
+
+---
+
+# Third pass — 2026-09-03, priorities A1 and A2
+
+## Defects closed by this pass
+
+| id | status now | where |
+|---|---|---|
+| **D-1.1** | **CLOSED** — the 200+ seeds this defect asked for were finally run, on the five circuits that needed them. Every 12-seed per-circuit rate is superseded; `bv_n30` read 3.87% at n=12 and 0.71% at n=200 | §48, `deep.py` |
+| **D-1.4** | **CLOSED for k, still open for the averaging basis** — three runs per version is quoted verbatim from the issue; nothing anywhere establishes what the per-test "avg." averages over | §43 |
+| **D-1.9** | **CLOSED** — `qft_n320` was never one of #14402's cases, so the study now measures #14402's actual circuits: `bv_n140`, `bv_n280`, `knn_341`, on `linear`, against the version pair the issue actually names | §48 |
+| **§45 A1** | **RESOLVED** — a real wrong decision is demonstrated, non-boundary, interval excluding zero | §48 |
+| **§45 A2** | **RESOLVED against the model** — multiplicative rejected, band robust to ≤1.34 pp, always conservative | §47 |
+
+## New defects found in this pass
+
+### D-9.1 — the study measured the WRONG VERSION PAIR for two days · CONFIRMED · FIXED
+
+Issue #14402 compares **1.4.3 against 2.0**. Every measurement before 2026-09-03 evening
+used **2.0.0 against 2.0.2**, whose real changes sit ~15 pp from the decision threshold
+and therefore cannot flip anything. The gating question could not have been answered by
+any amount of analysis of that pair. Fixed by building a 1.4.3 environment and running
+the full census (58/58 circuits, 0 crashes).
+
+### D-9.2 — "the point estimates are EXACT" was false · CONFIRMED · FIXED
+
+`exact_call_rate` tested `b >= a*(1+t)`; the protocol's rule is `(b-a)/a >= t`. Different
+expressions in floating point: **84 disagreements in 900 randomised cases**, and
+0.905002 vs 0.904327 on real `adder_n64` data. Never large enough to change a conclusion,
+but the exactness *claim* was false. Replaced with the integer rule
+`q*Sb >= (q+p)*Sa`, verified against exact-integer brute force: **900 cases, 0
+disagreements**.
+
+### D-9.3 — the backend draws unseeded error rates · CONFIRMED · NOT A CONFOUND
+
+`FlexibleBackend` gives different error rates on every construction, in all three Qiskit
+versions, and the two version arms build their backends separately. At optimization
+level 2 the layout passes score with error rates, so this could have confounded every
+between-version comparison in the study. Tested with 4 verified-distinct backend draws ×
+6 circuits × 4 seeds: **0 of 24 cases changed**. Not a confound — but it was luck, not
+design, and nothing in the harness had ever checked it.
+
+### D-9.4 — an arbitrary 5% error-rate floor hid the main result · CONFIRMED · FIXED
+
+`decision_error.py` originally reported only circuits erring at ≥5%. That floor was an
+analyst choice with no justification, and it excluded `bv_n140` — the one circuit that is
+both named in #14402 and demonstrably miscalled, at 2.0% (12 seeds) / 2.98% (200 seeds).
+The best result in the study was suppressed by a threshold nobody had defended. Floor
+removed; all nonzero rates are now reported with their distance to the cut.
+
+### D-9.5 — pairing is WORSE on large-regression false negatives · CONFIRMED · DISCLOSED
+
+The remedy this study recommends does not help uniformly. On the four circuits with real
+missed regressions, `seed_transpiler` pairing gives a **higher** miss rate on three
+(`bv_n140` 0.968 vs 0.980 unpaired, `bv_n30` 0.954 vs 0.961, `adder_n64` 0.859 vs 0.904).
+§42's 6.8× band narrowing is about resolving power near the threshold and does **not**
+transfer to detection of large regressions. Any recommendation of pairing must say so.
+
+### D-9.6 — the enumeration draws k seeds WITH replacement · CONFIRMED · DISCLOSED
+
+A real maintainer runs k *different* seeds. Enumerating with replacement includes
+`[s,s,s]`. Quantified: without replacement the heavy-hex band is 12.71 pp against 14.04.
+Like the model choice, the reported figure is the conservative end.

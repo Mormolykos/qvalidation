@@ -90,6 +90,13 @@ def band_fraction(topo, wide=5.0):
     return len(over) / len(rows), len(over), len(rows)
 
 
+def deep_row(circuit):
+    for r in csv.DictReader(open(summary("deep_143_200.csv"))):
+        if r["circuit"] == circuit:
+            return r
+    raise KeyError(f"{circuit} not in deep_143_200.csv")
+
+
 def ksweep_cell(topo, k, column):
     for r in csv.DictReader(open(summary(f"ksweep_{topo}.csv"))):
         if int(r["k"]) == k:
@@ -199,6 +206,30 @@ def entries():
         ci_lo="", ci_hi="", ci_method="none — a census of the artifact's own 144 checks",
         source="replication/out_q{200,202}.jsonl vs replication/expected.json",
         recompute=lambda: (lambda r: r[0] / r[1])(replication_exact_matches()))
+
+    # ---- sec 48: the demonstrated decision errors, 200 seeds/arm
+    for cid, truth in (("bv_n140", "REGRESSION"), ("bv_n30", "REGRESSION"),
+                       ("bv_n70", "REGRESSION"), ("adder_n64", "REGRESSION"),
+                       ("qft_n29", "NO_REGRESSION")):
+        r = deep_row(cid)
+        add(id=f"s48.error.{cid}", status="LIVE", section="48",
+            claim=f"{cid}: rate at which the 3-run unseeded protocol returns the "
+                  f"WRONG verdict on the real 1.4.3 -> 2.0.0 change",
+            value=float(r["error_rate"]), numerator="", denominator=int(r["n_seeds"]),
+            sampling_unit="seed (200 per arm); rate is exact over 200**3 sum-tuples",
+            ci_lo=float(r["error_ci_lo"]), ci_hi=float(r["error_ci_hi"]),
+            ci_method="seed bootstrap B=400 joint, 95%; point exact by integer rule",
+            source="results/summary/deep_143_200.csv",
+            recompute=lambda c=cid: float(deep_row(c)["error_rate"]))
+        add(id=f"s48.truth.{cid}", status="LIVE", section="48",
+            claim=f"{cid}: true mean change, 1.4.3 -> 2.0.0, 200 seeds/arm ({truth})",
+            value=float(r["true_change_pct"]), numerator="",
+            denominator=int(r["n_seeds"]), sampling_unit="seed",
+            ci_lo=float(r["true_change_ci_lo_pct"]),
+            ci_hi=float(r["true_change_ci_hi_pct"]),
+            ci_method="percentile bootstrap over seeds, B=4000, 95%",
+            source="results/summary/deep_143_200.csv",
+            recompute=lambda c=cid: float(deep_row(c)["true_change_pct"]))
 
     # ---- withdrawn, kept on the books
     add(id="s38.heavyhex.unstable.WITHDRAWN", status="WITHDRAWN", section="38 -> 41",

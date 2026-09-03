@@ -19,14 +19,22 @@ file without checking it here first.
 | ✅ **LIVE** | Benchpress passes no `seed_transpiler` in any of its 8 SDK gyms | §33, source-verified |
 | ✅ **LIVE** | The transpiler seed is the dominant entropy source | §28, cross-process control |
 | ✅ **LIVE** | A fixed seed reproduces bit-identically; different seeds do not | §44, re-run from clean |
-| ✅ **LIVE** | Unseeded 3-run comparison cannot resolve a change inside a median **14.0 pp** window on heavy-hex; pairing narrows it **6.8×** | §42 |
+| ⭐ **LIVE** | **A REAL WRONG DECISION: `bv_n140` (+31.0% regression) is MISSED 2.98% of the time, 95% CI [1.72%, 4.99%], 200 seeds/arm, non-boundary** | §48 |
+| ⭐ **LIVE** | #14402's own **+46.1%** for `bv_n140` is one draw from a range spanning **−10.5% to +100%**; the truth is **+31.0%** | §48 |
+| ✅ **LIVE** | #14402's numbers **reproduce independently** — within 0.5 pp and 2.4 pp on the two low-variance circuits | §48 |
+| ✅ **LIVE** | Unseeded 3-run comparison cannot resolve a change inside an **11.5–14.0 pp** window on heavy-hex (range across modelling choices) | §42, §47 |
 | ✅ **LIVE** | Topology ordering linear < square < heavy-hex | §42, direction-free |
 | ✅ **LIVE** | k=3 is external (quoted from #14402); no conclusion depends on it | §43 |
+| ✅ **LIVE** | Backend error rates are unseeded but **do not affect the observable** — 0/24 cases, controls verified distinct | §46 |
+| ⛔ **REJECTED** | the multiplicative noise model — additive fits better on linear and heavy-hex | §47 (band survives, ≤1.34 pp, conservative) |
+| ⛔ **CORRECTED** | "point estimates are EXACT" — the float rule disagreed with the literal one in 84/900 cases; now exact integer arithmetic | §46 attack 10 |
+| ⚠ **LIVE** | **Pairing does NOT fix the false negatives** — it is worse on 3 of 4 affected circuits | §48 |
 | ⛔ **WITHDRAWN** | "26.9% of heavy-hex circuits have a seed-dependent verdict" | §41 — direction artifact; **0 of 52** in the real direction |
 | ⛔ **WITHDRAWN** | "`qft_n320` is miscalled 27.1% of the time" | §38 — CI [0.017, 0.631] at n=12 |
 | ⛔ **WITHDRAWN** | "pairing removes every false positive across all 51 circuits" | §40 — the column was `1[e ≥ t]` |
 | ⛔ **WITHDRAWN** | "2.0.0 vs 2.0.2 isolates a single commit, PR #14417" | §39 — 31 commits, 64 files |
-| ⚠ **NOT SHOWN** | that any real decision was ever wrong | §45 A1 |
+| ⛔ **SUPERSEDED** | "no real decision has been shown to be wrong" (§45 A1) | **§48 demonstrates one** |
+| ⚠ **NOT ATTEMPTED** | causal attribution of any change to a specific commit or PR | §39, §48 category 5 |
 
 **§45 is the current hostile audit. §12 and §25 do not exist.** Every live number above
 re-derives from raw data via `python inventory.py --check` (31/31 as of 2026-09-03).
@@ -755,6 +763,200 @@ direct evidence of how hard. It is also direct evidence that the problem is real
 **Phase 0 for C2 before anything is built:** search specifically for a study treating
 SDK version as the independent variable and transpiler output quality as the dependent
 variable. If it exists, C1 is next in line.
+
+---
+
+## 48. ⭐⭐ PRIORITY A1 — A REAL WRONG DECISION IS DEMONSTRATED — 2026-09-03
+
+**§45 A1 said: "no real decision has been shown to be wrong." That is no longer true.**
+
+### The experiment, and why every previous one could not answer this
+
+The real incident is **not** 2.0.0 → 2.0.2. Issue #14402 compares **Qiskit 1.4.3 against
+2.0**, reporting `bv_n140-linear +46%`, `bv_n280-linear +44%`, `knn_341-linear +41%`.
+Every measurement in this study up to now used the wrong version pair — 2.0.0 → 2.0.2,
+whose real changes sit ~15 pp from the +10% cut and therefore flip nothing.
+
+A Qiskit **1.4.3** environment was built and the full `linear` census run against it:
+**58 of 58 circuits, 0 crashes, 51 with 12 seeds in both arms.** Direction fixed before
+measuring: baseline = the earlier version.
+
+Then, because 12 seeds proved too thin (every per-circuit error interval included zero),
+**200 seeds per arm** were run on the five decisive circuits — the run D-1.1 asked for in
+the first hostile review and never got.
+
+### ⛔ The result. 200 seeds/arm, exact over 200³ = 8,000,000 sum-tuples per arm.
+
+| circuit | true Δ | 95% CI | dist. to cut | truth | **error rate** | 95% CI | excludes 0 |
+|---|---:|---|---:|---|---:|---|---|
+| **`bv_n140`** | **+31.0%** | [+28.4, +33.8] | 21.0 pp | REGRESSION | **2.98%** | **[1.72, 4.99]** | **YES** |
+| `bv_n30` | +24.2% | [+22.7, +25.7] | 14.2 pp | REGRESSION | 0.71% | [0.23, 1.43] | YES |
+| `bv_n70` | +30.3% | [+28.5, +32.1] | 20.3 pp | REGRESSION | 0.15% | [0.02, 0.41] | YES |
+| `adder_n64` | +10.8% | [+10.6, +11.1] | **0.8 pp** | REGRESSION | 21.60% | [15.2, 29.0] | YES ⚠ boundary |
+| `qft_n29` | +0.5% | [−0.0, +1.0] | 9.5 pp | NO_REGRESSION | 0.01% FP | [0.00, 0.03] | YES |
+
+> **`bv_n140` — a circuit issue #14402 itself names — carries a genuine +31.0%
+> regression that Benchpress's 3-run unseeded protocol MISSES 2.98% of the time (95% CI
+> 1.72%–4.99%).** The truth is 21 pp clear of the threshold, so this is not a boundary
+> artifact, and the interval excludes zero. **That is category (4): an actual incorrect
+> regression decision, on a real code change, in the real direction.**
+
+`adder_n64` is excluded from the headline **despite the largest error rate (21.6%)**,
+because at 0.8 pp from the cut it is exactly the D-1.6 boundary case this record refuses
+to count. At 12 seeds it was the *only* candidate and its classification flipped between
+interval methods (t-interval [+9.97%, +12.49%] includes the cut). The deep run resolves
+the truth but not the objection.
+
+### ⭐ And #14402's own headline number is itself a seed artifact
+
+`bv_n140`'s true change is **+31.0%**. A single 3-run unseeded comparison — their exact
+protocol — returns:
+
+```
+  min -10.5%   p5 +12.3%   p25 +22.9%   p50 +30.9%   p75 +39.6%   p95 +52.8%   max +100.0%
+```
+
+**A 48-point-wide 95% range on one number.** The issue's reported **+46.1% sits at the
+88th percentile** (P(estimate ≥ 46.1%) = 0.122). Their figure is not wrong — it is one
+draw from a distribution whose 95% range reaches **down to +9.3%, below their own
+threshold**. The same circuit, same real regression, could have been reported as no
+regression at all.
+
+### The alternative explanation, tested and rejected
+
+The discrepancy could be Benchpress version drift — the issue is from May 2025 and our
+checkout is `b695f30e` (July 2026). If so, **all three** circuits would disagree:
+
+| circuit | issue | ours (12 seeds) | diff | seed spread 1.4.3 | seed spread 2.0.0 |
+|---|---:|---:|---:|---:|---:|
+| `bv_n280` | +44.0% | +44.5% | **+0.5 pp** | 0.6% | 0.0% |
+| `knn_341` | +41.0% | +43.4% | **+2.4 pp** | 1.0% | 0.4% |
+| `bv_n140` | +46.1% | +35.2% | **−10.9 pp** | **44.4%** | **46.2%** |
+
+**Agreement is excellent exactly where seed spread is near zero, and fails only where it
+is ~45%.** Version drift is not selective like that. This is also the **first independent
+reproduction of #14402's numbers by anyone.**
+
+### The five categories, scored
+
+| # | category | status |
+|---|---|---|
+| 1 | seed variation observed | ESTABLISHED (§27, §28, §30) |
+| 2 | measurement ambiguity | ESTABLISHED (§42, §47) |
+| 3 | decision INSTABILITY | ESTABLISHED — 5/51 circuits, Wilson [4.3%, 21.0%] |
+| 4 | **decision ERROR** | **ESTABLISHED — `bv_n140` 2.98% [1.72, 4.99], non-boundary** |
+| 5 | causal attribution to a commit | **NOT ATTEMPTED, NOT CLAIMED** |
+
+### ⚠ What must be said with it
+
+1. **Pairing does not fix this.** `seed_transpiler` gives P(call) 0.968 vs 0.980 unpaired
+   on `bv_n140` at 12 seeds — pairing is *worse* on 3 of the 4 false-negative circuits.
+   §42's 6.8× narrowing is about resolving power near the threshold; it does not follow
+   that pairing reduces misses of large regressions, and here it does not.
+2. **One version pair, one topology, five circuits at depth.** The 2.98% is `bv_n140` on
+   `linear`, not a corpus rate.
+3. **The 12-seed estimates were unreliable and are superseded.** `bv_n30` read 3.87% at
+   n=12 and 0.71% at n=200 — a 5× error, though inside its own [0%, 20.5%] interval.
+   Every per-circuit rate in §31–§38 carries that flaw.
+
+---
+
+## 47. PRIORITY A2 — the multiplicative model is REJECTED; the band survives anyway — 2026-09-03
+
+**§45 A2:** §42's band assumes `new_i = old_i · r · ρ_i`. Never tested. Now tested three
+ways on all three topologies, and the obvious test was refused as circular: setting
+`r` to the observed change reproduces the data **by construction**, because ρ is defined
+from it. That would pass on any data — the D-2.1 trap again.
+
+### M1 — the assumption fails, and it fails differently by topology
+
+| test | multiplicative predicts | `linear` | `square` | `heavy-hex` |
+|---|---|---|---|---|
+| Spearman(old, ratio) | ≈ 0 | **+0.734** | +0.084 | **+0.444** |
+| sign matches additive `sign(−d)` | — | **17/19** | 17/30 | **29/32** |
+| better fit (circuits with variance) | multiplicative | **add 16 : mult 3** | mult 16 : add 14 | **add 29 : mult 3** |
+| CV(new)/CV(old) | 1.00 | **1.470** | 1.045 | 1.106 |
+| SD(new)/SD(old) | additive predicts 1.00 | 1.295 | **1.005** | **1.044** |
+
+**Rejected on `linear` and `heavy-hex`; not rejected on `square`.** The change behaves
+more like a shift than a scaling on two of three topologies. ⚠ An earlier draft of
+`model_check.py` asserted additive predicts a *negative* correlation — wrong. The sign
+is `sign(−d)`, so for an improvement (d < 0) additive predicts **positive**. The test now
+computes the expected sign per circuit from its own measured change.
+
+### M3 — but the conclusion does not depend on it
+
+Recomputing §42's band with an additive candidate `new_i = old_i + D + ε_i`:
+
+| topology | multiplicative (§42) | additive | without replacement | **floor: additive + w/o repl** |
+|---|---:|---:|---:|---:|
+| `linear` | 2.55 pp | 2.24 pp | 2.42 pp | **2.20 pp** |
+| `square` | 9.78 pp | 9.08 pp | 8.86 pp | **8.24 pp** |
+| **`heavy-hex`** | **14.04 pp** | 12.70 pp | 12.71 pp | **11.50 pp** |
+
+**Additive is narrower on all 86 heterogeneous circuits tested — never wider.** A second,
+independent modelling choice found in the same pass (§46 attack 9: the enumeration draws
+k seeds *with* replacement, but a maintainer runs k *different* seeds) moves it the same
+way.
+
+> **The honest statement: heavy-hex's band is 11.5–14.0 pp across every defensible
+> modelling combination, and §42 reports the conservative end.** The topology ordering
+> holds under all four. The residual error from the wrong model is **≤1.34 pp, always in
+> the safe direction** — which is the quantification §45 A2 demanded.
+
+---
+
+## 46. ADVERSARIAL PASS — ten attacks on the apparatus itself — 2026-09-03
+
+Not on the conclusions — on the machinery. Eight held, one found a real defect, one was
+the model rejection above.
+
+### ⛔ ATTACK 3 — the unseeded backend error rates. Nearly fatal, and it held.
+
+`FlexibleBackend` draws error rates **randomly and unseeded**: two constructions with
+identical arguments in one process give different rates, confirmed in all three Qiskit
+versions. At optimization level 2 the layout passes score with error rates. The two
+version arms built their backends separately. **If those rates fed the observable, every
+between-version comparison in this study would be confounded.**
+
+Tested directly: 6 circuits × 4 seeds × **4 independent backend constructions**, with the
+draws verified distinct (4/4 per circuit).
+
+```
+  NO EFFECT: 0/24 (circuit,seed) cases changed with the error-rate draw
+```
+
+**The confound is dead and the test had power** — the negative condition was verified,
+not assumed.
+
+### The rest
+
+| # | attack | result |
+|---|---|---|
+| 1 | Is `two_q_gate_type = cz` real, or is the output in another basis? | HELD — output contains only `cz`; no `cx`/`ecr`/`swap` in any version |
+| 2 | Do the three Qiskit versions see the same backend? | HELD — identical 278-edge coupling map, sha `ef616023617489a3`, identical basis |
+| 7 | Is the observable the same gate on every topology? | HELD — `cz` on all-to-all, square, heavy-hex, linear |
+| 8 | Are consecutive seeds 1000–1011 independent? | HELD — lag-1 r = +0.11, −0.22, −0.15, −0.10; spreads match a scattered seed set |
+| 9 | With- vs without-replacement k-tuples | REAL, quantified — see §47; conservative direction |
+| — | Are the two Benchpress clones equivalent? | HELD — **58/58 circuits byte-identical** between the scratchpad clone and `Desktop\benchpress_test` |
+
+### ⛔ ATTACK 10 — "the point estimates are EXACT" was FALSE
+
+§38 claims exactness. `exact_call_rate` tested `b >= a·(1+t)`; the protocol's rule is
+`(b−a)/a >= t`. **In floating point these are different expressions.** Brute-forced over
+900 randomised cases they disagreed in **84**, and on real `adder_n64` data gave 0.905002
+against 0.904327.
+
+The magnitude never mattered — the *claim* did. Fixed exactly, not approximately: gate
+counts are integers, so with `a = Sa/k`, `b = Sb/k` and `t = p/q` in lowest terms,
+
+```
+    (Sb − Sa)/Sa >= p/q   ⟺   q·Sb >= (q + p)·Sa
+```
+
+which is integer arithmetic with no rounding. Verified against exact-integer brute force:
+**900 cases, 0 disagreements.** Non-integral inputs (§42's swept candidates) keep the
+float path and are documented as such.
 
 ---
 

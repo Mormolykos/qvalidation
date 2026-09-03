@@ -51,6 +51,7 @@ import json
 import math
 import os
 from collections import defaultdict
+from fractions import Fraction
 from itertools import product
 
 import numpy as np
@@ -96,12 +97,50 @@ def k_means(values, k):
     return arr[_grid(len(arr), k)].mean(axis=1)
 
 
+def _k_sums(values, k):
+    """All n**k SUMS of k draws with replacement, as exact integers."""
+    arr = np.asarray(values, dtype=np.int64)
+    if k == 1:
+        return arr
+    return arr[_grid(len(arr), k)].sum(axis=1)
+
+
 def exact_call_rate(old_vals, new_vals, threshold, k):
-    """P((b-a)/a >= threshold) over ALL pairs of k-means. One sort + searchsorted."""
-    a = np.sort(k_means(old_vals, k))
-    b = np.sort(k_means(new_vals, k))
-    if a.size == 0 or b.size == 0:
+    """P((b-a)/a >= threshold) over ALL pairs of k-means. One sort + searchsorted.
+
+    ⚠ EXACTNESS, and why this is not simply `b >= a*(1+t)` (found 2026-09-03, sec 46
+    attack 10). The protocol's rule is `(b-a)/a >= t`. In floating point that is NOT
+    the same expression as `b >= a*(1+t)`: brute-forcing both over 900 randomised
+    cases, they disagreed in 84 of them, and on the real `adder_n64` data the rates
+    were 0.905002 against 0.904327. Small, but the record claims these estimates are
+    EXACT, so the claim was false rather than the numbers being badly wrong.
+
+    Gate-count observables are integers, so the rule can be made exactly decidable.
+    With a = Sa/k, b = Sb/k and t = p/q in lowest terms, and Sa > 0:
+
+        (Sb - Sa)/Sa >= p/q   <=>   q*(Sb - Sa) >= p*Sa   <=>   q*Sb >= (q + p)*Sa
+
+    which is integer arithmetic with no rounding anywhere. That path is taken whenever
+    both arms are integral. Synthetic candidates (sec 42 sweeps a real-valued r) are
+    not integral, and there the float form is used and is documented as such.
+    """
+    o = np.asarray(old_vals)
+    n = np.asarray(new_vals)
+    if o.size == 0 or n.size == 0:
         return float("nan")
+
+    integral = (np.all(np.equal(np.mod(o, 1), 0)) and np.all(np.equal(np.mod(n, 1), 0))
+                and np.all(o > 0))
+    if integral:
+        frac = Fraction(threshold).limit_denominator(10 ** 9)
+        p, q = frac.numerator, frac.denominator
+        sa = np.sort(_k_sums(o, k)) * (q + p)
+        sb = np.sort(_k_sums(n, k)) * q
+        idx = np.searchsorted(sb, sa, side="left")     # q*Sb >= (q+p)*Sa
+        return float((sb.size - idx).sum()) / (sa.size * sb.size)
+
+    a = np.sort(k_means(o, k))
+    b = np.sort(k_means(n, k))
     cut = a * (1.0 + threshold)              # b must reach this to be a "regression"
     idx = np.searchsorted(b, cut, side="left")
     return float((b.size - idx).sum()) / (a.size * b.size)

@@ -76,8 +76,11 @@ def benchpress_pin():
         pin["benchpress_commit"] = subprocess.run(
             ["git", "-C", BENCHPRESS, "rev-parse", "HEAD"],
             capture_output=True, text=True, timeout=30).stdout.strip() or None
+        # --untracked-files=no: a replicator who drops their own script into the clone
+        # has not changed Benchpress. Only MODIFIED TRACKED files invalidate the pin,
+        # and the module hashes below catch those regardless of what git thinks.
         status = subprocess.run(
-            ["git", "-C", BENCHPRESS, "status", "--porcelain"],
+            ["git", "-C", BENCHPRESS, "status", "--porcelain", "--untracked-files=no"],
             capture_output=True, text=True, timeout=30).stdout.strip()
         pin["benchpress_dirty"] = bool(status)
     except Exception as exc:                          # git absent is not fatal
