@@ -734,6 +734,65 @@ variable. If it exists, C1 is next in line.
 
 ---
 
+## 39. ⛔ PRIORITY 4 — the "single commit" claim is FALSE — 2026-09-03
+
+**D-1.5 CONFIRMED.** §31 asserted that *"2.0.0 vs 2.0.2 isolates a single commit —
+PR #14417"*. Verified against the GitHub compare API for `Qiskit/qiskit`, tags
+`2.0.0...2.0.2`:
+
+```
+total commits between tags: 31
+files changed:              64
+```
+
+**Thirty-one commits, sixty-four files. The claim is withdrawn.**
+
+### ⛔ And one of the 31 touches the pass under study
+
+```
+Fix circuit-metadata propagation in `SabreLayout` (#14186) (#14189)
+```
+
+**`SabreLayout` is the layout/routing pass whose stochastic behaviour is this entire
+study's subject.** A change to it lies between the two versions being compared.
+
+Whether #14186 alters routing *decisions* (as opposed to metadata carried alongside
+them) is **not established** and must not be assumed either way. But its presence means:
+
+1. The "true effect" attributed to `ConsolidateBlocks` (#14417) throughout §31, §36 and
+   §37 is a **mixture of ≥31 changes**, not one.
+2. §31's positive control — *"24 circuits register the genuine ConsolidateBlocks
+   regression"* — **cannot attribute those 24 to #14417**. They register *some*
+   difference between 2.0.0 and 2.0.2.
+3. Every `mean_change_pct` in every flip table is a between-version difference, **not a
+   single-commit effect.**
+
+### What this does and does not break
+
+**Does NOT break:** the seed-variance measurements themselves (§30, §35, §37, §38).
+Those are *within-version* — spread across seeds at a fixed Qiskit version — and no
+version-comparison claim enters them. The corpus proportions and their Wilson intervals
+in §38 stand.
+
+**Does break:** any sentence attributing a measured change to PR #14417 specifically,
+and the framing of 2.0.0→2.0.2 as a controlled single-variable comparison. It is a
+two-patch-release comparison with a known routing-adjacent change inside it.
+
+### Required corrections
+
+- Replace "isolates a single commit" with "spans 31 commits including a `SabreLayout`
+  change" wherever it appears.
+- Rename "true effect" → **"between-version change"** in all flip tables and prose.
+- Downgrade the positive control from *"detects the ConsolidateBlocks regression"* to
+  *"detects the aggregate 2.0.0→2.0.2 difference"*.
+- If a genuinely single-commit comparison is wanted, it must be built from adjacent
+  commits on `main`, not from release tags.
+
+**Evidence recorded:** `https://api.github.com/repos/Qiskit/qiskit/compare/2.0.0...2.0.2`,
+retrieved 2026-09-03, 31 commits / 64 files.
+
+---
+
 ## 38. ⛔ PRIORITY 1 — CONFIDENCE INTERVALS. The headline does not survive. — 2026-09-03
 
 `intervals.py`. Resolves **D-1.1**, and it is the most consequential correction in the
