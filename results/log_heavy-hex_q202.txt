@@ -1,0 +1,2 @@
+  58 circuits, topology=heavy-hex, 12 seeds, one process each
+

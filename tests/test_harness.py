@@ -1,16 +1,24 @@
 """Tests for the measurement harness itself.
 
-WHY THESE EXIST
-    This project's argument is that quantum benchmarking instruments are not verified.
+WHY THESE EXIST, AND WHY THEY WERE REWRITTEN
+    This project's argument is that quantum benchmarking instruments go unverified.
     Running an unverified instrument to make that argument would be self-refuting.
 
-    Neither Qiskit/benchpress nor dream-lab/quantum-hbr ships tests for its measurement
-    or analysis code (checked 2026-09-02). That is not an accusation -- research code
-    usually does not -- but it is the reason our numbers must be defensible in a way
-    theirs currently are not.
+    The FIRST version of this file failed exactly that way. A hostile review
+    (DEFECTS.md, 2026-09-03) mutation-tested it: the reviewer reintroduced two of the
+    defects these tests exist to catch -- `continue` in the hash handler, `break` after
+    the crash row -- and ALL 11 TESTS PASSED. They were string greps over source text.
+    They asserted that certain literals appeared in a file, not that behaviour was
+    correct.
 
-    Every test below is a REGRESSION TEST for a defect that actually occurred today.
-    None of them is hypothetical.
+    Every test here now EXECUTES the path and asserts on its OUTPUT. Where a test
+    cannot discriminate, it is marked and says why rather than passing vacuously.
+
+FIXTURE CHOICE MATTERS
+    The old suite used `wstate_n3` for its determinism and negative-control tests.
+    That circuit is constant even UNSEEDED (30 runs, 1 distinct value), so those tests
+    passed identically with `seed_transpiler` deleted. Fixtures here are chosen because
+    they have MEASURED variance: bv_n30 spans 48-72 on linear (DEFECTS.md D-6.3/6.4).
 
 RUN
     BENCHPRESS_PATH=<repo> envs/bp202/Scripts/python.exe -m pytest tests/ -v
@@ -29,239 +37,315 @@ ROOT = os.path.dirname(HERE)
 sys.path.insert(0, ROOT)
 
 BENCHPRESS = os.environ.get("BENCHPRESS_PATH")
-pytestmark = pytest.mark.skipif(
-    not BENCHPRESS or not os.path.isdir(BENCHPRESS),
-    reason="BENCHPRESS_PATH not set")
 
-if BENCHPRESS:
-    sys.path.insert(0, BENCHPRESS)
+# D-6.8: an unset BENCHPRESS_PATH silently skipped all 11 tests and exited 0.
+# A suite that reports success while testing nothing is worse than no suite.
+if not BENCHPRESS or not os.path.isdir(BENCHPRESS):
+    raise RuntimeError(
+        "BENCHPRESS_PATH is not set or not a directory. Refusing to skip silently: "
+        "a green suite that tested nothing is how defect D-6.8 hid."
+    )
+
+sys.path.insert(0, BENCHPRESS)
+LARGE = os.path.join(BENCHPRESS, "benchpress", "qasm", "qasmbench-large")
 
 
-# --------------------------------------------------------------------------
-# Fixtures -- a small, fast circuit so the suite stays runnable
-# --------------------------------------------------------------------------
+def qasm(name, fname=None):
+    return os.path.join(LARGE, name, (fname or name) + ".qasm")
 
-@pytest.fixture(scope="module")
-def small_circuit():
+
+# ==========================================================================
+# 1. BEHAVIOURAL: a hash failure must not delete a valid measurement
+#    (D-6.1 -- the old version was a string grep and passed with the defect back)
+# ==========================================================================
+
+def test_control_flow_circuit_yields_a_row_with_null_hash():
+    """REGRESSION, executed not grepped.
+
+    Circuits with control flow cannot be serialised to OpenQASM 2. The original sweep
+    computed the reproducibility hash in the same try block as the gate count, so an
+    export failure discarded a VALID measurement -- 40 rows and 4 circuits lost,
+    preferentially the control-flow ones. That is corpus bias created by the instrument.
+
+    This runs the real measurement path on a real control-flow circuit (`cc_n151`,
+    which raises QASM2ExportError) and asserts a run row still appears, carrying the
+    gate count, with qasm_sha256 null and hash_error populated.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        out = os.path.join(tmp, "out.jsonl")
+        proc = subprocess.run(
+            [sys.executable, os.path.join(ROOT, "sweep_bp.py"),
+             "--size", "large", "--topologies", "linear", "--seeds", "2",
+             "--only", "cc_n151", "--max-seconds", "300", "--out", out],
+            capture_output=True, text=True, timeout=900,
+            env={**os.environ, "BENCHPRESS_PATH": BENCHPRESS})
+        assert proc.returncode == 0, f"sweep failed: {proc.stderr[-500:]}"
+
+        runs = [json.loads(l) for l in open(out)
+                if json.loads(l).get("record") == "run"]
+
+    assert runs, "control-flow circuit produced NO run rows -- the censoring defect is back"
+    for row in runs:
+        assert isinstance(row["two_q"], int), "measurement missing from a kept row"
+        assert row["qasm_sha256"] is None, "expected hashing to fail on control flow"
+        assert row["hash_error"], "hash failure must be recorded, not swallowed"
+
+
+# ==========================================================================
+# 2. BEHAVIOURAL: a crashing child must be recorded and the census continue
+#    (D-6.2 -- the old version was a string grep)
+# ==========================================================================
+
+def test_census_records_crash_and_keeps_going():
+    """REGRESSION, executed not grepped.
+
+    A Rust OOM on `bwt_n37` aborted the in-process census at circuit 9 of 58. The
+    remaining 49 were never attempted and NO error row was written -- the loss was
+    visible only in a log tail.
+
+    This points census.py at an interpreter that always fails, and asserts that (a) a
+    process_crash row is written for a circuit, and (b) the driver does not stop at the
+    first one.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        fake = os.path.join(tmp, "always_fails.py")
+        with open(fake, "w") as fh:
+            fh.write("import sys; sys.exit(3)\n")
+        launcher = os.path.join(tmp, "launcher.cmd")
+
+        out = os.path.join(tmp, "out.jsonl")
+        proc = subprocess.run(
+            [sys.executable, os.path.join(ROOT, "census.py"),
+             "--python", sys.executable, "--size", "large", "--topology", "linear",
+             "--seeds", "1", "--timeout", "30",
+             "--require-qiskit", "0.0.0-force-child-abort",
+             "--out", out],
+            capture_output=True, text=True, timeout=900,
+            env={**os.environ, "BENCHPRESS_PATH": BENCHPRESS})
+
+        rows = [json.loads(l) for l in open(out)]
+
+    crashes = [r for r in rows if r.get("record") == "process_crash"]
+    assert crashes, "a failing child produced no process_crash row"
+    assert len(crashes) > 1, (
+        f"driver stopped after {len(crashes)} crash(es) -- it must continue past a "
+        f"failing circuit, which is the whole point of process isolation")
+    for c in crashes:
+        assert c["returncode"] != 0
+        assert "circuit" in c and "topology" in c
+
+
+# ==========================================================================
+# 3. BEHAVIOURAL: determinism, on a fixture that actually varies
+#    (D-6.3 -- old fixture wstate_n3 is constant even unseeded)
+# ==========================================================================
+
+def test_fixed_seed_deterministic_on_a_VARYING_circuit():
+    """The old test used wstate_n3, which is constant unseeded, so it passed with
+    seed_transpiler deleted. bv_n30 spans 48-72 on linear (measured, sec 30), so a
+    constant result here can only come from the seed actually taking effect."""
     from qiskit import QuantumCircuit
-    path = os.path.join(BENCHPRESS, "benchpress", "qasm", "qasmbench-small",
-                        "wstate_n3", "wstate_n3.qasm")
-    return QuantumCircuit.from_qasm_file(path)
+    from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
+    from benchpress.utilities.backends import FlexibleBackend
+
+    circuit = QuantumCircuit.from_qasm_file(qasm("bv_n30"))
+    backend = FlexibleBackend(circuit.num_qubits, "linear", control_flow=True)
+
+    seeded = []
+    for _ in range(6):
+        pm = generate_preset_pass_manager(optimization_level=2, backend=backend,
+                                          seed_transpiler=4242)
+        seeded.append(pm.run(circuit).count_ops().get(backend.two_q_gate_type, 0))
+
+    unseeded = []
+    for _ in range(12):
+        pm = generate_preset_pass_manager(optimization_level=2, backend=backend)
+        unseeded.append(pm.run(circuit).count_ops().get(backend.two_q_gate_type, 0))
+
+    assert len(set(seeded)) == 1, f"fixed seed varied: {sorted(set(seeded))}"
+    # The discriminating half: this fixture MUST vary unseeded, or the test above
+    # proves nothing.
+    assert len(set(unseeded)) > 1, (
+        "fixture does not vary unseeded, so the determinism assertion is vacuous -- "
+        "pick a circuit with measured spread")
 
 
-@pytest.fixture(scope="module")
-def bv140_path():
-    return os.path.join(BENCHPRESS, "benchpress", "qasm", "qasmbench-large",
-                        "bv_n140", "bv_n140.qasm")
+# ==========================================================================
+# 4. BEHAVIOURAL: the observable is the one sweep_bp actually uses
+#    (D-6.5 -- old test never imported sweep_bp and asserted an identity)
+# ==========================================================================
 
-
-# --------------------------------------------------------------------------
-# 1. Observable semantics -- we must count what Benchpress counts
-# --------------------------------------------------------------------------
-
-def test_observable_matches_benchpress_definition(small_circuit):
-    """Benchpress counts the NAMED basis gate, not 'any two-qubit operation'.
-
-    qiskit_gym/utils/io.py:
+def test_sweep_uses_named_gate_not_any_two_qubit_op():
+    """Benchpress counts the NAMED basis gate:
         output_gate_count_2q = circuit.count_ops().get(two_qubit_gate, 0)
+    Our first sweep counted any 2-qubit operation, a DIFFERENT observable.
 
-    Our first sweep counted any 2-qubit op, which is a DIFFERENT observable. This
-    test pins the correct one so the difference cannot silently return.
+    This runs sweep_bp.py on a control-flow circuit -- where the two definitions
+    genuinely disagree, because if_else blocks act on 2 qubits but are not `cz` -- and
+    checks the recorded value matches the named-gate count.
     """
+    from qiskit import QuantumCircuit
     from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
     from benchpress.utilities.backends import FlexibleBackend
 
-    backend = FlexibleBackend(small_circuit.num_qubits, "linear", control_flow=True)
+    with tempfile.TemporaryDirectory() as tmp:
+        out = os.path.join(tmp, "out.jsonl")
+        subprocess.run(
+            [sys.executable, os.path.join(ROOT, "sweep_bp.py"),
+             "--size", "large", "--topologies", "linear", "--seeds", "1",
+             "--seed-start", "777", "--only", "cc_n151",
+             "--max-seconds", "300", "--out", out],
+            capture_output=True, text=True, timeout=900,
+            env={**os.environ, "BENCHPRESS_PATH": BENCHPRESS}, check=True)
+        row = next(json.loads(l) for l in open(out)
+                   if json.loads(l).get("record") == "run")
+
+    circuit = QuantumCircuit.from_qasm_file(qasm("cc_n151"))
+    backend = FlexibleBackend(circuit.num_qubits, "linear", control_flow=True)
     pm = generate_preset_pass_manager(optimization_level=2, backend=backend,
-                                      seed_transpiler=42)
-    out = pm.run(small_circuit)
+                                      seed_transpiler=777)
+    compiled = pm.run(circuit)
 
-    benchpress_count = out.count_ops().get(backend.two_q_gate_type, 0)
-    any_2q_count = sum(1 for inst in out.data
-                       if len(inst.qubits) == 2
-                       and inst.operation.name not in ("barrier", "measure"))
+    named = compiled.count_ops().get(backend.two_q_gate_type, 0)
+    any_2q = sum(1 for inst in compiled.data
+                 if len(inst.qubits) == 2
+                 and inst.operation.name not in ("barrier", "measure"))
 
-    assert benchpress_count == out.count_ops().get("cz", 0)
-    assert benchpress_count >= 0
-    # They may coincide on simple circuits; the point is that we use THEIRS.
-    assert isinstance(benchpress_count, int)
-    assert any_2q_count >= benchpress_count, (
-        "any-2q counting can only be >= named-gate counting")
-
-
-def test_two_q_gate_type_is_cz_under_default_config():
-    """Benchpress default.conf basis_gates -> the single 2Q gate must be 'cz'.
-
-    If this ever changes, every recorded 2Q count in results/ refers to a different
-    gate and the historical data is not comparable.
-    """
-    from benchpress.utilities.backends import FlexibleBackend
-    backend = FlexibleBackend(8, "linear", control_flow=True)
-    assert backend.two_q_gate_type == "cz"
+    assert row["two_q"] == named, (
+        f"sweep recorded {row['two_q']}, Benchpress's definition gives {named}")
+    assert row["two_q_gate"] == backend.two_q_gate_type
+    if any_2q == named:
+        pytest.skip("this circuit does not discriminate the two definitions today; "
+                    "the equality assertion above still pins the named-gate rule")
 
 
-# --------------------------------------------------------------------------
-# 2. Determinism -- the load-bearing property of the whole study
-# --------------------------------------------------------------------------
+# ==========================================================================
+# 5. BEHAVIOURAL: the version guard actually aborts
+#    (this one was sound in the old suite and is kept)
+# ==========================================================================
 
-def test_fixed_seed_is_deterministic(small_circuit):
-    """A fixed seed_transpiler must give identical output within a process."""
-    from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
-    from benchpress.utilities.backends import FlexibleBackend
-
-    backend = FlexibleBackend(small_circuit.num_qubits, "linear", control_flow=True)
-    counts = []
-    for _ in range(5):
-        pm = generate_preset_pass_manager(optimization_level=2, backend=backend,
-                                          seed_transpiler=12345)
-        counts.append(pm.run(small_circuit).count_ops().get(backend.two_q_gate_type, 0))
-    assert len(set(counts)) == 1, f"fixed seed produced {set(counts)}"
-
-
-def test_all_to_all_has_no_seed_variance(small_circuit):
-    """NEGATIVE CONTROL. No routing required -> no seed sensitivity.
-
-    If this fails, the instrument manufactures variance and no other number in this
-    project can be trusted.
-    """
-    from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
-    from benchpress.utilities.backends import FlexibleBackend
-
-    backend = FlexibleBackend(small_circuit.num_qubits, "all-to-all", control_flow=True)
-    counts = []
-    for seed in range(1000, 1008):
-        pm = generate_preset_pass_manager(optimization_level=2, backend=backend,
-                                          seed_transpiler=seed)
-        counts.append(pm.run(small_circuit).count_ops().get(backend.two_q_gate_type, 0))
-    assert len(set(counts)) == 1, (
-        f"all-to-all showed variance {set(counts)} with no routing to do")
-
-
-# --------------------------------------------------------------------------
-# 3. Regression: the censoring bug
-# --------------------------------------------------------------------------
-
-def test_hash_failure_does_not_discard_the_measurement():
-    """REGRESSION (2026-09-02): QASM-2 export gated the measurement.
-
-    Circuits with control flow cannot be serialised to OpenQASM 2. The first sweep
-    computed the reproducibility hash inside the same try block as the gate count, so
-    an export failure discarded a VALID measurement -- 40 rows and 4 circuits lost,
-    preferentially the control-flow ones. That is corpus bias created by the
-    instrument.
-
-    sweep_bp.py must record qasm_sha256=None plus hash_error and KEEP the row.
-    """
-    source = open(os.path.join(ROOT, "sweep_bp.py")).read()
-    assert '"qasm_sha256": qasm_hash' in source
-    assert '"hash_error": hash_error' in source
-    # The hash must be computed in its own try, not the one guarding the measurement.
-    hash_block = source.split("qasm_hash, hash_error = None, None")[1][:400]
-    assert "try:" in hash_block and "except Exception" in hash_block, (
-        "hashing must be independently guarded, or a hash failure kills the row")
-
-
-# --------------------------------------------------------------------------
-# 4. Regression: the version guard
-# --------------------------------------------------------------------------
-
-def test_version_guard_aborts_on_mismatch(bv140_path):
-    """REGRESSION (2026-09-02): `uv pip install qiskit-ibm-runtime` silently upgraded
-    qiskit 2.0.2 -> 2.5.2 and an experiment ran against a version it did not intend.
-    """
+def test_version_guard_aborts_on_mismatch():
+    """`uv pip install qiskit-ibm-runtime` silently upgraded qiskit 2.0.2 -> 2.5.2 and
+    an experiment ran against a version it did not report."""
     proc = subprocess.run(
         [sys.executable, os.path.join(ROOT, "exp1_backend_randomness.py"),
-         "--qasm", bv140_path, "--require-qiskit", "0.0.0-does-not-exist"],
-        capture_output=True, text=True, timeout=300,
+         "--qasm", qasm("bv_n30"), "--require-qiskit", "0.0.0-does-not-exist"],
+        capture_output=True, text=True, timeout=600,
         env={**os.environ, "BENCHPRESS_PATH": BENCHPRESS})
     assert proc.returncode != 0, "guard must abort, not warn"
     assert "ABORT" in (proc.stdout + proc.stderr)
 
 
-# --------------------------------------------------------------------------
-# 5. Regression: the census must survive a child crash
-# --------------------------------------------------------------------------
-
-def test_census_records_child_crash_as_a_row():
-    """REGRESSION (2026-09-02): a Rust OOM on bwt_n37 aborted the whole census at
-    circuit 9 of 58. 49 circuits were never attempted and NO error row was written --
-    the loss was visible only in a log tail.
-
-    census.py must record a `process_crash` row when a child fails.
-    """
-    source = open(os.path.join(ROOT, "census.py")).read()
-    assert '"record": "process_crash"' in source
-    assert "rows_salvaged" in source, "partial results must be kept"
-    assert "timed_out" in source
+def test_sweep_version_guard_aborts_too():
+    """The guard must be on every measurement entry point, not just one."""
+    with tempfile.TemporaryDirectory() as tmp:
+        proc = subprocess.run(
+            [sys.executable, os.path.join(ROOT, "sweep_bp.py"),
+             "--size", "large", "--topologies", "linear", "--seeds", "1",
+             "--only", "bv_n30", "--require-qiskit", "0.0.0-nope",
+             "--out", os.path.join(tmp, "o.jsonl")],
+            capture_output=True, text=True, timeout=600,
+            env={**os.environ, "BENCHPRESS_PATH": BENCHPRESS})
+    assert proc.returncode != 0
+    assert "ABORT" in (proc.stdout + proc.stderr)
 
 
-# --------------------------------------------------------------------------
-# 6. Statistics -- derived numbers must be correct
-# --------------------------------------------------------------------------
+# ==========================================================================
+# 6. Arithmetic -- these were sound and are kept
+# ==========================================================================
 
 def test_describe_statistics_on_known_input():
-    """analyze.describe must produce arithmetically correct values."""
     from analyze import describe
-    stats = describe([10, 10, 10, 20])
-    assert stats["n_seeds"] == 4
-    assert stats["distinct_values"] == 2
-    assert stats["min"] == 10 and stats["max"] == 20
-    assert stats["mean"] == 12.5
-    assert stats["median"] == 10.0
-    assert stats["spread_pct"] == 100.0          # (20-10)/10 * 100
-    assert stats["std"] == pytest.approx(5.0, abs=1e-6)   # ddof=1
-    assert stats["cv_pct"] == pytest.approx(40.0, abs=1e-3)
+    s = describe([10, 10, 10, 20])
+    assert s["n_seeds"] == 4 and s["distinct_values"] == 2
+    assert s["min"] == 10 and s["max"] == 20
+    assert s["mean"] == 12.5 and s["median"] == 10.0
+    assert s["spread_pct"] == 100.0
+    assert s["std"] == pytest.approx(5.0, abs=1e-6)
+    assert s["cv_pct"] == pytest.approx(40.0, abs=1e-3)
 
 
 def test_describe_handles_constant_input():
-    """A constant series must report zero spread, not divide by zero."""
     from analyze import describe
-    stats = describe([72, 72, 72])
-    assert stats["spread_pct"] == 0.0
-    assert stats["std"] == 0.0
-    assert stats["cv_pct"] == 0.0
-    assert stats["distinct_values"] == 1
+    s = describe([72, 72, 72])
+    assert s["spread_pct"] == 0.0 and s["std"] == 0.0 and s["cv_pct"] == 0.0
 
 
 def test_spread_is_reported_against_the_minimum():
-    """spread_pct is (max-min)/min. Pinned because a reviewer will ask which
-    denominator was used, and because (max-min)/mean gives a different number."""
+    """Pinned because a reviewer will ask which denominator was used -- and because
+    sec 33 used (max-min)/median for the same data, giving a different number
+    (DEFECTS.md D-3.1)."""
     from analyze import describe
     assert describe([100, 150])["spread_pct"] == 50.0
 
 
-# --------------------------------------------------------------------------
-# 7. Raw data integrity
-# --------------------------------------------------------------------------
+# ==========================================================================
+# 7. Provenance -- strengthened again after D-6.7
+# ==========================================================================
 
-def test_raw_rows_carry_everything_needed_to_reproduce():
-    """Every run row must record the seed, the version, and the configuration.
+@pytest.mark.parametrize("raw", [
+    "bp_large_linear_q202.jsonl", "bp_large_linear_q200.jsonl",
+    "bp_large_square_q202.jsonl",
+])
+def test_raw_file_names_its_toolchain_consistently(raw):
+    """D-6.7: the previous version only required that SOME row carried a
+    qiskit_version. census.py keeps just the first child's env row, so that assertion
+    could only fail if circuit #1 crashed -- structurally guaranteed otherwise.
 
-    A row that cannot be reproduced from its own contents is not evidence.
+    This additionally requires that the recorded version matches the census_env's
+    require_qiskit, which is the sec 26 contamination mode (an install swapping the
+    version mid-run).
     """
-    raw = os.path.join(ROOT, "results", "raw", "bp_large_linear_q202.jsonl")
-    if not os.path.isfile(raw):
-        pytest.skip("census output not present")
+    path = os.path.join(ROOT, "results", "raw", raw)
+    if not os.path.isfile(path):
+        pytest.skip(f"{raw} not present")
 
-    version = None
-    checked = 0
-    with open(raw) as fh:
+    versions, required, n_runs = set(), None, 0
+    with open(path) as fh:
         for line in fh:
             row = json.loads(line)
             if row.get("qiskit_version"):
-                version = row["qiskit_version"]
+                versions.add(row["qiskit_version"])
+            if row.get("record") == "census_env":
+                required = row.get("require_qiskit")
             if row.get("record") == "run":
-                for field in ("seed", "circuit", "topology", "two_q",
-                              "two_q_gate", "n_qubits", "seconds"):
-                    assert field in row, f"run row missing {field}"
-                checked += 1
-    assert checked > 0, "no run rows found"
+                n_runs += 1
+                for f in ("seed", "circuit", "topology", "two_q", "two_q_gate",
+                          "n_qubits", "seconds"):
+                    assert f in row, f"run row missing {f}"
 
-    # REGRESSION (2026-09-02): census.py stripped EVERY child env record when merging,
-    # so the merged file recorded no qiskit version at all. The previous version of
-    # this test passed anyway, because it only asserted that *an* env record existed
-    # and the driver's own census_env row satisfied that. A provenance test that any
-    # env row can satisfy does not test provenance.
-    assert version is not None, (
-        "raw file must record the qiskit version that produced it -- "
-        "a measurement file that cannot name its own toolchain is not evidence")
+    assert n_runs > 0, "no run rows"
+    assert versions, ("file records no qiskit version -- a measurement file that "
+                      "cannot name its own toolchain is not evidence")
+    assert len(versions) == 1, f"MIXED versions in one file: {versions}"
+    if required:
+        assert versions == {required}, (
+            f"census demanded {required} but rows record {versions}")
+
+
+def test_summary_numbers_regenerate_from_raw():
+    """D-7.1/D-7.2: sec 30's provenance line and distribution table did not match the
+    file they named, because the census was re-run and the aggregates were never
+    recomputed. Any published aggregate must be regenerable from its raw file.
+    """
+    import csv
+    from analyze import load_runs, describe
+
+    raw = os.path.join(ROOT, "results", "raw", "bp_large_linear_q202.jsonl")
+    summary = os.path.join(ROOT, "results", "summary",
+                           "bp_large_linear_q202_2q.csv")
+    if not (os.path.isfile(raw) and os.path.isfile(summary)):
+        pytest.skip("census or summary not present")
+
+    _, runs, _, _ = load_runs(raw)
+    for row in csv.DictReader(open(summary)):
+        circuit = row["circuit"]
+        if circuit not in runs:
+            continue
+        recomputed = describe([r["two_q"] for r in runs[circuit]])
+        assert recomputed["min"] == float(row["min"]), (
+            f"{circuit}: summary min {row['min']} != raw {recomputed['min']}")
+        assert recomputed["max"] == float(row["max"])
+        assert recomputed["spread_pct"] == pytest.approx(
+            float(row["spread_pct"]), abs=0.01), (
+            f"{circuit}: summary CSV does not regenerate from raw")

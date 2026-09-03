@@ -1139,21 +1139,61 @@ rate."**
 
 ## 30. MATCHED CENSUS — the phenomenon is confirmed, not invalidated — 2026-09-02
 
+> ## ⛔ CORRECTED 2026-09-03 — this section did not reproduce from its own data
+>
+> The hostile review (DEFECTS.md **D-7.1 / D-7.2**) found that the numbers below
+> described the **first** 2.0.2 census, while the file on disk is the **re-run** made to
+> fix the provenance defect (§26). The aggregates were never recomputed.
+>
+> | | as originally written | **actual, regenerated from the named file** |
+> |---|---|---|
+> | circuits | 58 | **57** |
+> | run rows | 587 | **639** |
+> | budget stops | 7 | **6** |
+> | crashes | 0 | **1** (`square_root_n60`) |
+> | <1% / 1–5% / ≥5% | 32 / 12 / 14 | **31 / 12 / 14** |
+> | median spread | 0.77% | **0.87%** |
+>
+> **This is the exact failure this project documents in others.** The original figures
+> are left visible rather than silently swapped. A test now enforces regeneration
+> (`test_summary_numbers_regenerate_from_raw`), and it caught a second instance
+> immediately: the summary CSV had `multiplier_n75` min = 22,570 against a raw 22,568.
+> All derived artifacts have been regenerated.
+
 `census.py` (one OS process per circuit) → `sweep_bp.py`, Benchpress's own
 `FlexibleBackend`, observable `count_ops().get("cz", 0)`, `optimization_level=2`,
-`linear` topology, **Qiskit 2.0.2** with the version guard armed.
-**58 of 58 circuits, 0 crashes, 0 timeouts, 587 run rows, 7 budget stops** — all
-recorded as data rows.
+`linear` topology, version guard armed.
 
-### Distribution of seed-induced spread
+### Distribution of seed-induced spread — regenerated, every row naming its file
 
-| spread band | matched apparatus (§30) | earlier approximation (§24) |
-|---|---|---|
-| < 1% | **32** | 31 |
-| 1–5% | **12** | 11 |
-| **≥ 5%** | **14** | 12 |
-| median | **0.77%** | 0.48% |
-| max | **106.92%** | 106.92% |
+| census | circuits | <1% | 1–5% | **≥5%** | median | max |
+|---|---:|---:|---:|---:|---:|---:|
+| `bp_large_linear_q200.jsonl` (2.0.0) | 58 | 34 | 15 | **9** | **0.10%** | 106.92% |
+| `bp_large_linear_q202.jsonl` (2.0.2) | 57 | 31 | 12 | **14** | **0.87%** | 106.92% |
+| `bp_large_square_q202.jsonl` (2.0.2) | 58 | 21 | 8 | **29** | 4.70% | 32.71% |
+| `bp_large_square_q200.jsonl` (2.0.0) | 53 | 16 | 8 | **29** | 5.86% | 35.14% |
+| `sweep_q2_0_2_large.jsonl` (§24, non-Benchpress apparatus) | 54 | 31 | 11 | 12 | 0.48% | 106.92% |
+
+### ⭐ New observation the correction exposed — 2.0.2 is MORE seed-variable than 2.0.0
+
+On `linear`, 2.0.0 has **9** circuits at ≥5% spread with a median of **0.10%**; 2.0.2 has
+**14** with a median of **0.87%**. **The ConsolidateBlocks fix reduced gate counts and
+appears to have increased seed spread.**
+
+This was invisible until the correction forced the 2.0.0 census to be analysed on its own
+rather than only as the "old" arm of a comparison. It is **an observation, not a claim** —
+one topology, 12 seeds, and the two censuses differ in circuit coverage (58 vs 57), which
+alone could move the bands.
+
+### ⚠ D-7.3 — the §24-vs-§30 agreement was a tautology, not a validation
+
+Seed-for-seed, **49 of the 53 shared circuits are byte-identical** between the §24 and
+§30 files; only four `multiplier_*` circuits differ, by 2–70 gates. The original text
+explained why the two *must* coincide (Benchpress's `linear` is `grid_graph(1, n)`, the
+same graph as `CouplingMap.from_line(n)`) and then treated the coincidence as
+confirmation. **It is one measurement run twice.** §26's earlier and more careful
+statement — that §24's numbers "are not evidence about Benchpress's workload" — stands;
+§30's upgrade of them to "validated measurement" is withdrawn.
 
 **The matched apparatus confirms the phenomenon rather than invalidating it.** The two
 instruments agree closely — as they should, since Benchpress's `linear` layout is
