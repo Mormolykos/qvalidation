@@ -734,6 +734,80 @@ variable. If it exists, C1 is next in line.
 
 ---
 
+## 36. SQUARE FLIP ANALYSIS — and the review's D-1.6 applied to both topologies — 2026-09-03
+
+`flip_square_q202_vs_q200.csv`. Same pre-registered rule as §31, threshold +10%,
+3 runs/version, 2,000 bootstrap draws.
+
+| topology | STABLE_REG | STABLE_CLEAN | **UNSTABLE (k=3)** | UNSTABLE (k=1) |
+|---|---:|---:|---:|---:|
+| `linear` | 24 | 27 | **5** | 8 |
+| `square` | **0** | 41 | **15** | 24 |
+
+**The decision failure reproduces on a second routed topology and is 3× more common
+there.** Note `square` has **zero** stable regressions: the ConsolidateBlocks effect is
+weaker there (most true changes <10%), while the noise is higher (§35) — weaker signal
+plus louder noise is precisely the regime where verdicts become unreliable.
+
+### ⚠ D-1.6 applied — boundary artifacts separated from genuine false positives
+
+The review's D-1.6 is correct and is now enforced: *a threshold rule is unstable near
+its threshold; that is arithmetic, not a finding about Benchpress.* Circuits whose true
+effect lies within 3 pp of the 10% cut are **boundary artifacts** and are excluded from
+the claim.
+
+| topology | UNSTABLE | boundary (excluded) | **genuine** |
+|---|---:|---:|---:|
+| `linear` | 5 | 3 | **2** |
+| `square` | 15 | 5 | **10** |
+
+**This weakens §31 and strengthens §36.** §31's "5 of 57" was carried by 3 boundary
+cases and 2 real ones — exactly as the review said. The square result survives the same
+filter with 10 of 15 intact.
+
+### ⭐ The genuine square cases — and they include #14402's own circuits
+
+| circuit | true change | P(called ≥10% regression) | distance from cut |
+|---|---:|---:|---:|
+| `bv_n30` | +6.3% | **0.31** | 3.7 pp |
+| `bv_n70` | +4.0% | **0.21** | 6.0 pp |
+| `cc_n32` | +3.9% | 0.13 | 6.1 pp |
+| **`bv_n140`** | **+3.0%** | **0.12** | 7.0 pp |
+| `swap_test_n83` | +6.2% | 0.11 | 3.8 pp |
+| `swap_test_n115` | +6.3% | 0.10 | 3.7 pp |
+| `cc_n64` | +5.0% | 0.10 | 5.0 pp |
+| **`bv_n280`** | **+2.2%** | **0.07** | 7.8 pp |
+| `knn_129` | +5.3% | 0.06 | 4.7 pp |
+| `adder_n118` | +5.9% | 0.06 | 4.1 pp |
+
+### This answers the review's D-1.9
+
+D-1.9 objected — correctly — that `qft_n320` **is not among #14402's reported cases**
+(`bv_n140-linear`, `bv_n280-linear`, `knn_341-linear`), so the flagship example was a
+circuit nobody ever miscalled.
+
+**`bv_n140` and `bv_n280` are two of those three**, and on `square` both are genuine
+sub-threshold false positives: real changes of +3.0% and +2.2%, reported as double-digit
+regressions 12% and 7% of the time.
+
+**The strongest evidence is therefore not the circuit the record has been leading with,
+and not on the topology it has been analysing.** §31's framing should be demoted and
+this section promoted.
+
+### Limits, stated with the same discipline
+
+1. `square` still has only 12 seeds per circuit; D-1.1's interval problem applies here
+   too and no interval has yet been computed for these P values.
+2. The 3 pp boundary band is a judgement, not a derived quantity. A different band moves
+   the genuine/boundary split; the raw table is given so anyone can re-cut it.
+3. The 2.0.0 square census covers **53** circuits to 2.0.2's 58 (§30 table) — coverage
+   differs between arms and has not been reconciled.
+4. Still unaddressed from DEFECTS.md: D-1.4 (k=3 assumed), D-1.5 (single-commit
+   unverified), D-2.1/2.2 (paired column tautological), D-5.1 (replication artifact
+   missing), D-5.2 (Benchpress unpinned).
+
+---
+
 ## 35. TOPOLOGY SENSITIVITY — not a `linear` artifact; worse on `square` — 2026-09-03
 
 Qiskit 2.0.2, 58 circuits, 12 seeds, Benchpress apparatus. Both topologies are members

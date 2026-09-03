@@ -1,2 +1,10 @@
   58 circuits, topology=heavy-hex, 12 seeds, one process each
 
+  [1/58] adder_n118: ok (12 rows, 4.4s)
+  [2/58] adder_n28: ok (12 rows, 1.9s)
+  [3/58] adder_n433: ok (12 rows, 15.2s)
+  [4/58] adder_n64: ok (12 rows, 2.8s)
+  [5/58] bv_n140: ok (12 rows, 2.3s)
+  [6/58] bv_n280: ok (12 rows, 3.1s)
+  [7/58] bv_n30: ok (12 rows, 1.5s)
+  [8/58] bv_n70: ok (12 rows, 1.9s)
