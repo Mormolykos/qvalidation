@@ -472,3 +472,25 @@ def test_paired_band_reports_the_identity_circuits_separately():
             f"anything else means the band solver is not exact")
     assert len(degenerate) < len(rows), (
         "every circuit is degenerate -- the paired column would be a tautology again")
+
+
+# ==========================================================================
+# 9. Every live number must still reproduce from the file it names
+#    (Priority 1 remainder -- the inventory cannot be allowed to rot)
+# ==========================================================================
+
+def test_inventory_recomputes_every_live_number():
+    """D-7.1 was a record whose numbers no longer matched their own data. That can
+    only be prevented by re-deriving them, so this test does. It is slow on purpose:
+    it reads the raw censuses, not a cached summary.
+    """
+    import inventory
+    failures = []
+    for e in inventory.entries():
+        if e["status"] != "LIVE" or e["recompute"] is None:
+            continue
+        got = e["recompute"]()
+        if abs(got - float(e["value"])) > inventory.TOL:
+            failures.append(f"{e['id']}: recorded {e['value']} recomputed {got:.4f}")
+    assert not failures, "inventory no longer matches its sources:\n  " + \
+        "\n  ".join(failures)

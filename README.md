@@ -3,11 +3,17 @@
 Benchpress pins the seeds used to **build** circuits and passes no seed to the code that
 **compiles** them. This repository measures what that costs.
 
-**Headline:** on `qft_n320`, Qiskit 2.0.0 and 2.0.2 produce **byte-identical output at
-every seed tested**. The regression protocol used in Qiskit issue
-[#14402](https://github.com/Qiskit/qiskit/issues/14402) — three runs per version,
-averaged — reports it as a **double-digit regression 27% of the time**. Passing
-`seed_transpiler` reduces that to **zero**.
+**Headline:** the suite's regression protocol — three unseeded runs per version, as used
+in Qiskit issue [#14402](https://github.com/Qiskit/qiskit/issues/14402) — **cannot
+resolve a change smaller than a median 14-percentage-point window** around a +10%
+decision threshold on a heavy-hex lattice. Passing `seed_transpiler` narrows that window
+**6.8×**. One argument, one run per version, instead of roughly fifty.
+
+> ⚠ **An earlier headline here claimed a 27% false-positive rate on `qft_n320`. It is
+> WITHDRAWN** — its 95% interval was [1.7%, 63.1%] at n=12, and the corpus statistic
+> built on it turned out to depend on an undisclosed choice of which version was the
+> baseline. See §38 and §41. Nothing was ever published. Every number below is
+> direction-free and re-derives from raw data via `python inventory.py --check`.
 
 ---
 
@@ -15,20 +21,24 @@ averaged — reports it as a **double-digit regression 27% of the time**. Passin
 
 | result | value | where |
 |---|---|---|
+| Benchpress gyms passing `seed_transpiler` | **0 of 8**, source-verified | §33 |
 | Benchpress unseeded, `bv_n140-linear`, 20 runs | **17 distinct 2Q gate counts**, 244–340 | §27 |
-| `qft_n320`, paired by seed across 2.0.0 / 2.0.2 | **0.00% difference, 12/12 seeds** | §31 |
-| `qft_n320`, unpaired 3-run protocol | **27.1% false-positive rate** | §31–32 |
-| real +10.7% regression on `adder_n64` | **missed 19.7% of the time** | §31 |
-| circuits with a seed-dependent verdict | **5 of 57** (linear, +10% threshold) | §31 |
-| holds across thresholds 5%–30% | **4–9 circuits, never zero** | §31 |
-| runs needed for every circuit <5% FP | **~50 per version** (≈200 h compute) | §34 |
-| same reliability, paired | **k=1** | §34 |
-| circuits ≥5% spread, `square` topology | **29 of 58** | §35 |
-| independent replication, different machine and CPU vendor | **fixed seed → identical value** | §29 |
+| the seed is the entropy source | cross-process control, seeded 324×6 vs unseeded 6 values | §28 |
+| **unpaired ambiguity band, heavy-hex** | **median 14.04 pp** | §42 |
+| **paired ambiguity band, heavy-hex** | **median 2.06 pp — 6.8× narrower** | §42 |
+| circuits with an unpaired band ≥5 pp | **34 of 52**, Wilson 95% [0.518, 0.768] | §42 |
+| unpaired band scales as | **1/√k** — k=1 → 23.8 pp, k=5 → 10.9 pp | §43 |
+| runs needed to match paired k=1 unseeded | **≈49 per version** (≈200 h compute) | §43 |
+| within-version seed spread, median | linear 0.90%, square 5.94%, heavy-hex 10.71% | §30 |
+| replication from clean, 6 circuits × 12 seeds × 2 versions | **144/144 exact, 2/6 controls flat** | §44 |
 
 Section numbers refer to [`RESEARCH_LANDSCAPE.md`](RESEARCH_LANDSCAPE.md), the full
 research record, including every hypothesis that was **refuted** and every defect found
-in this harness.
+in this harness. [`DEFECTS.md`](DEFECTS.md) is the hostile review of this study, and
+§45 is the current audit of what is *still* wrong.
+
+**Start here:** [`replication/REPLICATE.md`](replication/REPLICATE.md) reproduces the
+core of it in about a minute.
 
 ---
 
@@ -148,9 +158,20 @@ reproduce across machines.
   governs *fidelity*, has no version axis, and was calibrated at 10 qubits and
   `SABRE(opt=0)`. They are cited, not contested.
 - **Not** that any published cross-SDK ranking flipped. Only Qiskit is *measured*
-  stochastic here; the ambiguity window is a bound, not a demonstrated reversal.
-- **Not** that "the benchmark is broken." 24 circuits detect the real regression on
-  essentially every draw. The failure is at the margins, and the margins are quantified.
+  stochastic here; the ambiguity band is a resolving-power bound, not a demonstrated
+  reversal. No other SDK has been measured at all.
+- **Not** that "the benchmark is broken." Added 2026-09-03: this is stronger than it was.
+  **In the direction that actually occurred — 2.0.0 → 2.0.2 — no circuit on any topology
+  has an ambiguous verdict.** The exposure is to changes of a size that has not yet
+  happened, not to one that has.
+- **Not** that any real decision was ever wrong. No wrong call has been demonstrated on
+  Qiskit, and #14402's own cases have never been reproduced as verdict flips (§45 A1).
+- **Not** that a real code change behaves like the injected one. §42's band sweeps a
+  multiplicative change with a *measured* per-seed residual. Nothing here verifies that
+  real compiler changes act that way (§45 A2).
+- **Not** a claim about IBM hardware. `heavy-hex` here is
+  `rustworkx.generators.heavy_hex_graph(dim)` sized to the circuit — the lattice family
+  IBM uses, generated synthetically, with no device coupling map and no calibration.
 
 ---
 

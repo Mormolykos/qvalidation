@@ -1,11 +1,35 @@
 # Quantum Software Validation — Research Landscape and Candidate Selection
 
-**Status:** first deliverable. Nothing committed, nothing coded, no repository yet.
-**Date:** 2026-09-02
-**Author:** Panagiotis Gkilis
+**Author:** Panagiotis Gkilis · **Started:** 2026-09-02 · **Last audited:** 2026-09-03
+
 **Verification standard:** every source below was checked against arXiv/ACM/Quantum-journal
 listings by direct search. Sources I could not verify are listed in §11 and are NOT used
 to support any argument.
+
+---
+
+## ⛔ READ THIS BEFORE ANY OTHER SECTION
+
+**Sections are ordered newest-first, and later sections WITHDRAW earlier ones.** §31–§38
+still read as live findings and several of them are not. Do not quote a number from this
+file without checking it here first.
+
+| status | claim | where |
+|---|---|---|
+| ✅ **LIVE** | Benchpress passes no `seed_transpiler` in any of its 8 SDK gyms | §33, source-verified |
+| ✅ **LIVE** | The transpiler seed is the dominant entropy source | §28, cross-process control |
+| ✅ **LIVE** | A fixed seed reproduces bit-identically; different seeds do not | §44, re-run from clean |
+| ✅ **LIVE** | Unseeded 3-run comparison cannot resolve a change inside a median **14.0 pp** window on heavy-hex; pairing narrows it **6.8×** | §42 |
+| ✅ **LIVE** | Topology ordering linear < square < heavy-hex | §42, direction-free |
+| ✅ **LIVE** | k=3 is external (quoted from #14402); no conclusion depends on it | §43 |
+| ⛔ **WITHDRAWN** | "26.9% of heavy-hex circuits have a seed-dependent verdict" | §41 — direction artifact; **0 of 52** in the real direction |
+| ⛔ **WITHDRAWN** | "`qft_n320` is miscalled 27.1% of the time" | §38 — CI [0.017, 0.631] at n=12 |
+| ⛔ **WITHDRAWN** | "pairing removes every false positive across all 51 circuits" | §40 — the column was `1[e ≥ t]` |
+| ⛔ **WITHDRAWN** | "2.0.0 vs 2.0.2 isolates a single commit, PR #14417" | §39 — 31 commits, 64 files |
+| ⚠ **NOT SHOWN** | that any real decision was ever wrong | §45 A1 |
+
+**§45 is the current hostile audit. §12 and §25 do not exist.** Every live number above
+re-derives from raw data via `python inventory.py --check` (31/31 as of 2026-09-03).
 
 ---
 
@@ -734,6 +758,114 @@ variable. If it exists, C1 is next in line.
 
 ---
 
+## 45. ⛔ GLOBAL ADVERSARIAL AUDIT — what is still wrong after all six priorities — 2026-09-03
+
+Not a list of what was fixed. This is an attack on **what survives**, written as a
+reviewer who wants to reject. Classification: **A fatal · B material · C minor ·
+D cosmetic.**
+
+### A — fatal if unaddressed
+
+**A1. No real decision has been shown to be wrong, and the record's own bar says one
+must be.** §22 set the gate: *"must demonstrate at least one real decision flip."*
+After §41, in the direction that actually occurred, **zero circuits on any topology have
+an unstable verdict**. What exists is a *sensitivity* result — a change of a certain
+size would be unresolvable — not an observed error. Nobody has been shown to have made a
+wrong call on Qiskit, and #14402's own cases (`bv_n140`, `bv_n280`, `knn_341`) have
+never been reproduced as flips. **The engineering claim survives; the "broken toys"
+framing does not.** Any writeup that implies a benchmark produced a wrong answer in the
+field is unsupported by this evidence.
+
+**A2. §42's band rests on a model, and it is the same species of model that killed
+§32.** `new_i = old_i · r · ρ_i` assumes a compiler change scales the observable
+multiplicatively, with a per-seed residual whose *shape* is borrowed from one version
+pair and whose *magnitude* is swept freely. ρ is measured, which is the difference that
+matters — but **nothing verifies that real compiler changes act multiplicatively on 2Q
+counts**, and §31's own data shows the real change is heterogeneous in ways a single ρ
+cannot capture. Stated honestly: the band measures *the decision rule's resolving power
+under a measured noise model*, not *what a real PR would do*. A reviewer is entitled to
+ask for one real code change to be run through it. That experiment does not exist.
+
+**A3. One version pair, one SDK, one benchmark, one observable, one machine.**
+Everything derives from Qiskit 2.0.0 vs 2.0.2, `count_ops()[cz]`, Benchpress
+`b695f30e`, on one Windows box. §33 establishes from source that seven other gyms also
+pass no seed, but **no other SDK has been measured**. Generalisation beyond Qiskit is
+unsupported, and the cross-SDK work is deliberately deferred.
+
+### B — material
+
+**B1. `knn_n41` and `swap_test_n41` are not independent observations.** Their 2Q counts
+are **identical seed-for-seed on all three topologies** (verified; their source QASM
+files differ — 1,926 vs 1,592 bytes, different hashes — so this is structural, not a
+duplicate file). Effective corpus size is therefore **≤51, not 52**, and every Wilson
+interval computed on 52 is marginally too narrow. No other duplicate group exists. The
+effect on the reported proportions is small but the assumption of independence is
+formally violated and was not checked before this audit.
+
+**B2. The +10% threshold is ours, not Benchpress's.** Benchpress defines **no**
+regression threshold — it records counts. The decision rule under test is a
+reconstruction of what a maintainer might apply, and #14402 never states one. Every
+"false positive" in this study is relative to a rule nobody has adopted. This is
+defensible only if stated in exactly those words.
+
+**B3. Six circuits are excluded from every census, and they are the slow ones.**
+`bwt_n37` (OOM), `multiplier_n350`, `multiplier_n400`, `square_root_n45`,
+`square_root_n60`, `vqe_uccsd_n28` never reach 12 seeds. The two multipliers are the
+**largest circuits in the corpus** (350 and 400 qubits), where routing entropy should be
+greatest. Exclusion therefore most likely **understates** the effect — the conservative
+direction — but the sample is a time-filtered convenience sample, not the corpus.
+
+**B4. "Heavy-hex is IBM's actual hardware connectivity" was an overstatement.**
+CORRECTED in §35 and §42 during this audit. `FlexibleBackend` calls
+`rustworkx.generators.heavy_hex_graph(dim)` with `dim` solved to fit the circuit. It is
+the *lattice family* IBM uses, generated synthetically, with no device coupling map and
+no calibration data. The topology ordering is unaffected; the rhetorical weight is.
+
+**B5. n=12 seeds is thin for everything except the medians.** Per-circuit band values
+have no interval at all, and the aggregate intervals are biased low (D-8.4). The study
+has never run the 200+ seeds D-1.1 asked for on even one circuit.
+
+**B6. The record withdraws its own claims in sections a reader may never reach.**
+`RESEARCH_LANDSCAPE.md` is 3,000+ lines, ordered newest-first, and §31–§38 still read as
+live findings until §39–§41 overturn them. A reader who stops early leaves with
+withdrawn numbers. Mitigated by the inventory's WITHDRAWN rows and this section, not
+solved.
+
+### C — minor
+
+- **C1.** §30's within-version spread medians (linear 0.90%, square 5.94%, heavy-hex
+  10.71%) carry no interval; they are descriptive medians and the inventory says so.
+- **C2.** Four analyst choices are unregistered as choices: the 0.05/0.95 band cut, the
+  3 pp boundary exclusion, the 5 pp "wide band" reporting line, and `min_seeds=12`.
+  None is derived from anything; each was picked and then held fixed.
+- **C3.** `inventory.py --scan` finds **92 percentage-shaped values** in the record that
+  no inventory row claims. Most are prose, quoted external figures, or sit in superseded
+  sections — but they are unchecked.
+- **C4.** Bootstrap B is 2,000 for §38's intervals and 200 for §42's bands. Defensible on
+  cost, inconsistent as method.
+
+### D — cosmetic
+
+- **D1.** Sections are numbered newest-first and §12 and §25 do not exist.
+- **D2.** `results/summary/tmp_linear.csv` and `tmp_square.csv` are working files sitting
+  in a results directory.
+
+### What an honest abstract can say after this audit
+
+> Qiskit's Benchpress benchmark suite compiles without setting `seed_transpiler`
+> (source-verified across all eight SDK gyms). The transpiler seed is the dominant
+> entropy source, confirmed by a cross-process control. On the 52-circuit
+> `qasmbench-large` corpus, a 3-run unseeded comparison against a +10% threshold cannot
+> resolve a change smaller than a median 14 pp window on a heavy-hex lattice; pairing
+> the seeds narrows that window 6.8×. Between Qiskit 2.0.0 and 2.0.2, in the direction
+> that actually occurred, no circuit's verdict was ambiguous — the exposure is to
+> changes of a size that has not yet happened, not to one that has.
+
+Every clause of that is measured, direction-free, and reproduces from the raw data via
+`inventory.py --check`.
+
+---
+
 ## 44. PRIORITIES 5 & 6 — the replication artifact RAN, and Benchpress is pinned — 2026-09-03
 
 ### D-5.2 — Benchpress was never versioned anywhere, and it is half the toolchain
@@ -888,7 +1020,8 @@ Seed bootstrap, B=200, **shared** resampling, 95%: heavy-hex unpaired median
 
 ### The claim, stated so it cannot be dismissed on direction
 
-> On `heavy-hex`, IBM's own hardware connectivity, Benchpress's unseeded 3-run protocol
+> On `heavy-hex`, the lattice family IBM's hardware uses, Benchpress's unseeded 3-run
+> protocol
 > cannot resolve a change smaller than a **median 14.0 pp wide window** around its own
 > +10% decision threshold. Passing `seed_transpiler` narrows that window **6.8×**, on
 > the circuits where the comparison is a measurement rather than an identity.
@@ -1201,7 +1334,11 @@ over 10%.**
 
 ### ⭐ Why heavy-hex is the operationally important case
 
-**Heavy-hex is IBM's actual hardware connectivity.** `linear` and `square` are abstract
+**Heavy-hex is the lattice family IBM's hardware uses — but Benchpress builds it
+synthetically, not from a device.** ⚠ CORRECTED 2026-09-03 (§45 B4): `FlexibleBackend`
+calls `rustworkx.generators.heavy_hex_graph(dim)` with `dim` solved to fit the circuit.
+It is not an IBM device coupling map and carries no device's calibration. `linear` and
+`square` are abstract
 stress topologies; heavy-hex is what real IBM devices are. It is also the topology where
 the regression protocol is least reliable.
 
