@@ -734,6 +734,84 @@ variable. If it exists, C1 is next in line.
 
 ---
 
+## 38. ⛔ PRIORITY 1 — CONFIDENCE INTERVALS. The headline does not survive. — 2026-09-03
+
+`intervals.py`. Resolves **D-1.1**, and it is the most consequential correction in the
+study.
+
+### Method, chosen once and applied everywhere
+
+**Point estimates are EXACT, not bootstrapped.** For k runs per version and n seeds
+there are n^k possible means per side (1,728 for k=3, n=12). The call rate is
+`(1/N²)·Σ_a |{b : b ≥ a(1+t)}|` — one sort plus one `searchsorted`. This removes
+bootstrap noise from the estimate entirely and reproduces the reviewer's independent
+exact figure (0.2710 vs our earlier bootstrap's 0.2705).
+
+**Intervals resample THE SEEDS, not the iterations.** The bootstrap over draw-pairs only
+describes behaviour *given* the 12 seeds we ran; the actual sampling error is which 12
+seeds were drawn. Percentile bootstrap, **B = 2,000**, 95% interval. Chosen because the
+statistic is a bounded proportion with no closed form here, Wald intervals fail near 0
+(several rates are near 0), and §30 measured these distributions as strongly non-normal
+(`cc_n64` skew +2.99, Shapiro p = 0) so no distributional assumption is safe.
+
+For simple counts over circuits, **Wilson score intervals** — also asymmetric, also
+valid near the bounds. Labelled as such in the CSVs.
+
+### ⛔ The per-circuit rates are NOT interpretable at 12 seeds
+
+| topology | circuit | true Δ | P(call) | **95% CI** | width |
+|---|---|---:|---:|---|---:|
+| linear | `qft_n320` | +0.0% | 0.271 | **[0.017, 0.631]** | 0.615 |
+| linear | `bv_n30` | +22.4% | 0.930 | [0.702, 1.000] | 0.298 |
+| heavy-hex | `cc_n32` | +6.3% | 0.344 | [0.066, 0.744] | 0.678 |
+| heavy-hex | `bv_n140` | +4.9% | 0.220 | [0.026, 0.601] | 0.575 |
+| square | `bv_n280` | +2.2% | 0.061 | [0.000, 0.279] | 0.279 |
+
+**Interval widths run 0.25 to 0.68. Lower bounds sit at or near zero.**
+
+> **The claim "`qft_n320` has a 27% false-positive rate" is WITHDRAWN.** Its interval is
+> [1.7%, 63.1%]. Every sentence in this record quoting a per-circuit probability to
+> three decimals overstated what 12 observations can support, and every such sentence is
+> superseded by this section.
+
+### ✅ What survives: the corpus-level proportion, and the topology ordering
+
+| topology | genuine unstable / circuits | proportion | **95% Wilson CI** |
+|---|---|---:|---|
+| `linear` | 2 / 51 | 0.039 | **[0.011, 0.132]** |
+| `square` | 10 / 52 | 0.192 | **[0.108, 0.319]** |
+| **`heavy-hex`** | **14 / 52** | **0.269** | **[0.168, 0.403]** |
+
+**`linear`'s interval [0.011, 0.132] and `heavy-hex`'s [0.168, 0.403] do not overlap.**
+The topology ordering is supported by the data, not an artifact of point estimates.
+
+### The restructured claim
+
+**Not:** *"this circuit is miscalled 27% of the time"* — unsupportable at n=12.
+
+**But:** *"on heavy-hex, IBM's own hardware connectivity, 26.9% of circuits (95% CI
+16.8%–40.3%) have a regression verdict that depends on which seeds were drawn, after
+excluding circuits whose true effect lies within 3 pp of the decision threshold."*
+
+The per-circuit rates are individually noise. **The fraction of the corpus affected is
+the finding**, and it is the quantity with a usable interval.
+
+### Note on the small count difference vs §37
+
+§37 reported 15 genuine on heavy-hex; this section reports 14. `flip_analysis.py`
+bootstraps and includes circuits with ≥2 seeds; `intervals.py` computes exactly and
+requires ≥12 seeds in **both** arms. **`intervals.py` is authoritative** — the exact
+computation and the stricter inclusion rule are both improvements. §37's counts are
+superseded.
+
+### Still open in Priority 1
+
+- [ ] Machine-checkable inventory of every probability in the repository and its CI.
+- [ ] §32's calibration rates (FP/FN by effect size) have no intervals yet.
+- [ ] §34's runs-sensitivity table has no intervals yet.
+
+---
+
 ## 37. ALL THREE ROUTED TOPOLOGIES — complete, and heavy-hex is the worst — 2026-09-03
 
 All four censuses finished: `square` and `heavy-hex` on 2.0.0 and 2.0.2, 58 circuits ×
