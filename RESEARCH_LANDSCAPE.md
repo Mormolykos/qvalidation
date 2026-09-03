@@ -19,8 +19,9 @@ file without checking it here first.
 | ✅ **LIVE** | Benchpress passes no `seed_transpiler` in any of its 8 SDK gyms | §33, source-verified |
 | ✅ **LIVE** | The transpiler seed is the dominant entropy source | §28, cross-process control |
 | ✅ **LIVE** | A fixed seed reproduces bit-identically; different seeds do not | §44, re-run from clean |
-| ⭐ **LIVE** | **`bv_n140` on heavy-hex truly changes +5.75% [+4.10, +7.38] and is FALSELY CALLED a ≥+10% regression 26.3% of the time [18.9, 34.9]** | §50 |
-| ⭐ **LIVE** | **That false positive is NOT fixed by running more: k=20 (~40 h compute) still leaves 4.84%** | §50 |
+| ⭐ **LIVE** | **`bv_n140` on heavy-hex has a long-run change of +5.37% [+4.27, +6.50] and is FALSELY CALLED a ≥+10% regression 24.4% of the time [19.5, 31.1]** — 400 seeds across 21 processes | §50, §51 |
+| ✅ **LIVE** | That result **reproduces on a disjoint scattered seed set across 10 fresh processes** (22.6% vs 26.3%, CIs overlap) — the PRNG/process-state confound is removed | §51 |
+| ⭐ **LIVE** | **That false positive is NOT fixed by running more: pooled k=20 (~40 h compute) still leaves 3.74%** | §50, §51 |
 | ✅ **LIVE** | `bv_n140` on linear (+31.0% real regression) is MISSED 2.98% [1.59, 4.91] — but k=8 removes this one | §48, §49 |
 | ⭐ **LIVE** | #14402's own **+46.1%** for `bv_n140` is one draw from a range spanning **−10.5% to +100%**; the truth is **+31.0%** | §48 |
 | ✅ **LIVE** | #14402's numbers **reproduce independently** — within 0.5 pp and 2.4 pp on the two low-variance circuits | §48 |
@@ -765,6 +766,67 @@ direct evidence of how hard. It is also direct evidence that the problem is real
 **Phase 0 for C2 before anything is built:** search specifically for a study treating
 SDK version as the independent variable and transpiler output quality as the dependent
 variable. If it exists, C1 is next in line.
+
+---
+
+## 51. THE PRNG / PROCESS-STATE ATTACK — the confound is removed — 2026-09-03
+
+Both critics named the same open threat (§50, ChatGPT point 4): the heavy-hex sample was
+**one contiguous seed block, 1000–1199, inside one OS process**. Any per-process state —
+hash randomisation, allocator layout, a cached RNG — was held constant, and any structure
+in consecutive seeds went unsampled.
+
+### Design, fixed before looking at the result
+
+`scatter.py`. 200 seeds drawn from **7 … 2³¹** by a generator independent of the study,
+split into **10 chunks each run in its own OS process** with a **different
+`PYTHONHASHSEED` per process**. Estimator, threshold (+10%), k (3), inclusion rule and
+direction (1.4.3 → 2.0.0) all unchanged. The original files are untouched; these are new.
+
+### Raw result
+
+| | seeds | processes | long-run change | 95% CI | **false-regression rate** | 95% CI |
+|---|---|---:|---:|---|---:|---|
+| original | 1,000–1,199 contiguous | 1 per arm | +5.752% | [+4.170, +7.378] | **26.28%** | [18.45, 34.20] |
+| **new** | 5,942,995 – 1,076,171,011 | **10 per arm** | +4.999% | [+3.486, +6.613] | **22.59%** | [16.37, 30.61] |
+
+**Seed-set overlap between the two experiments: 0 of 200.** 20 distinct PIDs in total.
+
+### Consistency, tested as intervals and not as point estimates
+
+- new point **22.59% lies inside** the original's CI [18.45, 34.20] — **yes**
+- original point **26.28% lies inside** the new CI [16.37, 30.61] — **yes**
+- the two error-rate CIs **overlap** — yes
+- the two long-run-change CIs **overlap** — yes
+
+The 3.7 pp difference in point estimates is well inside the sampling error of either.
+
+### Pooled, 400 seeds per arm (the two disjoint samples combined)
+
+> **long-run change +5.374% (95% CI +4.272% to +6.495%) — below the +10% cut under
+> every method tried. False-regression rate 24.39% (95% CI 19.48% – 31.08%).**
+
+| k | 1 | 3 | 5 | 8 | 10 | 20 |
+|---|---:|---:|---:|---:|---:|---:|
+| pooled false-regression rate | 34.58% | **24.40%** | 18.53% | 12.95% | 10.35% | **3.74%** |
+
+### What this removes, and what it does not
+
+**REMOVED:** PRNG/process-state artifact as an explanation. The phenomenon reproduces on
+a **disjoint** seed set, drawn from a range six orders of magnitude wider, across 20
+separate processes with differing hash seeds. Contiguity and single-process execution
+were not producing it.
+
+**STILL STANDING as alternative explanations or limits:**
+- one circuit (`bv_n140`), one topology at this depth, one version pair, one SDK;
+- one machine and one OS — nothing here tests a different CPU or platform at n=400;
+- the +10% threshold is still ours, though the finding now survives any cut between
+  roughly +8% and +30% given a long-run change of +5.37%;
+- no causal attribution to any commit, and none attempted.
+
+⚠ The 26.28% figure in §50 is **not** superseded — it is one of two consistent estimates.
+Where a single number is wanted, the pooled **24.4% [19.5, 31.1]** is the one to quote,
+because it rests on 400 seeds across 21 processes rather than 200 in one.
 
 ---
 

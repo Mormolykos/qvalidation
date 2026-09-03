@@ -5,12 +5,17 @@ Benchpress pins the seeds used to **build** circuits and passes no seed to the c
 
 **Headline:** on `bv_n140` — a circuit Qiskit issue
 [#14402](https://github.com/Qiskit/qiskit/issues/14402) itself names — mapped to a
-heavy-hex lattice, the change from Qiskit 1.4.3 to 2.0.0 is **+5.75%** (95% CI +4.10% to
-+7.38%, 200 seeds per version). The suite's own protocol — **three unseeded runs per
-version — reports it as a ≥+10% regression 26.3% of the time** (95% CI 18.9%–34.9%).
+heavy-hex lattice, the change from Qiskit 1.4.3 to 2.0.0 has a long-run mean of **+5.37%**
+(95% CI +4.27% to +6.50%, **400 seeds per version across 21 processes**). The suite's own
+protocol — **three unseeded runs per version — reports it as a ≥+10% regression 24.4% of
+the time** (95% CI 19.5%–31.1%).
+
+Two disjoint 200-seed samples agree: contiguous seeds in one process give 26.3%,
+scattered seeds spanning 5.9 million to 1.08 billion across ten fresh processes give
+22.6%, and each point falls inside the other's interval.
 
 **Running more does not fix it.** Twenty runs per version, about 40 hours of compute at
-the issue's own "about 2 hours each", still leaves a **4.8%** false-positive rate. One
+the issue's own "about 2 hours each", still leaves a **3.7%** false-positive rate. One
 `seed_transpiler` argument removes it at one run.
 
 The same circuit on `linear` changes **+31.0%** and is *missed* 2.98% of the time — a
