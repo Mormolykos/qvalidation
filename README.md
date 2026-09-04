@@ -41,7 +41,7 @@ variance rather than version drift.
 
 | result | value | where |
 |---|---|---|
-| ⭐ **mechanism**: risk vs "is routing stochastic" | Spearman **+0.876**; all 13 deterministic circuits carry **exactly zero** risk | §55 |
+| **mechanism**: deterministic compilation ⇒ zero risk | 13/13 — but this is **arithmetic, not evidence** (§56) | §55, §56 |
 | ⭐ **mechanism**: risk vs distance from θ to the cut | Spearman **−0.833** among stochastic circuits | §55 |
 | ⭐ median ambiguity band, 23 stochastic circuits | **10.9 pp** (max 25.2 pp) — θ-free and direction-free | §55 |
 | circuits carrying risk ≥10% under this version pair | **4 of 26** (7 of 26 at ≥5%) | §55 |

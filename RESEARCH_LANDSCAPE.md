@@ -779,6 +779,43 @@ variable. If it exists, C1 is next in line.
 
 ---
 
+## 56. FIRST-PRINCIPLES AUDIT — every number re-derived from raw data — 2026-09-04
+
+`audit.py`. Ten checks written to fail if the claim is wrong. Verdicts:
+**0 INVALIDATES · 3 REWORD · 2 LIMITATION · 12 OK.**
+
+| # | check | verdict |
+|---|---|---|
+| A1 | pairing validity — same seed set in all 78 files | **OK.** Identical 200-seed set everywhere, sorted identically |
+| A2 | seeds distinct and non-contiguous | **OK.** 200 distinct, 663,193 – 1,105,794,431, **zero consecutive pairs** |
+| A3 | duplicate circuits | **LIMITATION.** `swap_test_n41` ≡ `knn_n41`; **neither is in the eligible set** |
+| A4 | is "stochasticity predicts risk" circular? | ⚠ **REWORD.** 13 circuits have *both arms constant*, so risk is **0 by arithmetic**. A correlation over a sample containing them measures a definition |
+| A5 | recompute §55's Spearman figures | ⚠ **REWORD.** +0.876 has 13 ties at 0 in x, 14 in y — inflated and the wrong statistic. **Withdrawn.** The −0.833 among the 23 stochastic circuits (p < 0.001) **stands** |
+| A6 | the right statistic: 2×2 contingency | **OK.** 12 / 1 / 0 / 13, Fisher exact **p = 2.7×10⁻⁶** — but cell d is definitional, so **REWORD** |
+| A7 | does the ≤10 s rule select high-variance circuits? | **LIMITATION, and Gemini's claim is REFUTED.** selected median spread 0.1126 vs excluded 0.1234, **Mann-Whitney p = 0.768**. If anything the excluded circuits are *more* variable |
+| A8 | headline per-circuit numbers vs raw | **OK.** `cc_n32`, `cc_n64`, `bv_n280`, `knn_341` all reproduce to 1e-6 |
+| A9 | is `cc_n32` really 18 pp clear and still miscalled? | **OK.** θ = −8.28%, per-seed t-CI [−9.13, −6.05]%, distance 18.3 pp, P(call) = 0.00374. ⚠ that is **6 of 1728** triple-pairs — a small count, and the claim rests on it. Single-draw worst case max(new)/min(old) = **+49.5%** |
+| A10 | is the ambiguity band right-censored? | **OK.** every stochastic circuit reaches P = 0.95 within r ≤ 3.0 |
+
+### The three rewordings, applied
+
+1. **§55's Spearman +0.876 is withdrawn** — partly tautological, wrong statistic.
+2. **The Fisher test is partly definitional** — one of its four cells is filled by
+   circuits that cannot err by arithmetic. Reported with that caveat attached.
+3. **"Risk is fully predicted by two properties"** becomes *"deterministic compilation
+   carries zero risk by arithmetic; among stochastic circuits, distance to the boundary
+   predicts risk, ρ = −0.833."*
+
+### What the audit could NOT break
+
+- No arithmetic error anywhere. Every headline number re-derives from raw data.
+- Pairing, seed independence and process isolation are sound.
+- Selection bias on variance is **refuted by measurement**, not argued away.
+- `cc_n32` is real: an 18-point-clear reference change, still miscalled — **though on 6
+  of 1728 triples, which is thin and is now stated wherever the claim appears.**
+
+---
+
 ## 55. ⛔ ROUND THREE — the suite-level claim is WITHDRAWN and replaced by a mechanism — 2026-09-04
 
 Both critics converged: the circuit is not the effective independent unit, and
@@ -856,15 +893,25 @@ version pair.
 ChatGPT asked whether the six hit families are intrinsically more stochastic. They are,
 and the effect reduces to **two measurable quantities**:
 
-| predictor | Spearman vs error rate |
-|---|---:|
-| per-seed ratio SD (is routing stochastic at all?) | **+0.876** |
-| distance from θ to the cut, among stochastic circuits | **−0.833** |
+⚠ **CORRECTED 2026-09-04 by the first-principles audit (§56 A4–A6).** This section first
+reported *"per-seed ratio SD vs risk, Spearman +0.876"* as a finding. **It is partly a
+tautology and the figure is withdrawn.** For the 13 circuits whose *both arms are
+constant*, P(call) is a constant and the risk is **zero by arithmetic, not by
+measurement**. A correlation computed over a sample containing them measures a
+definition. Spearman is also the wrong statistic there — 13 ties at zero in x and 14 in y.
 
-**All 13 zero-SD circuits have exactly zero risk.** So the "perfect family separation" of
-§54 is not family magic — `cat`, `ghz`, `ising`, `wstate` compile deterministically on
-this topology, and everything else follows. **The unit of analysis is not the family. It
-is whether routing is stochastic, and then how far θ sits from the decision boundary.**
+What survives, and it is the real finding:
+
+| statement | value | status |
+|---|---|---|
+| deterministic compilation ⇒ zero risk | 13/13 | **arithmetic, not evidence** |
+| among the 23 circuits whose compilation **is** stochastic, distance from θ to the cut predicts risk | **Spearman −0.833, p < 0.001, n = 23** | **empirical** |
+| stochastic ∧ risk = 12, stochastic ∧ no risk = 1, deterministic ∧ risk = 0 | Fisher exact **p = 2.7×10⁻⁶** | partly definitional (cell d) |
+
+So the "perfect family separation" of §54 is not family magic — `cat`, `ghz`, `ising`,
+`wstate` compile deterministically on this topology, and cannot err. **The unit of
+analysis is not the family. Among circuits that can err at all, it is how far θ sits from
+the decision boundary — and that relationship is measured, not defined.**
 
 ### R4 and C4 — conceded without qualification
 
@@ -881,9 +928,10 @@ is whether routing is stochastic, and then how far θ sits from the decision bou
 ### The restructured claim — no 63-point interval to defend
 
 > In a pre-registered sample of 39 QASMBench circuits transpiled to a heavy-hex lattice
-> under Qiskit 1.4.3 and 2.0.0, **finite-sample decision risk is fully predicted by two
-> measurable circuit properties**: whether routing is stochastic (Spearman +0.876 with
-> the risk) and how far the reference change sits from the decision boundary (−0.833).
+> under Qiskit 1.4.3 and 2.0.0, **circuits whose compilation is deterministic carry zero
+> finite-sample decision risk by arithmetic; among the 23 whose compilation is
+> stochastic, risk is predicted by how far the reference change sits from the decision
+> boundary (Spearman −0.833, p < 0.001)**.
 > **Circuits whose compilation is deterministic carry exactly zero risk; among the 23
 > whose compilation is stochastic, the median ambiguity band is 10.9 percentage points**
 > — a window of true change the three-run protocol cannot resolve in either direction,
