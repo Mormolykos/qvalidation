@@ -20,9 +20,10 @@ by the same measurement's long-run mean.
 In a pre-registered study of 39 QASMBench circuits (28–420 qubits) transpiled to a
 heavy-hex lattice under Qiskit 1.4.3 and 2.0.0, using 200 independent transpiler seeds
 per arm across ten operating-system processes, we find that circuits whose compilation is
-deterministic carry zero risk by construction, while among the 23 circuits whose
-compilation is stochastic the risk is governed by how far the reference change sits from
-the decision boundary (Spearman ρ = −0.833, p < 0.001). Seven of 26 eligible circuits
+deterministic carry zero risk by construction, while among the 23 resolved circuits whose
+compilation is stochastic the risk falls with distance from the decision boundary — an
+association that is largely induced by the decision rule itself and which we therefore do
+not claim as a mechanism (§4.1). Seven of 26 eligible circuits
 carry a risk of at least 5% and four carry at least 10% under a +10% threshold. The
 median circuit admits an **ambiguity band of 10.9 percentage points** — a window of true
 change the three-run protocol cannot resolve in either direction, independent of the
@@ -145,6 +146,15 @@ cases during development. The integer form was verified against exact-integer br
 over 900 cases with zero disagreements. Risk is then computed by enumerating all
 200³ = 8,000,000 sum-triples per arm for *k* ≤ 3, and by Monte Carlo above that.
 
+Two conventions are stated explicitly. **Draws are enumerated with replacement**, so the
+tuple (s, s, s) is included; a maintainer running *k* distinct seeds corresponds to
+enumeration *without* replacement. We computed both: on the pre-registered data the
+per-circuit risk differs by at most 0.0011 and the count of circuits at risk ≥ 5% is
+unchanged at 7. **Equality at the threshold counts as a regression call**, consistent with
+the ≥ in the decision rule. The integer path is unguarded against a zero baseline sum,
+which is undefined; no circuit in this study has a zero 2-qubit gate count, so the branch
+is never exercised.
+
 ### 3.3 Pre-registration
 
 The circuit list, protocol, analysis code and falsification criteria were committed
@@ -204,13 +214,24 @@ Of the 26 eligible circuits, **13 compile deterministically** — every seed giv
 gate count in both arms. Their risk is zero *by arithmetic*, not by measurement, and we
 do not report this as evidence.
 
-Among the **23 circuits whose compilation is stochastic**, risk is governed by proximity
-to the decision boundary:
+Among the **23 resolved circuits whose compilation is stochastic** (note the denominator:
+23 of the 36 *resolved* circuits, of which 13 are also non-boundary and therefore
+*eligible*), risk falls with distance from the decision boundary:
 
 > **Spearman ρ = −0.833 between distance from θ to the threshold and the risk
 > (p < 0.001, n = 23).**
 
-This is the study's central mechanistic result. The apparent clustering of outcomes by
+⚠ **This is not a discovered mechanism, and we do not claim it as one.** Risk is a
+monotone decreasing function of |θ − t| for *any* distribution, by the definition of the
+decision rule. We verified the size of this induced effect by simulation: on synthetic
+circuits with θ and spread drawn independently — containing no compiler at all — the same
+statistic has mean −0.661 (30 trials of 23 circuits), and 5 of 30 trials reach −0.833 or
+stronger. **The sign and rough magnitude of this correlation are properties of the
+decision rule, not evidence about Qiskit.**
+
+What *is* empirical is the **scale** of the seed-induced spreads that make the risk
+non-negligible at a given distance — reported as ambiguity bands in §4.3 — and the fact
+that 13 of 26 eligible circuits have no spread at all. The apparent clustering of outcomes by
 algorithm family — `adder`, `knn`, `cc`, `swap_test`, `bv`, `qft` affected; `cat`, `ghz`,
 `ising`, `wstate` not — is a consequence: the latter families compile deterministically on
 this topology and therefore cannot err.
@@ -239,18 +260,29 @@ The highest-risk eligible circuits:
 | `adder_n118` | +6.47% | [+5.70, +7.21] | 12.67% | [8.16, 19.25] |
 | `knn_341` | +6.20% | [+5.69, +6.71] | 4.68% | [2.70, 7.68] |
 
-### 4.3 The ambiguity band — a version-pair-free statement
+### 4.3 The ambiguity band — free of θ, not free of the version pair
 
-The risk in §4.2 depends on where θ happens to sit for this version pair. The
-**ambiguity band** does not: it is the width of the interval of true change over which
-P(call) runs from 0.05 to 0.95, and contains no θ and no direction.
+The risk in §4.2 depends on where θ happens to sit. The **ambiguity band** does not: it is
+the width of the interval of true change over which P(call) runs from 0.05 to 0.95, and
+contains no θ and no direction.
+
+⚠ **It is not, however, version-pair-free, and an earlier draft of this paper wrongly
+called it that.** The band is computed by sweeping a synthetic change over the *measured
+per-seed residual* of the 1.4.3 → 2.0.0 pair, so its shape is inherited from that pair
+even though its location is not. It is also computed under a **multiplicative** residual
+model. That model is not the better-fitting one on this topology — an additive model fits
+better on 29 of 39 circuits — so we recomputed the band additively: the median moves from
+**10.86 pp to 10.73 pp**, and is wider under the additive model on only 1 of 23 circuits.
+The figure is therefore robust to the model choice, but the choice is a modelling
+assumption and is stated here rather than buried.
 
 > **Among the 23 stochastic circuits, the median ambiguity band is 10.9 percentage
 > points** (p75 = 14.8, max = 25.2).
 
-For the median stochastic circuit, a true change anywhere in an 11-point-wide window
-around the threshold is unresolvable by a three-run comparison, in either direction, for
-any version pair.
+For the median stochastic circuit in this sample, a true change anywhere in an
+11-point-wide window around the threshold is unresolvable by a three-run comparison, in
+either direction. We claim this for the circuits, topology, SDK and version pair measured
+here; extending it to other version pairs requires measuring their residuals.
 
 This also disposes of the objection that the effect is mere threshold proximity.
 `cc_n32` has θ = −8.28% (per-seed t-CI [−9.13, −6.05]), **18.3 percentage points below**
