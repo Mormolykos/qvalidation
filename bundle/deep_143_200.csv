@@ -1,0 +1,6 @@
+circuit,qiskit_baseline,qiskit_candidate,n_seeds,k,threshold,true_change_pct,true_change_ci_lo_pct,true_change_ci_hi_pct,ground_truth,distance_to_cut_pp,p_call_exact,error_rate,error_ci_lo,error_ci_hi,error_ci_excludes_zero,mc_se_per_replicate,method_point,method_interval
+bv_n30,1.4.3,2.0.0,200,3,0.1,24.18,22.691,25.724,REGRESSION,14.18,0.992946,0.007054,0.002259,0.014318,True,0.000132,"exact over 200**3 sum-tuples, integer rule","seed bootstrap B=400, MC 400000 pairs each"
+bv_n70,1.4.3,2.0.0,200,3,0.1,30.295,28.525,32.139,REGRESSION,20.3,0.998504,0.001496,0.000196,0.004053,True,6.1e-05,"exact over 200**3 sum-tuples, integer rule","seed bootstrap B=400, MC 400000 pairs each"
+bv_n140,1.4.3,2.0.0,200,3,0.1,31.035,28.377,33.796,REGRESSION,21.03,0.970199,0.029801,0.01722,0.049909,True,0.000269,"exact over 200**3 sum-tuples, integer rule","seed bootstrap B=400, MC 400000 pairs each"
+adder_n64,1.4.3,2.0.0,200,3,0.1,10.818,10.567,11.071,REGRESSION,0.82,0.784027,0.215973,0.152316,0.289732,True,0.000651,"exact over 200**3 sum-tuples, integer rule","seed bootstrap B=400, MC 400000 pairs each"
+qft_n29,1.4.3,2.0.0,200,3,0.1,0.491,-0.007,0.994,NO_REGRESSION,9.51,7.3e-05,7.3e-05,5e-06,0.00026,True,1.3e-05,"exact over 200**3 sum-tuples, integer rule","seed bootstrap B=400, MC 400000 pairs each"
