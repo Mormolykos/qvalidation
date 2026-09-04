@@ -1,0 +1,21 @@
+{"record": "env", "qiskit_version": "1.4.3", "pid": 28084, "topology": "heavy-hex", "hashseed": "1000"}
+{"record": "run", "circuit": "dnn_n33", "topology": "heavy-hex", "seed": 663193, "two_q_gate": "cz", "two_q": 381, "pid": 28084}
+{"record": "run", "circuit": "dnn_n33", "topology": "heavy-hex", "seed": 3807688, "two_q_gate": "cz", "two_q": 378, "pid": 28084}
+{"record": "run", "circuit": "dnn_n33", "topology": "heavy-hex", "seed": 7621311, "two_q_gate": "cz", "two_q": 380, "pid": 28084}
+{"record": "run", "circuit": "dnn_n33", "topology": "heavy-hex", "seed": 14967014, "two_q_gate": "cz", "two_q": 376, "pid": 28084}
+{"record": "run", "circuit": "dnn_n33", "topology": "heavy-hex", "seed": 16702989, "two_q_gate": "cz", "two_q": 377, "pid": 28084}
+{"record": "run", "circuit": "dnn_n33", "topology": "heavy-hex", "seed": 22940735, "two_q_gate": "cz", "two_q": 343, "pid": 28084}
+{"record": "run", "circuit": "dnn_n33", "topology": "heavy-hex", "seed": 24940026, "two_q_gate": "cz", "two_q": 410, "pid": 28084}
+{"record": "run", "circuit": "dnn_n33", "topology": "heavy-hex", "seed": 31067656, "two_q_gate": "cz", "two_q": 395, "pid": 28084}
+{"record": "run", "circuit": "dnn_n33", "topology": "heavy-hex", "seed": 35826952, "two_q_gate": "cz", "two_q": 391, "pid": 28084}
+{"record": "run", "circuit": "dnn_n33", "topology": "heavy-hex", "seed": 40309742, "two_q_gate": "cz", "two_q": 374, "pid": 28084}
+{"record": "run", "circuit": "dnn_n33", "topology": "heavy-hex", "seed": 51130043, "two_q_gate": "cz", "two_q": 407, "pid": 28084}
+{"record": "run", "circuit": "dnn_n33", "topology": "heavy-hex", "seed": 57136863, "two_q_gate": "cz", "two_q": 371, "pid": 28084}
+{"record": "run", "circuit": "dnn_n33", "topology": "heavy-hex", "seed": 70830828, "two_q_gate": "cz", "two_q": 356, "pid": 28084}
+{"record": "run", "circuit": "dnn_n33", "topology": "heavy-hex", "seed": 72771198, "two_q_gate": "cz", "two_q": 353, "pid": 28084}
+{"record": "run", "circuit": "dnn_n33", "topology": "heavy-hex", "seed": 77142424, "two_q_gate": "cz", "two_q": 347, "pid": 28084}
+{"record": "run", "circuit": "dnn_n33", "topology": "heavy-hex", "seed": 81007614, "two_q_gate": "cz", "two_q": 366, "pid": 28084}
+{"record": "run", "circuit": "dnn_n33", "topology": "heavy-hex", "seed": 88454677, "two_q_gate": "cz", "two_q": 409, "pid": 28084}
+{"record": "run", "circuit": "dnn_n33", "topology": "heavy-hex", "seed": 91654132, "two_q_gate": "cz", "two_q": 348, "pid": 28084}
+{"record": "run", "circuit": "dnn_n33", "topology": "heavy-hex", "seed": 97582359, "two_q_gate": "cz", "two_q": 371, "pid": 28084}
+{"record": "run", "circuit": "dnn_n33", "topology": "heavy-hex", "seed": 99365955, "two_q_gate": "cz", "two_q": 381, "pid": 28084}

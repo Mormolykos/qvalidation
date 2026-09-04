@@ -122,5 +122,24 @@ reported regardless**, and no label changes any number.
 
 ## 8. Amendments
 
-*(none — any amendment must be appended here with its date and reason, and must not
-alter the text above)*
+### A1 — 2026-09-04 — harness bug fixed before any result was inspected
+
+Three of the 39 selected circuits — `knn_129`, `knn_341`, `32` — failed to run. Cause: a
+bug in `scatter.py`'s worker, which built the QASM path as `<dir>/<name>/<name>.qasm`.
+Benchpress names circuits after the **file stem**, not the directory: `knn_129` lives in
+`knn_n129/`, `knn_341` in `knn_n341/`. The worker now resolves paths through Benchpress's
+own `get_qasmbench_circuits`.
+
+**This is a harness fault, not a circuit crash**, so §7.1's "report it as a crash" does
+not apply — the measurement was never attempted. The three circuits were re-run under the
+identical protocol and seed set.
+
+**No result had been inspected when this was found and fixed.** The failures were
+identified from the run log, and `prereg_analysis.py` had not been executed on any data.
+The fix cannot have been outcome-dependent, and the commit history shows the analysis
+running only afterwards.
+
+A separate defect found in the same pass and also fixed before any analysis: the circuit
+list was written with CRLF line endings, so every name carried a trailing `\r` and only
+the final line — which has no terminator — ran. That is why the first attempt produced
+exactly one usable circuit.

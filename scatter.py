@@ -53,9 +53,19 @@ from benchpress.utilities.backends import FlexibleBackend
 req, circuit_name, topo, out, seeds = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], [int(x) for x in sys.argv[5].split(",")]
 if req and qiskit.__version__ != req:
     sys.exit(f"ABORT: qiskit {qiskit.__version__} != required {req}")
+from benchpress.utilities.io import get_qasmbench_circuits
 qd = Configuration.get_qasm_dir("qasmbench-large")
 opt = Configuration.options["qiskit"]["optimization_level"]
-c = QuantumCircuit.from_qasm_file(os.path.join(qd, circuit_name, circuit_name + ".qasm"))
+# Resolve the path through Benchpress's OWN loader. An earlier version built it as
+# qd/<name>/<name>.qasm, which is wrong for the corpus's three naming mismatches:
+# knn_129 lives in knn_n129/, knn_341 in knn_n341/, and 32 elsewhere again. Benchpress
+# names circuits after the FILE STEM, not the directory. Assuming otherwise cost three
+# circuits of a 39-circuit pre-registered sample.
+_paths, _names = get_qasmbench_circuits(qd)
+_by_name = dict(zip(_names, _paths))
+if circuit_name not in _by_name:
+    sys.exit(f"ABORT: '{circuit_name}' is not a circuit name benchpress knows")
+c = QuantumCircuit.from_qasm_file(_by_name[circuit_name])
 b = FlexibleBackend(c.num_qubits, topo, control_flow=True)
 with open(out, "w") as fh:
     fh.write(json.dumps({"record": "env", "qiskit_version": qiskit.__version__,
