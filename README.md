@@ -3,6 +3,16 @@
 Benchpress pins the seeds used to **build** circuits and passes no seed to the code that
 **compiles** them. This repository measures what that costs.
 
+> **A note on reviewer labels.** *Reviewer A*, *Reviewer B* and *Reviewer C* appear
+> throughout `RESEARCH_LANDSCAPE.md`, `SETTLED.json` and the analysis scripts. They are
+> three distinct large language models used as adversarial reviewers and as an
+> independent code auditor. The specific products are not named: which tools were used is
+> an implementation detail of how the review was run, not a scientific claim, and naming
+> them would imply an endorsement none of them gave. What matters for the record is that
+> each review was independent of the author and of the others, and that **every attack is
+> recorded here with its outcome, whether or not it survived** — including the four
+> claims it forced us to withdraw.
+
 **Headline:** on `bv_n140` — a circuit Qiskit issue
 [#14402](https://github.com/Qiskit/qiskit/issues/14402) itself names — mapped to a
 heavy-hex lattice, the change from Qiskit 1.4.3 to 2.0.0 has a long-run mean of **+5.37%**

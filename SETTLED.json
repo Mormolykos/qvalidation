@@ -6,7 +6,7 @@
     {
       "id": "S01", "settled": "2026-09-03", "status": "SETTLED",
       "attack": "Unseeded backend error rates confound every between-version comparison. FlexibleBackend draws error rates randomly per construction and the two arms build backends separately; at optimization level 2 the layout passes score with error rates.",
-      "raised_by": "Claude, self-attack",
+      "raised_by": "the author, self-attack",
       "command": "python -c \"see RESEARCH_LANDSCAPE.md sec 46 attack 3\"",
       "result": "0 of 24 (circuit,seed) cases changed the observable, with 4 of 4 VERIFIED-DISTINCT error-rate draws per circuit. The test had power; the confound does not exist.",
       "keywords": ["backend", "error rate", "confound", "unseeded backend", "FlexibleBackend", "optimization level"]
@@ -14,7 +14,7 @@
     {
       "id": "S02", "settled": "2026-09-03", "status": "SETTLED",
       "attack": "Consecutive seeds 1000-1011 are not independent draws.",
-      "raised_by": "Claude, self-attack",
+      "raised_by": "the author, self-attack",
       "command": "RESEARCH_LANDSCAPE.md sec 46 attack 8",
       "result": "lag-1 autocorrelation between -0.22 and +0.11 across four circuits; a scattered seed set spanning 7..2^31 gives matching means and spreads.",
       "keywords": ["consecutive seeds", "seed independence", "autocorrelation", "seed spacing"]
@@ -22,7 +22,7 @@
     {
       "id": "S03", "settled": "2026-09-04", "status": "SETTLED",
       "attack": "The 200 seeds came from one contiguous block inside one OS process, so a PRNG or process-state artifact could produce the result.",
-      "raised_by": "ChatGPT and Gemini, round 2",
+      "raised_by": "Reviewer A and Reviewer B, round 2",
       "command": "python scatter.py --circuit bv_n140 --topology heavy-hex --n 200 --chunks 10 ...",
       "result": "A DISJOINT set of 200 scattered seeds (5.9M-1.08B) across 10 fresh processes with differing PYTHONHASHSEED gives 22.59% [16.37,30.61] against 26.28% [18.45,34.20]. Zero seed overlap. Each point lies inside the other's interval. Confound removed.",
       "keywords": ["PRNG", "process state", "contiguous", "scattered seeds", "PYTHONHASHSEED", "hash seed", "process diversity"]
@@ -30,7 +30,7 @@
     {
       "id": "S04", "settled": "2026-09-04", "status": "SETTLED",
       "attack": "The <=10s runtime selection rule biases the sample toward high-relative-variance circuits.",
-      "raised_by": "Gemini, round 3",
+      "raised_by": "Reviewer B, round 3",
       "command": "python audit.py  (check A7)",
       "result": "REFUTED. Selected median seed spread 0.1126 vs excluded 0.1234, Mann-Whitney p=0.768. If anything the EXCLUDED circuits are more variable. NOTE: this is 'no detected difference', not proof of independence.",
       "keywords": ["selection bias", "10s", "runtime selection", "convenience sample", "Mann-Whitney", "representativeness"]
@@ -38,7 +38,7 @@
     {
       "id": "S05", "settled": "2026-09-04", "status": "SETTLED",
       "attack": "The integer decision rule q*Sb >= (q+p)*Sa may not equal the intended threshold comparison; check equality, rounding, direction.",
-      "raised_by": "Claude, self-attack (found a REAL float defect first)",
+      "raised_by": "the author, self-attack (found a REAL float defect first)",
       "command": "python audit.py  (checks A8, P8.1)",
       "result": "The float form b >= a(1+t) disagreed with the literal rule in 84 of 900 cases, so it was REPLACED by exact integer arithmetic, verified against exact-integer brute force: 900 cases, 0 disagreements. Threshold equality correctly counts as a call.",
       "keywords": ["integer rule", "decision rule", "exactness", "floating point", "equality", "threshold comparison", "rounding"]
@@ -46,7 +46,7 @@
     {
       "id": "S06", "settled": "2026-09-04", "status": "SETTLED",
       "attack": "Enumeration draws k seeds WITH replacement, but a maintainer runs k DISTINCT seeds.",
-      "raised_by": "Claude, self-attack",
+      "raised_by": "the author, self-attack",
       "command": "python audit.py  (check P9)",
       "result": "Both computed on the pre-registered data. Max per-circuit risk difference 0.0011; the count of circuits at risk >=5% is UNCHANGED at 7. Not outcome-determining.",
       "keywords": ["replacement", "with replacement", "without replacement", "enumeration", "combinations", "ordered tuples"]
@@ -54,7 +54,7 @@
     {
       "id": "S07", "settled": "2026-09-04", "status": "SETTLED",
       "attack": "The ambiguity band uses a multiplicative residual model, but additive fits better on this topology.",
-      "raised_by": "Claude, self-attack",
+      "raised_by": "the author, self-attack",
       "command": "python model_check.py --topology heavy-hex --pair 200:202 --band-compare",
       "result": "Recomputed additively at 200 seeds: median band 10.86 pp -> 10.73 pp, wider under additive on only 1 of 23 circuits. Robust to the model choice. The assumption must be DISCLOSED but does not change the number.",
       "keywords": ["multiplicative", "additive", "residual model", "ambiguity band model", "band model"]
@@ -62,7 +62,7 @@
     {
       "id": "S08", "settled": "2026-09-04", "status": "SETTLED",
       "attack": "The theta bootstrap resamples the SAME seed indices across both arms, imposing a covariance the sampling design does not have. Flagged as a possible real inferential error.",
-      "raised_by": "ChatGPT, round 3, attack 5",
+      "raised_by": "Reviewer A, round 3, attack 5",
       "command": "compare joint vs independent arm resampling on the pre-registered data",
       "result": "FAILS. Both arms were measured at the IDENTICAL 200 seeds, so the seed is the sampling unit and paired resampling is correct. Cross-arm correlation median -0.009, 0 of 26 circuits above |0.3|. Joint vs independent intervals differ by <=0.05 pp and produce ZERO verdict flips on 5 tested circuits.",
       "keywords": ["bootstrap", "paired arms", "joint resampling", "independent resampling", "covariance", "arm dependence", "pseudoreplication"]
@@ -70,7 +70,7 @@
     {
       "id": "S09", "settled": "2026-09-04", "status": "SETTLED",
       "attack": "Duplicate circuits inflate the endpoint count.",
-      "raised_by": "Claude, self-attack",
+      "raised_by": "the author, self-attack",
       "command": "python audit.py  (check A3)",
       "result": "swap_test_n41 and knn_n41 are byte-identical seed-for-seed in both arms. NEITHER is in the eligible set (both are BOUNDARY), so the endpoint is unaffected. No other duplicate pair exists.",
       "keywords": ["duplicate", "identical circuits", "knn_n41", "swap_test_n41", "pseudoreplication"]
@@ -78,7 +78,7 @@
     {
       "id": "S10", "settled": "2026-09-04", "status": "SETTLED",
       "attack": "Wilson intervals assume the 26 circuit classifications are independent; algorithm-family clustering makes them too narrow.",
-      "raised_by": "ChatGPT, round 2",
+      "raised_by": "Reviewer A, round 2",
       "command": "python followup.py  (F8)",
       "result": "CONFIRMED and ACTED ON. Families are perfectly separated (all-hit or all-miss). Cluster bootstrap over families, B=20000: [17.4%, 81.0%] against Wilson [28.8%, 64.5%]. The suite-level proportion was WITHDRAWN as a headline as a result.",
       "keywords": ["Wilson", "cluster", "family", "clustering", "independence", "effective sample size", "12/26", "46.2%"]
@@ -86,7 +86,7 @@
     {
       "id": "S11", "settled": "2026-09-04", "status": "SETTLED",
       "attack": "The rho = -0.833 correlation is presented as a discovered mechanism.",
-      "raised_by": "Claude, self-attack during the 16-phase red team",
+      "raised_by": "the author, self-attack during the 16-phase red team",
       "command": "simulate circuits with theta and spread drawn INDEPENDENTLY, no compiler involved",
       "result": "The claim was WITHDRAWN. Synthetic data containing no compiler reproduces the statistic at mean -0.661 over 30 trials of 23 circuits, with 5 of 30 reaching -0.833 or stronger. The association is induced by the decision rule. Already corrected in the paper at commit 52f24dd.",
       "keywords": ["rho", "-0.833", "Spearman", "mechanism", "correlation", "tautology", "mechanistic"]
@@ -94,7 +94,7 @@
     {
       "id": "S12", "settled": "2026-09-03", "status": "SETTLED",
       "attack": "The observable or the backend differs across Qiskit versions, confounding the comparison.",
-      "raised_by": "Claude, self-attack",
+      "raised_by": "the author, self-attack",
       "command": "RESEARCH_LANDSCAPE.md sec 46 attacks 1, 2, 7",
       "result": "two_q_gate_type is 'cz' in all three Qiskit versions AND on all four topologies; transpiled output contains no other 2-qubit gate; coupling map identical across versions (278 edges, hash ef616023); basis gates identical.",
       "keywords": ["observable", "cz", "coupling map", "basis gates", "backend identity", "version comparability"]
@@ -102,7 +102,7 @@
     {
       "id": "S13", "settled": "2026-09-04", "status": "SETTLED",
       "attack": "The pre-registration was not followed; analysis choices were made after seeing results.",
-      "raised_by": "Claude, self-attack (audit phase 2)",
+      "raised_by": "the author, self-attack (audit phase 2)",
       "command": "python audit.py ; git log --diff-filter=A -- prereg_analysis.py results/raw/prereg",
       "result": "Constants match the code EXACTLY: BOOT_TRUTH=4000, BOOT_ERR=400, BOUNDARY_PP=3.0, rng seed 20260904. Commit order verified: pre-registration 23:51:08, analysis code 23:52:38, data 09:13:07 next morning. One amendment (A1) was recorded, for two harness bugs found BEFORE any result was inspected.",
       "keywords": ["preregistration", "prereg", "post hoc", "researcher degrees of freedom", "timestamps", "commit order"]
@@ -110,7 +110,7 @@
     {
       "id": "S14", "settled": "2026-09-04", "status": "SETTLED",
       "attack": "Benchpress performs some aggregation over runs (mean or best-of-k), so comparing means is a strawman.",
-      "raised_by": "Gemini, round 2",
+      "raised_by": "Reviewer B, round 2",
       "command": "grep -rn 'statistics.mean|np.mean|n_runs|num_runs|repeat|addoption' benchpress/",
       "result": "Benchpress performs NO aggregation anywhere: 0 means, 0 run-count options across the whole repository. It records one value per invocation. Separately, min-of-3 was TESTED: all 8 circuits still err and every rate roughly DOUBLES, so best-of-k makes the problem worse.",
       "keywords": ["aggregation", "mean", "best-of-k", "min-of-3", "minimum", "strawman", "estimator choice"]
@@ -118,7 +118,7 @@
     {
       "id": "S15", "settled": "2026-09-04", "status": "SETTLED",
       "attack": "The abstract and sec 2.1 claim NO gym passes a compiler seed. BQSKit's gym passes seed=0.",
-      "raised_by": "Claude, verified by reading IBM's source at bqskit_gym/device_transpile/test_summit.py:179",
+      "raised_by": "the author, verified by reading IBM's source at bqskit_gym/device_transpile/test_summit.py:179",
       "command": "grep -n 'no gym|eight gym|seed_transpiler' PAPER.md",
       "result": "CONFIRMED TRUE, AND NOW FIXED IN THE PAPER at commit 8e23d0c. The abstract states the Qiskit gym compiles unseeded 'while the BQSKit gym in the same repository does seed its compiler', and sec 2.1 carries an explicit scope note that seed_transpiler is a Qiskit-only API the other six gyms cannot call. Verified 2026-09-04: the universal claim no longer appears anywhere in PAPER.md. This entry read OPEN with 'the paper at 52f24dd still contains the false claim' until 2026-09-04; that was stale, and the staleness was itself caught during the F1-F6 validation pass.",
       "keywords": ["eight gyms", "BQSKit", "seed=0", "no gym passes", "seed_transpiler", "source-level claim"]
@@ -126,7 +126,7 @@
     {
       "id": "S16", "settled": "2026-09-04", "status": "SETTLED",
       "attack": "The conclusion says adding runs reduces risk 'at quadratic cost', a scaling law the paper never fitted.",
-      "raised_by": "Claude, self-attack",
+      "raised_by": "the author, self-attack",
       "command": "grep -c quadratic PAPER.md",
       "result": "CONFIRMED, AND NOW FIXED IN THE PAPER at commit 8e23d0c. Our own six points give slope -0.701, not the -0.500 quadratic cost requires. Verified 2026-09-04: the word 'quadratic' occurs ZERO times in PAPER.md. This entry read OPEN with 'the paper at 52f24dd still contains the word' until 2026-09-04; that was stale.",
       "keywords": ["quadratic", "scaling law", "cost model", "k sweep", "runs per version"]
@@ -134,7 +134,7 @@
     {
       "id": "S17", "settled": "2026-09-04", "status": "SETTLED",
       "attack": "F1. deep.exact_rate_int documents k in {1,2,3} but its else-branch answers with the k=1 arrays for ANY other k, returning a confidently wrong number instead of refusing.",
-      "raised_by": "Codex, code-implementation audit",
+      "raised_by": "Reviewer C, code-implementation audit",
       "command": "compare exact_rate_int(o=[1,10], n=[2,10], t=0.5, k) against itertools.product brute force",
       "result": "CONFIRMED. k=4 returned 0.5000000 against a true 0.2578125; k=5 returned 0.5000000 against 0.2265625; k=0 and k=-3 also returned the k=1 answer silently. NO PUBLISHED NUMBER AFFECTED: the only caller, prereg_analysis.rate(), routes k>3 to mc_rate, and every reported k (1,3,5,8,10,20) took the correct path. FIXED: unsupported k now raises ValueError.",
       "keywords": ["exact_rate_int", "k branch", "unsupported k", "silent wrong answer", "F1", "else branch"]
@@ -142,7 +142,7 @@
     {
       "id": "S18", "settled": "2026-09-04", "status": "SETTLED",
       "attack": "F2. prereg_analysis.load() discards seed IDs and analyse() pairs the two arms BY POSITION, so mismatched seed sets would be silently mispaired under sec 5.1's joint resampling.",
-      "raised_by": "Codex, code-implementation audit",
+      "raised_by": "Reviewer C, code-implementation audit",
       "command": "compare the seed lists of every committed prereg and deep arm pair",
       "result": "CONFIRMED as an unenforced invariant, with ZERO instances in the data: 39 of 39 pre-registered pairs carry identical seed sets, 0 duplicate seeds, and all five deep pairs match 200/200. Positional pairing therefore equalled seed pairing everywhere. NO PUBLISHED NUMBER AFFECTED. FIXED: load_seeded() keeps the seed IDs and analyse() reports status MISALIGNED_SEEDS per sec 7.1 rather than assuming alignment. The regenerated prereg CSV is byte-for-byte unchanged.",
       "keywords": ["seed alignment", "positional pairing", "load", "analyse", "misaligned", "F2", "joint resampling"]
@@ -150,7 +150,7 @@
     {
       "id": "S19", "settled": "2026-09-04", "status": "SETTLED",
       "attack": "F3. A zero baseline is handled inconsistently: intervals.exact_call_rate([0],[0],0.10,1) returns 1.0 while paired.exact_paired_rate raises ZeroDivisionError.",
-      "raised_by": "Codex, code-implementation audit",
+      "raised_by": "Reviewer C, code-implementation audit",
       "command": "call both exact estimators on a zero baseline; then census min(two_q) over all raw run rows",
       "result": "CONFIRMED. exact_call_rate returned 1.0 because the integral guard's `o > 0` clause failed, dropping it to the float path where 0 >= 0 counts as a call. UNREACHABLE FROM THE DATA: across all 41,790 recorded run rows the minimum two-qubit gate count is 34 and no row is 0. NO PUBLISHED NUMBER AFFECTED. FIXED: both estimators now raise identically on a non-positive baseline.",
       "keywords": ["zero baseline", "ZeroDivisionError", "exact_call_rate", "exact_paired_rate", "undefined relative change", "F3"]
@@ -158,7 +158,7 @@
     {
       "id": "S20", "settled": "2026-09-04", "status": "SETTLED",
       "attack": "F4. deep.mc_rate's docstring claims chunking leaves the result 'identical'. Chunking changes the RNG draw order, so it changes the value.",
-      "raised_by": "Codex, code-implementation audit",
+      "raised_by": "Reviewer C, code-implementation audit",
       "command": "run mc_rate twice at the same seed with MC_CHUNK_ELEMS forced to 10**9 and to 4",
       "result": "CONFIRMED, and an earlier self-test of this finding was INVALID because both of its paths ran in a single chunk. Redone properly: o=[10,11,12,13], n=[11,12,13,14], k=2, 12 pairs, same seed gives 0.500000 in one chunk and 0.333333 in six. Both are unbiased estimates of the same quantity, so NO PUBLISHED NUMBER AFFECTED; what is false is bitwise reproducibility against an unchunked run. FIXED: docstring corrected. Chunking is genuinely exercised (the k=20 fallback splits 4,000,000 pairs into 2 chunks).",
       "keywords": ["mc_rate", "chunking", "draw order", "identical", "reproducibility", "F4", "MC_CHUNK_ELEMS"]
@@ -166,7 +166,7 @@
     {
       "id": "S21", "settled": "2026-09-04", "status": "SETTLED",
       "attack": "F5. inventory.py --check cannot fail. Each `value` was a function call evaluated when the registry was built and `recompute` re-ran the same call on the same file, so the check compared f() with f(); 31 of 41 entries also re-read the very summary CSV they certify.",
-      "raised_by": "Codex, code-implementation audit; quantified and sharpened by Claude",
+      "raised_by": "Reviewer C, code-implementation audit; quantified and sharpened by the author",
       "command": "falsify results/summary/band_heavy-hex.csv (x3, +40 pp) in a copy, redirect inventory.summary() at it, run --check",
       "result": "CONFIRMED, AND THE MOST SERIOUS OF THE SIX. The falsified data still produced '41/41 live numbers reproduce, 0 failures', printing 82.13 pp where the true median band is 14.04 pp. PAPER.md separately claimed three times that the inventory 're-derives every published figure from raw data', which was FALSE. NO MEASURED NUMBER WAS WRONG: deep_143_200.csv, band_heavy-hex.csv and prereg_heavy-hex.csv were each rebuilt from raw and are byte-for-byte identical, and the pre-registered endpoint reproduced at 12/26 = 0.4615, Wilson [0.2876, 0.6454]. FIXED: every value is now a frozen literal; 29 of 41 rows re-derive from results/raw/*.jsonl and the 12 k-sweep rows are labelled DERIVED with the reason; the three PAPER.md sentences now state exactly this. Re-falsifying the derived CSV now produces 12 FAILURES, and tampering with a recorded value produces 1.",
       "keywords": ["inventory", "circular", "tautology", "cannot fail", "checker", "F5", "re-derives from raw", "verification apparatus", "frozen literal"]
@@ -174,7 +174,7 @@
     {
       "id": "S22", "settled": "2026-09-04", "status": "SETTLED",
       "attack": "F6. scatter.py does not emit per-seed failure rows; a failed chunk aborts the parent instead of merging partial rows plus a failure record.",
-      "raised_by": "Codex, code-implementation audit",
+      "raised_by": "Reviewer C, code-implementation audit",
       "command": "read scatter.py:114-137; census the record types in results/raw/scatter_*.jsonl",
       "result": "CONFIRMED AS DESCRIBED, AND DELIBERATELY NOT FIXED. Both committed scatter files hold exactly 10 env + 200 run records, so nothing was dropped. A failed chunk calls sys.exit and writes NO output file at all, which cannot produce a silently truncated dataset; emitting partial rows plus an error record would CREATE that risk. Fail-loud-with-no-output is the safer design and is kept. NO PUBLISHED NUMBER AFFECTED; S03 already settles the comparison this run supports.",
       "keywords": ["scatter", "failure rows", "chunk abort", "run_error", "partial output", "F6", "fail loud"]

@@ -1,7 +1,7 @@
 """Has this attack already been settled? Answer in one second, not one day.
 
 THE PROBLEM THIS SOLVES
-    Every new reviewer -- a fresh ChatGPT thread, a new Gemini session, a new agent --
+    Every new reviewer -- a fresh reviewer thread, a new model session, a new agent --
     arrives with no memory and re-attacks ground that was settled days ago. Re-running a
     settled check costs the operator quota he pays for and hours he does not have. On
     2026-09-04 an external review re-raised eight questions that had already been tested;

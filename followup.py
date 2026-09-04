@@ -5,13 +5,13 @@
    pre-registered endpoint, never in place of it.
 
 RAISED BY TWO INDEPENDENT CRITICS, 2026-09-04
-    Gemini (as IBM's lead engineer):
+    Reviewer B (as IBM's lead engineer):
       G1 the estimand assumes the MEAN is the target. What if practice is best-of-k?
       G2 12/26 blends deterministic and stochastic populations.
       G3 the +10% threshold is ours; a false positive needs a formalised boundary.
       G4 excluding boundary circuits destroys ecological validity.
       G5 median error is zero, so this is tail risk, not systemic failure.
-    ChatGPT:
+    Reviewer A:
       C1 "wrong" should be "decision error relative to the long-run reference".
       C2 theta is a 200-seed plug-in estimate; propagate its uncertainty.
       C3 Wilson assumes the 26 classifications are independent. Family structure means
@@ -99,7 +99,7 @@ def main():
           f"{len(hits)/len(elig):.4f}  Wilson {wilson(len(hits), len(elig))}")
 
     # ---------------------------------------------------------------- F11 (G2)
-    print(f"\n  F11 — the partition Gemini says is blended")
+    print(f"\n  F11 — the partition Reviewer B says is blended")
     det = sto = 0
     sto_hits = det_hits = 0
     for r in elig:
@@ -120,7 +120,7 @@ def main():
         lo, hi = wilson(sto_hits, sto)
         print(f"      -> among STOCHASTIC eligible circuits: {sto_hits}/{sto} = "
               f"{sto_hits/sto:.4f}  Wilson [{lo:.4f}, {hi:.4f}]")
-    print(f"      Gemini's reframing is CORRECT and is now reported alongside 12/26.")
+    print(f"      Reviewer B's reframing is CORRECT and is now reported alongside 12/26.")
 
     # ---------------------------------------------------------------- F8 (C3)
     print(f"\n  F8 — cluster bootstrap, FAMILY as the resampling unit (C3)")
@@ -191,7 +191,7 @@ def main():
     print(f"\n  F7 — aggregation sensitivity: is the mean a strawman? (G1)")
     print(f"      Benchpress performs NO aggregation (source-verified: no mean, min or")
     print(f"      best-of-k anywhere). #14402's reporter chose the mean explicitly.")
-    print(f"      Testing the alternative practice Gemini names:\n")
+    print(f"      Testing the alternative practice Reviewer B names:\n")
     print(f"      {'circuit':<16s} {'theta':>8s} {'mean-of-3':>10s} {'MIN-of-3':>10s} "
           f"{'median-of-3':>12s}")
     keep = sorted(hits, key=lambda r: -float(r["error_rate"]))[:8]

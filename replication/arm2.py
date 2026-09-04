@@ -1,6 +1,9 @@
 import sys
 import os
-repo_root = r"C:\Users\User\Desktop\benchpress_test"
+repo_root = os.environ.get("BENCHPRESS_PATH")
+if not repo_root or not os.path.isdir(repo_root):
+    sys.exit("ABORT: set BENCHPRESS_PATH to the directory containing the benchpress "
+             "package, as documented in README.md.")
 sys.path.insert(0, repo_root)
 
 from qiskit import QuantumCircuit

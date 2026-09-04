@@ -1,7 +1,7 @@
 """Experiment 0 — does seed_transpiler alone make Qiskit transpilation deterministic?
 
 WHY THIS RUNS FIRST
-    Gemini's critique (RESEARCH_LANDSCAPE.md sec 23, G2) raised a mechanism we had not
+    Reviewer B's critique (RESEARCH_LANDSCAPE.md sec 23, G2) raised a mechanism we had not
     considered: SABRE runs several routing trials, and if those trials are executed in
     parallel, thread scheduling could decide which one wins. If that is true, a fixed
     `seed_transpiler` does NOT give reproducible output, and every downstream claim in

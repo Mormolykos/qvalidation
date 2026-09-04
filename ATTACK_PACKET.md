@@ -213,7 +213,7 @@ Two of the three are in the blind sample, selected by the cost rule:
 
 ---
 
-## 8. Round two — results of the attacks by Gemini and ChatGPT, 2026-09-04
+## 8. Round two — results of the attacks by Reviewer B and Reviewer A, 2026-09-04
 
 Six follow-up tests, `followup.py`. The frozen experiment was **not** modified.
 

@@ -1,4 +1,4 @@
-"""The last open attack — scattered seeds, fresh processes. §50, ChatGPT point 4.
+"""The last open attack — scattered seeds, fresh processes. §50, Reviewer A point 4.
 
 THE THREAT BEING TESTED, IN THE CRITIC'S OWN WORDS
     "Your 200-seed sample may not represent the actual unseeded randomness distribution

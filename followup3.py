@@ -1,6 +1,6 @@
 """Round-three attacks. The frozen result is still not modified.
 
-GEMINI, ROUND 3
+REVIEWER B, ROUND 3
     R1 "The Proximity Trap." The 3 pp boundary band is arbitrary; hits sit at 3.24,
        3.33, 3.53 pp. "If your boundary exclusion was 5 pp instead of 3, your 12/13
        claim would evaporate."                                    -> SWEEP THE BAND.
@@ -13,7 +13,7 @@ GEMINI, ROUND 3
     R4 "[17.4%, 81.0%] is a statistical suicide note." N=11 families is underpowered
        for a suite-level claim.                     -> CONCEDED. Stop claiming a suite.
 
-CHATGPT, ROUND 3
+REVIEWER A, ROUND 3
     C4 12/13 is a DETECTABILITY statement, not "92.3% of stochastic circuits truly
        have non-zero risk."                                            -> CONCEDED.
     C5 The 200-seed reference is a plug-in for the ENTIRE distribution, not just theta.
@@ -63,7 +63,7 @@ def main():
     resolved = [r for r in rows if r["verdict"] != "UNRESOLVED"]
 
     # ---------------------------------------------------------------- T1 (R1)
-    print("\n  T1 — BOUNDARY-BAND SWEEP. Gemini: 'at 5 pp your 12/13 would evaporate.'")
+    print("\n  T1 — BOUNDARY-BAND SWEEP. Reviewer B: 'at 5 pp your 12/13 would evaporate.'")
     print(f"      {'band':>6s} {'eligible':>9s} {'hits':>6s} {'endpoint':>9s} "
           f"{'stochastic hits':>16s}")
     for band in (0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0):
@@ -75,10 +75,10 @@ def main():
         s = f"{len(sh)}/{len(sto)}" if sto else "0/0"
         print(f"      {band:>5.1f}p {len(el):>9d} {len(hit):>6d} "
               f"{len(hit)/len(el) if el else float('nan'):>9.4f} {s:>16s}{mark}")
-    print("      -> Gemini's prediction is TESTED, not argued. Read the 5 pp row.")
+    print("      -> Reviewer B's prediction is TESTED, not argued. Read the 5 pp row.")
 
     # ---------------------------------------------------------------- T2 (R2)
-    print("\n  T2 — ENDPOINT AT OPERATIONAL RISK LEVELS. Gemini: 'non-zero is trivial.'")
+    print("\n  T2 — ENDPOINT AT OPERATIONAL RISK LEVELS. Reviewer B: 'non-zero is trivial.'")
     el = [r for r in resolved if r["boundary"] == "False"]
     print(f"      {'criterion':<28s} {'hits':>6s} {'of':>4s} {'endpoint':>9s} "
           f"{'Wilson 95% CI':>20s}")
@@ -98,7 +98,7 @@ def main():
 
     # ---------------------------------------------------------------- T3 (R3)
     print("\n  T3 — THE theta-FREE ANSWER TO 'THE FATAL ASYMMETRY'")
-    print("      Gemini R3 is largely CORRECT: the error rate depends on where theta")
+    print("      Reviewer B R3 is largely CORRECT: the error rate depends on where theta")
     print("      sits, which is a property of THIS version pair. The statistic that")
     print("      does not is the AMBIGUITY BAND: the width of the interval of true")
     print("      change over which P(call) runs 0.05 -> 0.95. It has no theta and no")
@@ -168,7 +168,7 @@ def main():
     print("         at all, and then how close theta sits to the cut.")
 
     # ---------------------------------------------------------------- T5 (C5)
-    print("\n  T5 — FUNCTIONAL UNCERTAINTY (ChatGPT C5)")
+    print("\n  T5 — FUNCTIONAL UNCERTAINTY (Reviewer A C5)")
     w = [float(r["error_ci_hi"]) - float(r["error_ci_lo"])
          for r in el if r["error_rate"] is not None and float(r["error_rate"]) > 0]
     print(f"      The seed bootstrap resamples the WHOLE 200-seed empirical distribution")

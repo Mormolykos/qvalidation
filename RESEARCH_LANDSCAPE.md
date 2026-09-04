@@ -56,10 +56,10 @@ re-derives from raw data via `python inventory.py --check` (31/31 as of 2026-09-
 
 ## 0. What happened before this document
 
-Two deep-research reports (Gemini, ChatGPT) were commissioned on the same prompt.
+Two deep-research reports (Reviewer B, Reviewer A) were commissioned on the same prompt.
 Both were then checked source-by-source. **Both contain material errors.** The errors
-matter, because three of ChatGPT's five "confirmed open problems" are already closed
-in the literature, and Gemini's central theoretical claim is probably resolved.
+matter, because three of Reviewer A's five "confirmed open problems" are already closed
+in the literature, and Reviewer B's central theoretical claim is probably resolved.
 
 This is not a complaint about the tools. It is the first useful result: the gap
 analysis had to be redone against primary listings, and doing so changed the answer.
@@ -68,14 +68,14 @@ analysis had to be redone against primary listings, and doing so changed the ans
 
 | # | Report | Claim | Reality |
 |---|---|---|---|
-| 1 | ChatGPT | Qermit benchmark by "Askey et al. (2023)" | **Author name does not exist.** The paper is Cirstoiu, Dilkes, Mills, Sivarajah & Duncan, *Volumetric Benchmarking of Error Mitigation with Qermit*, Quantum **7**, 1059 (2023). The paper is real; the attribution is fabricated. |
-| 2 | ChatGPT | Area 3 cross-framework equivalence = **CONFIRMED OPEN PROBLEM**, "no source found" | **False.** QITE (arXiv:2503.17322, 2025) tests Qiskit, PennyLane, Pytket and BQSKit for semantic equivalence via QASM round-trip and found 17 bugs (14 confirmed/fixed). Also arXiv:2406.06836 compares transpilers across qiskit-braket-provider, qBraid-SDK and Pytket extensions. This was ChatGPT's **#2 ranked** open question. It is dead as stated. |
-| 3 | ChatGPT | Area 7 replication studies "essentially non-existent" | **False.** *Works on my QPU: Reproducibility in Quantum Computing Research* (arXiv:2607.08348) semi-automatically analysed ~5,000 QC papers 2021–2026 for reproduction packages. arXiv:2510.25839 reproduced key results from eighteen photonic/hybrid QML works. |
-| 4 | ChatGPT | "No follow-ups" to MorphQ | **False.** MorphQ++ — a reproducibility study of metamorphic testing on quantum compilers — was published at the 2024 Workshop on Replications and Negative Results (DOI 10.1145/3695750.3695823). |
-| 5 | ChatGPT | Area 9 LLM quantum code "nascent, no multi-model comparisons" | **Overstated.** QuanBench+ (arXiv:2604.08570) is explicitly a unified multi-framework benchmark; QCoder (INLG 2025), QHackBench, QCircuitBench and Qiskit QuantumKatas (arXiv:2605.27210) all exist. |
-| 6 | ChatGPT | Area 8 "no source explicitly measuring seed sensitivity in QML" | **False.** Kakavand, Strohmeyer & Schlotter (arXiv:2604.18837) ran a dedicated seed-sensitivity phase and report mean CV 1.4%. This was ChatGPT's **#4 ranked** open question. |
-| 7 | Gemini | A "profound theoretical contradiction" between NIBP theory and experiments showing non-unital noise prevents plateaus | **Probably already reconciled.** *Noise-induced shallow circuits and absence of barren plateaus* (arXiv:2403.13927) was published in **Nature Physics** (2026) and gives theory for exactly that: under non-unital noise, both barren-plateau signatures are avoided for local-observable cost functions. Gemini presents as an open contradiction something that has a published resolution. |
-| 8 | Gemini | Cites "Wang, S., et al. (2024), *Beyond unital noise…*" | Unverified. The canonical NIBP reference is Wang et al., *Noise-induced barren plateaus in variational quantum algorithms*, **Nature Communications 12**, 6961 (2021). |
+| 1 | Reviewer A | Qermit benchmark by "Askey et al. (2023)" | **Author name does not exist.** The paper is Cirstoiu, Dilkes, Mills, Sivarajah & Duncan, *Volumetric Benchmarking of Error Mitigation with Qermit*, Quantum **7**, 1059 (2023). The paper is real; the attribution is fabricated. |
+| 2 | Reviewer A | Area 3 cross-framework equivalence = **CONFIRMED OPEN PROBLEM**, "no source found" | **False.** QITE (arXiv:2503.17322, 2025) tests Qiskit, PennyLane, Pytket and BQSKit for semantic equivalence via QASM round-trip and found 17 bugs (14 confirmed/fixed). Also arXiv:2406.06836 compares transpilers across qiskit-braket-provider, qBraid-SDK and Pytket extensions. This was Reviewer A's **#2 ranked** open question. It is dead as stated. |
+| 3 | Reviewer A | Area 7 replication studies "essentially non-existent" | **False.** *Works on my QPU: Reproducibility in Quantum Computing Research* (arXiv:2607.08348) semi-automatically analysed ~5,000 QC papers 2021–2026 for reproduction packages. arXiv:2510.25839 reproduced key results from eighteen photonic/hybrid QML works. |
+| 4 | Reviewer A | "No follow-ups" to MorphQ | **False.** MorphQ++ — a reproducibility study of metamorphic testing on quantum compilers — was published at the 2024 Workshop on Replications and Negative Results (DOI 10.1145/3695750.3695823). |
+| 5 | Reviewer A | Area 9 LLM quantum code "nascent, no multi-model comparisons" | **Overstated.** QuanBench+ (arXiv:2604.08570) is explicitly a unified multi-framework benchmark; QCoder (INLG 2025), QHackBench, QCircuitBench and Qiskit QuantumKatas (arXiv:2605.27210) all exist. |
+| 6 | Reviewer A | Area 8 "no source explicitly measuring seed sensitivity in QML" | **False.** Kakavand, Strohmeyer & Schlotter (arXiv:2604.18837) ran a dedicated seed-sensitivity phase and report mean CV 1.4%. This was Reviewer A's **#4 ranked** open question. |
+| 7 | Reviewer B | A "profound theoretical contradiction" between NIBP theory and experiments showing non-unital noise prevents plateaus | **Probably already reconciled.** *Noise-induced shallow circuits and absence of barren plateaus* (arXiv:2403.13927) was published in **Nature Physics** (2026) and gives theory for exactly that: under non-unital noise, both barren-plateau signatures are avoided for local-observable cost functions. Reviewer B presents as an open contradiction something that has a published resolution. |
+| 8 | Reviewer B | Cites "Wang, S., et al. (2024), *Beyond unital noise…*" | Unverified. The canonical NIBP reference is Wang et al., *Noise-induced barren plateaus in variational quantum algorithms*, **Nature Communications 12**, 6961 (2021). |
 
 **The common failure:** I asked both tools to tell me whether the obvious next question
 had already been answered. Neither actually checked. Both listed gaps by *absence of
@@ -83,13 +83,13 @@ evidence in their own search*, which is not the same thing.
 
 ### What the reports got right
 
-Gemini's citations verified better than ChatGPT's. Kakavand et al. (arXiv:2604.18837)
+Reviewer B's citations verified better than Reviewer A's. Kakavand et al. (arXiv:2604.18837)
 is real and is exactly as described: 970 experiments, nine binary datasets, four quantum
 feature maps, three classical kernels, nested cross-validation, **0 of 29 pairwise
 quantum–classical comparisons significant at α=0.05**, hardware validation on IBM
 `ibm_fez` (Heron r2) with kernel fidelity r ≥ 0.976, and a spectral explanation
 (quantum eigenspectra too flat or too concentrated versus RBF's intermediate profile).
-Gemini's feasibility triage (what needs a dilution refrigerator and what does not) is
+Reviewer B's feasibility triage (what needs a dilution refrigerator and what does not) is
 sound and I have not found an error in it.
 
 ---
@@ -163,7 +163,7 @@ recommended. See PHYSICS_KNOWLEDGE_MAP.md when the project starts.
 | Replication of QC papers | **ALREADY WELL STUDIED (paper level)** | 2607.08348 (~5,000 papers); 2510.25839 (18 works) |
 | Replication at **artifact-execution** level | **POSSIBLE OPPORTUNITY** | 2607.08348 measures presence of packages; whether they *run* is a different measurement |
 | LLM quantum code correctness | **ALREADY WELL STUDIED** | 2406.14712; 2604.08570; 2605.27210; QCoder |
-| Barren plateaus, unital vs non-unital | **NOT A GAP as Gemini framed it** | 2403.13927 (Nature Physics 2026) |
+| Barren plateaus, unital vs non-unital | **NOT A GAP as Reviewer B framed it** | 2403.13927 (Nature Physics 2026) |
 
 ---
 
@@ -604,7 +604,7 @@ or Nature listings during this session.
 
 ## 11. Cited in the pasted reports but NOT verified — do not rely on these
 
-These appeared in the Gemini or ChatGPT reports and I could not confirm them in this
+These appeared in the Reviewer B or Reviewer A reports and I could not confirm them in this
 session. They may well be real. They are **not** load-bearing for anything above, and
 none of them should be cited in a paper until independently confirmed.
 
@@ -792,7 +792,7 @@ variable. If it exists, C1 is next in line.
 | A4 | is "stochasticity predicts risk" circular? | ⚠ **REWORD.** 13 circuits have *both arms constant*, so risk is **0 by arithmetic**. A correlation over a sample containing them measures a definition |
 | A5 | recompute §55's Spearman figures | ⚠ **REWORD.** +0.876 has 13 ties at 0 in x, 14 in y — inflated and the wrong statistic. **Withdrawn.** The −0.833 among the 23 stochastic circuits (p < 0.001) **stands** |
 | A6 | the right statistic: 2×2 contingency | **OK.** 12 / 1 / 0 / 13, Fisher exact **p = 2.7×10⁻⁶** — but cell d is definitional, so **REWORD** |
-| A7 | does the ≤10 s rule select high-variance circuits? | **LIMITATION, and Gemini's claim is REFUTED.** selected median spread 0.1126 vs excluded 0.1234, **Mann-Whitney p = 0.768**. If anything the excluded circuits are *more* variable |
+| A7 | does the ≤10 s rule select high-variance circuits? | **LIMITATION, and Reviewer B's claim is REFUTED.** selected median spread 0.1126 vs excluded 0.1234, **Mann-Whitney p = 0.768**. If anything the excluded circuits are *more* variable |
 | A8 | headline per-circuit numbers vs raw | **OK.** `cc_n32`, `cc_n64`, `bv_n280`, `knn_341` all reproduce to 1e-6 |
 | A9 | is `cc_n32` really 18 pp clear and still miscalled? | **OK.** θ = −8.28%, per-seed t-CI [−9.13, −6.05]%, distance 18.3 pp, P(call) = 0.00374. ⚠ that is **6 of 1728** triple-pairs — a small count, and the claim rests on it. Single-draw worst case max(new)/min(old) = **+49.5%** |
 | A10 | is the ambiguity band right-censored? | **OK.** every stochastic circuit reaches P = 0.95 within r ≤ 3.0 |
@@ -823,9 +823,9 @@ Both critics converged: the circuit is not the effective independent unit, and
 suite-level proportion is withdrawn as a headline.** What replaces it is stronger,
 because it is a mechanism rather than a rate.
 
-### R1 — the Proximity Trap. Gemini's mechanism is right; its prediction is WRONG.
+### R1 — the Proximity Trap. Reviewer B's mechanism is right; its prediction is WRONG.
 
-Gemini: *"If your boundary exclusion was 5 pp instead of 3, your 12/13 claim would
+Reviewer B: *"If your boundary exclusion was 5 pp instead of 3, your 12/13 claim would
 evaporate."* Tested rather than argued — the band swept from 0 to 8 pp:
 
 | band | 0 pp | 1 pp | 2 pp | **3 pp** | 4 pp | 5 pp | 6 pp | 8 pp |
@@ -836,7 +836,7 @@ evaporate."* Tested rather than argued — the band swept from 0 to 8 pp:
 
 **It does not evaporate.** At 5 pp it is 5/6; at 8 pp it is still 2/3. But the
 suite-level *proportion* moves from 61% to 12.5% on an arbitrary choice, which is
-exactly why that proportion should not be a headline. **Gemini wins the larger point and
+exactly why that proportion should not be a headline. **Reviewer B wins the larger point and
 loses the specific prediction.**
 
 The two circuits that survive an 8 pp exclusion are the decisive counter-example:
@@ -852,7 +852,7 @@ seed distribution wide enough to reach across 18 points.
 
 ### R2 — the "non-zero tautology". Half-rejected on the data, conceded on framing.
 
-Gemini: *"If two distributions overlap even slightly, a non-zero error rate is
+Reviewer B: *"If two distributions overlap even slightly, a non-zero error rate is
 mathematically guaranteed."* **False as stated here** — 13 of 26 eligible circuits have
 *exactly* zero risk, because their compilation is deterministic and the distributions do
 not overlap at all. Non-zero is an empirical finding, not an identity.
@@ -869,7 +869,7 @@ But the framing concession is accepted, and operational levels are now the repor
 
 ### ⭐ R3 — "the fatal asymmetry". Largely CORRECT, and it forces the right statistic.
 
-Gemini: *"All 12 hits are false positives because this version pair sits just below the
+Reviewer B: *"All 12 hits are false positives because this version pair sits just below the
 cut. You have conflated the variance of the protocol with the θ distribution of one
 version pair."* **Correct.** The error *rate* is a joint property of the protocol and
 where θ happens to sit. It is not a version-pair-free property of Benchpress.
@@ -890,7 +890,7 @@ version pair.
 
 ### ⭐ C6 — the mechanism, and it is clean
 
-ChatGPT asked whether the six hit families are intrinsically more stochastic. They are,
+Reviewer A asked whether the six hit families are intrinsically more stochastic. They are,
 and the effect reduces to **two measurable quantities**:
 
 ⚠ **CORRECTED 2026-09-04 by the first-principles audit (§56 A4–A6).** This section first
@@ -947,13 +947,13 @@ not more seeds.
 
 ## 54. ⛔ TWO CRITICS ATTACK THE 46.2% — it survives, and one of our intervals was wrong — 2026-09-04
 
-Gemini (writing as IBM's lead engineer, desk-rejecting) and ChatGPT attacked the frozen
+Reviewer B (writing as IBM's lead engineer, desk-rejecting) and Reviewer A attacked the frozen
 result independently. Six tests, `followup.py`. **The frozen experiment was not modified:
 no exclusion changed, no re-run, no edit to `PREREGISTRATION.md`.**
 
 ### ⛔ C3 CONFIRMED — the Wilson interval was too narrow. Ours was wrong.
 
-ChatGPT: *"Wilson assumes the 26 circuit-level classifications are independent. Family
+Reviewer A: *"Wilson assumes the 26 circuit-level classifications are independent. Family
 structure means the effective sample size is smaller and the CI is too narrow."*
 
 **Correct.** The family breakdown is not merely clustered — it is **perfectly separated**:
@@ -973,9 +973,9 @@ observations.
 > zero, but anyone quoting [28.8%, 64.5%] is overstating the precision, and that includes
 > §52 as first written.
 
-### ⭐ G2 CONFIRMED, and adopting Gemini's own denominator makes the result sharper
+### ⭐ G2 CONFIRMED, and adopting Reviewer B's own denominator makes the result sharper
 
-Gemini: *"By padding the denominator with 14 deterministic circuits you answer the wrong
+Reviewer B: *"By padding the denominator with 14 deterministic circuits you answer the wrong
 question."* **Right.** The partition is exact:
 
 | eligible circuits | n | hits |
@@ -986,14 +986,14 @@ question."* **Right.** The partition is exact:
 > **Among eligible circuits whose compilation is actually stochastic: 12 of 13 = 92.3%,
 > Wilson 95% CI [66.7%, 98.6%].**
 
-Gemini said 12/12; it is 12/13 — the circuit named `32` has seed variance and still shows
+Reviewer B said 12/12; it is 12/13 — the circuit named `32` has seed variance and still shows
 no detectable error. **This is now reported alongside 12/26, not instead of it.** 12/26
 answers the pre-registered population question; 12/13 answers the mechanistic one, and
 the mechanistic one is the more informative.
 
 ### ⭐ G1 REJECTED — best-of-k makes it WORSE, not better
 
-Gemini: *"What if the utility is the minimum of the distribution? Then comparing means is
+Reviewer B: *"What if the utility is the minimum of the distribution? Then comparing means is
 a strawman."*
 
 First, from source: **Benchpress performs no aggregation at all** — no mean, no min, no
@@ -1017,7 +1017,7 @@ best-of-k, the problem is worse.**
 
 ### G3 REJECTED — the endpoint is non-zero at every threshold
 
-Gemini: *"A false positive cannot exist without a formalised classification boundary."*
+Reviewer B: *"A false positive cannot exist without a formalised classification boundary."*
 
 The whole endpoint recomputed at each cut, eligibility and boundary flags recomputed too:
 
@@ -1030,7 +1030,7 @@ Non-zero at every cut, with the interval excluding zero at every cut. The findin
 depend on +10%. (The dip at 7.5% is an eligibility effect — only 18 circuits are resolved
 and non-boundary there.)
 
-**What Gemini is still right about:** "false positive" is defined against a rule we
+**What Reviewer B is still right about:** "false positive" is defined against a rule we
 specified. The honest phrasing is **finite-sample decision risk relative to the long-run
 reference**, adopted below.
 
@@ -1186,7 +1186,7 @@ mis-describes the phenomenon even while being conservative for the endpoint; and
 
 ## 51. THE PRNG / PROCESS-STATE ATTACK — the confound is removed — 2026-09-03
 
-Both critics named the same open threat (§50, ChatGPT point 4): the heavy-hex sample was
+Both critics named the same open threat (§50, Reviewer A point 4): the heavy-hex sample was
 **one contiguous seed block, 1000–1199, inside one OS process**. Any per-process state —
 hash randomisation, allocator layout, a cached RNG — was held constant, and any structure
 in consecutive seeds went unsampled.
@@ -1247,11 +1247,11 @@ because it rests on 400 seeds across 21 processes rather than 200 in one.
 
 ## 50. ⭐⭐⭐ TWO CRITICS ATTACKED §48, AND THE ANSWER IS A BIGGER RESULT — 2026-09-03
 
-`second_opinion` was run on the finished §48 claim: Gemini Pro (63.2 s) and ChatGPT
+`second_opinion` was run on the finished §48 claim: Reviewer B (63.2 s) and Reviewer A
 (9.8 s), independently, **not merged**. Then the objection both of them circled was
 tested with new measurement. It changed the headline.
 
-### Gemini Pro's central objection — and why it was right to make it
+### Reviewer B's central objection — and why it was right to make it
 
 > *"Claiming a WRONG regression decision for `bv_n140` is a false contradiction; observed
 > (+46.1%) and true (+31.0%) both exceed 10%, making it a true positive. Restrict
@@ -1269,7 +1269,7 @@ anyone's published call was wrong.
 reader could take it as saying the issue got `bv_n140` wrong. It did not. **That is now
 stated explicitly.**
 
-**Answered:** Gemini's real point is that a false *negative* on a +31% change is a weak
+**Answered:** Reviewer B's real point is that a false *negative* on a +31% change is a weak
 demonstration, because direction is never in doubt. Correct. So the same circuit was run
 at 200 seeds per arm on the other two topologies — the attack §45 B-limits had flagged
 and nobody had run.
@@ -1287,7 +1287,7 @@ and nobody had run.
 **On `square` and `heavy-hex` the truth is nowhere near the cut — and the protocol
 reports a ≥+10% regression anyway, 13.3% and 26.3% of the time.** Both are FALSE
 POSITIVES, both are below the threshold under *both* interval methods, and neither has
-any directional ambiguity. Gemini's "it is a true positive" objection does not reach
+any directional ambiguity. Reviewer B's "it is a true positive" objection does not reach
 them.
 
 The same circuit changed **+31% on `linear` and +3% on `square`**. The regression itself
@@ -1320,7 +1320,7 @@ by this record, one section later.
 Heavy-hex's halves agree to **0.2 pp**. §49 R3's warning that the magnitude is known only
 to a factor of two applies to the linear false negative, not to this.
 
-### ChatGPT's four points, judged
+### Reviewer A's four points, judged
 
 1. **"200 seeds estimate the distribution; they do not independently establish the true
    regression. Call it estimated distributional truth."** — **ACCEPTED.** Correct and
@@ -2492,7 +2492,7 @@ count** — and it is the difference between "a ranking could be decided by nois
 
 `calibrate.py`. Both critics required this (§23 C4): not a demonstration but a
 *calibrated* procedure with measured error rates. Injection is applied to the recorded
-observable **after** compilation, per Gemini's §23 G3, so the effect size is exact by
+observable **after** compilation, per Reviewer B's §23 G3, so the effect size is exact by
 construction and the optimiser cannot alter it.
 
 **Scope claimed, precisely:** this calibrates the *decision procedure* under realistic
@@ -2832,7 +2832,7 @@ non-normal.
 
 ## 29. INDEPENDENT REPLICATION — different machine, different CPU vendor — 2026-09-02
 
-Executed by a third party (Gemini 3.1 Pro in an agentic environment) from a written
+Executed by a third party (Reviewer B in an agentic environment) from a written
 protocol, on their own hardware, with a fresh clone and a fresh environment. They were
 told not to trust our numbers and to re-derive them.
 
@@ -2900,9 +2900,9 @@ Both critics independently found **the same defect**, and it was real:
 
 > **"Unseeded" does not prove SABRE is the entropy source.** Python hash randomisation
 > (`PYTHONHASHSEED` → dict/set iteration order → DAG traversal order) or thread
-> scheduling could be the actual driver. — *Gemini and ChatGPT, independently.*
+> scheduling could be the actual driver. — *Reviewer B and Reviewer A, independently.*
 
-ChatGPT's proposed kill experiment: fresh processes with hash seed and threading fixed,
+Reviewer A's proposed kill experiment: fresh processes with hash seed and threading fixed,
 unseeded vs explicitly seeded. *"If variability remains only in the former, your central
 attribution is wrong."*
 
@@ -2930,7 +2930,7 @@ any remaining doubt about allocation-order effects.
 
 ### Backend refutation — challenged, verified, upheld
 
-ChatGPT: *"identical output under fixed seed shows backend construction isn't observable
+Reviewer A: *"identical output under fixed seed shows backend construction isn't observable
 stochasticity, not that backend randomness cannot influence layout... hash/record the
 complete Target/error-rate data each run."* **Accepted and done.**
 
@@ -2960,7 +2960,7 @@ proved nothing.
   decision flip is required**, plus calibrated false-positive rates. This is the gating
   item before any writeup, and it is not yet done.
 - **Synthetic regressions injected post-compilation test our statistics, not the
-  compiler's response** (Gemini). Both are needed: post-compilation injection calibrates
+  compiler's response** (Reviewer B). Both are needed: post-compilation injection calibrates
   the detector; a real version pair (2.0.0 vs 2.0.2, isolating #14417) tests the
   compiler.
 
@@ -3148,7 +3148,7 @@ basis `[id, sx, x, rz, cz]`, **linear** topology.
 Benchpress's `FlexibleBackend`. Absolute counts therefore do **not** match Benchpress's.
 Experiment 0 asks only about *variability*, not about reproducing their numbers.
 
-### Result 1 — Gemini's threading hypothesis (§23 G2) is REJECTED by measurement
+### Result 1 — Reviewer B's threading hypothesis (§23 G2) is REJECTED by measurement
 
 `bv_n140`, seed fixed at 12345, 5 repeats, both thread conditions:
 
@@ -3193,7 +3193,7 @@ What that implies, stated carefully:
 Also noted: on `knn_341` the 2Q count is nearly fixed (1.0%) while **depth** ranges
 4766–4935 (**3.5%**). Metric choice changes the conclusion; both must be reported.
 
-### ChatGPT's C3 concern is answered
+### Reviewer A's C3 concern is answered
 
 Best-of-k at optimisation level 2 does **not** collapse the variance to nothing — on
 `bv_n140` it is large. The pivot/stop rule is not triggered. The study has a subject.
@@ -3229,7 +3229,7 @@ Critic browser recovered by spawning **chrome.exe itself** detached via `Win32_P
 Chrome 152.0.7977.65 on port 9222. Both critics answered. **Reported separately, never
 merged**, per the tool's own instruction.
 
-### Gemini Pro
+### Reviewer B
 
 **G1 — 1.4.3 vs 2.0 is structurally confounded (BackendV1 removal, overhauled default
 pass managers). Fix: restrict to the 2.x line or isolated commits. → ACCEPTED.**
@@ -3258,7 +3258,7 @@ Correct and I had not thought it through. Pre-transpile injection means the opti
 remove or restructure the injected gates, so the "known" effect size is not known.
 Post-compilation appending makes the injected delta exact.
 
-### ChatGPT
+### Reviewer A
 
 **C1 — Claim 7 is an absence claim, killable by one counterexample; "we found no
 published X" is not a contribution. Fix: make the contribution the validated procedure;

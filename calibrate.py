@@ -7,13 +7,13 @@ WHAT THIS ANSWERS
 
         "validate a reproducible regression-audit procedure against synthetic
          regressions, estimating false-positive/false-negative behaviour and
-         calibrated power"                                    -- ChatGPT, sec 23 C4
+         calibrated power"                                    -- Reviewer A, sec 23 C4
 
     So: take each circuit's REAL measured seed distribution, inject a regression of
     KNOWN size, and ask how often the protocol detects it.
 
 WHY INJECT AFTER COMPILATION
-    Gemini (sec 23 G3) pointed out that injecting a synthetic regression before or
+    Reviewer B (sec 23 G3) pointed out that injecting a synthetic regression before or
     during transpilation lets the optimiser alter it, so the "known" effect size is not
     known. Applying it to the recorded observable afterwards makes the injected delta
     exact by construction. That is what happens here: the effect is a multiplier on a

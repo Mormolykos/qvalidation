@@ -1,8 +1,8 @@
-# Codex audit prompt — paste this whole block
+# Reviewer C audit prompt — paste this whole block
 
 ---
 
-You are auditing a scientific software repository at `C:\Users\User\Desktop\research\qvalidation`.
+You are auditing the `qvalidation` scientific software repository. Run every command from the repository root.
 
 **AUDIT ONLY. DO NOT EDIT, REFACTOR, RENAME, REFORMAT OR "FIX" ANYTHING.** Produce a report. If you believe something must change, describe it; do not change it. Any write to any file is a failed audit.
 
