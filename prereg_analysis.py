@@ -27,6 +27,14 @@ IMPLEMENTS, WITHOUT DEVIATION
     §7.1 EVERY selected circuit is reported, including zero-error, unresolved and
          crashed ones.
 
+INTEGRITY GUARD ADDED 2026-09-04 (finding F2) — NOT AN ANALYSIS CHANGE
+    analyse() now verifies that the two arms carry the IDENTICAL seed set before
+    pairing them, and reports status MISALIGNED_SEEDS if they do not. §5.1's joint
+    resampling assumes position i is the same seed in both arms; that assumption held
+    for all 39 pre-registered pairs (verified: 0 mismatches, 0 duplicate seeds) but
+    was never enforced. The guard does not fire on the committed data, and the output
+    CSV is byte-for-byte unchanged -- verified by regenerating it after the change.
+
 USAGE
     python prereg_analysis.py --out results/summary/prereg_heavy-hex.csv
 """
@@ -49,10 +57,12 @@ BOUNDARY_PP = 3.0
 EXACT_MAX_N = 200          # exact enumeration is affordable at n=200 for k<=3
 
 
-def load(circuit, ver, topo="heavy-hex"):
+def load_seeded(circuit, ver, topo="heavy-hex"):
+    """(seeds, values, version), both arrays ordered by seed. The seed list is kept so
+    analyse() can VERIFY the two arms are seed-aligned instead of assuming it (F2)."""
     path = os.path.join(RAW, f"{circuit}_{topo}_q{ver}.jsonl")
     if not os.path.isfile(path):
-        return None, None
+        return None, None, None
     vals, version = [], None
     for line in open(path):
         r = json.loads(line)
@@ -61,8 +71,16 @@ def load(circuit, ver, topo="heavy-hex"):
         if r.get("record") == "run":
             vals.append((r["seed"], r["two_q"]))
     if not vals:
-        return None, version
-    return np.array([v for _, v in sorted(vals)], dtype=np.int64), version
+        return None, None, version
+    ordered = sorted(vals)
+    return (np.array([s for s, _ in ordered], dtype=np.int64),
+            np.array([v for _, v in ordered], dtype=np.int64), version)
+
+
+def load(circuit, ver, topo="heavy-hex"):
+    """(values, version). Thin wrapper kept for callers that do not need the seeds."""
+    _, vals, version = load_seeded(circuit, ver, topo)
+    return vals, version
 
 
 def rate(o, n, t, k, rng):
@@ -72,12 +90,20 @@ def rate(o, n, t, k, rng):
 
 
 def analyse(circuit, t, k, rng):
-    o, v_o = load(circuit, "143")
-    n, v_n = load(circuit, "200")
+    s_o, o, v_o = load_seeded(circuit, "143")
+    s_n, n, v_n = load_seeded(circuit, "200")
     if o is None or n is None:
         return {"circuit": circuit, "status": "MISSING_OR_CRASHED",
                 "qiskit_baseline": v_o, "qiskit_candidate": v_n}
+    # §5.1 resamples the two arms JOINTLY, which is only correct if position i means
+    # the same seed in both. That held for all 39 pre-registered pairs, but nothing
+    # checked it: load() discarded the seed IDs and the arms were paired by position,
+    # so a partially-rerun arm would have been silently mispaired (F2, 2026-09-04).
+    # A misaligned pair is now REPORTED, per §7.1, not analysed.
     m = min(o.size, n.size)
+    if not np.array_equal(s_o[:m], s_n[:m]):
+        return {"circuit": circuit, "status": "MISALIGNED_SEEDS", "n_seeds": int(m),
+                "qiskit_baseline": v_o, "qiskit_candidate": v_n}
     o, n = o[:m], n[:m]
     if m == 0 or not (o > 0).all():
         return {"circuit": circuit, "status": "UNUSABLE_ZERO_OR_EMPTY", "n_seeds": int(m)}

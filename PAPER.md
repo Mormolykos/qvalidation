@@ -55,8 +55,8 @@ top of it.
 
 This paper is also the first output of a validation apparatus we are building, and it is
 written to expose that apparatus rather than only its result. The measurement pipeline,
-the pre-registration mechanism, the numeric inventory that re-derives every published
-figure from raw data, the replication artifact, and the adversarial audit are all part of
+the pre-registration mechanism, the numeric inventory that re-checks every published
+figure against a fresh recomputation, the replication artifact, and the adversarial audit are all part of
 the contribution. **The Qiskit experiment is the demonstration case; the reusable object
 is the method for quantifying decision risk in a stochastic benchmark.** Nothing in the
 apparatus is specific to Qiskit: it requires only a benchmark whose observable is a
@@ -425,8 +425,12 @@ are reusable:
    list and the analysis code before the data exists converts "we did not cherry-pick"
    from an assertion into a checkable fact.
 3. **A numeric inventory.** Every published figure carries its numerator, denominator,
-   sampling unit, interval, method, and a function that re-derives it from raw data. A
-   single command re-checks the whole paper.
+   sampling unit, interval, method, and a function that recomputes it. A single command
+   re-checks the whole paper. Each recorded value is a frozen literal compared against
+   that recomputation: 29 of the 41 are re-derived from the raw per-seed measurements,
+   and 12 — the k-sweep table, whose exact enumeration costs roughly half an hour per
+   topology — are re-read from their summary file and labelled as such. A stale or
+   altered source fails the check in either tier.
 4. **Adversarial review as a required stage, not an optional one.** Three rounds of
    hostile review plus a first-principles audit removed four claims from this work,
    including two we had already published internally.
@@ -440,8 +444,9 @@ within families. That is an experiment, not an analysis, and we do not pre-empt 
 All raw per-seed measurements, analysis code, the pre-registration, the defect record and
 the complete research log are in the `qvalidation` repository. `verify.py` re-runs the
 toolchain pin check, test suite, numeric inventory, replication artifact and a proof of a
-withdrawn analytical claim in under a minute. `inventory.py --check` re-derives every
-reported number from its raw source.
+withdrawn analytical claim in under a minute. `inventory.py --check` compares all 41
+recorded numbers against a fresh recomputation, 29 of them re-derived from the raw
+per-seed files and 12 re-read from a summary table, each row labelled with which.
 
 ## References
 

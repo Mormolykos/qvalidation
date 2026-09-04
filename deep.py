@@ -60,7 +60,21 @@ def _sums3(v):
 
 
 def exact_rate_int(o, n, threshold, k):
-    """P((b-a)/a >= t) exactly, integer arithmetic, k in {1,2,3}."""
+    """P((b-a)/a >= t) exactly, integer arithmetic, k in {1,2,3}.
+
+    ⚠ k OUTSIDE {1,2,3} IS REFUSED, NOT APPROXIMATED (found 2026-09-04, finding F1).
+    The branch structure below used to fall through to the k=1 arrays for every
+    unsupported k, so a caller asking for k=4 received the k=1 answer with no warning:
+    on o=[1,10], n=[2,10] at t=0.5 it returned 0.5000 against a true 0.2578. Negative
+    and zero k did the same. No published number ever took that path -- the only
+    caller, prereg_analysis.rate(), routes k>3 to mc_rate -- but returning a
+    confidently wrong number instead of refusing is the exact failure mode this
+    project exists to document, so it is now a hard error.
+    """
+    if k not in (1, 2, 3):
+        raise ValueError(
+            f"exact_rate_int enumerates k in {{1,2,3}} only; got k={k!r}. "
+            f"For larger k use mc_rate(), which samples instead of enumerating.")
     fr = Fraction(threshold).limit_denominator(10 ** 9)
     p, q = fr.numerator, fr.denominator
     if k == 3:
@@ -85,8 +99,18 @@ def mc_rate(o, n, threshold, k, rng, pairs):
     The unchunked version allocated a (pairs, k) index array per arm, which is
     pairs*k*8 bytes *twice*. At pairs=50e6 and k=20 that is 7.45 GiB per arm and it
     raised ArrayMemoryError inside paper_check.py. Memory now depends on the chunk
-    size only, never on `pairs` or `k`, and the result is identical because the
-    estimate is a mean over independent draws.
+    size only, never on `pairs` or `k`.
+
+    ⚠ CHUNKING CHANGES THE DRAW ORDER, SO IT CHANGES THE VALUE (corrected 2026-09-04,
+    finding F4). An earlier version of this docstring claimed the chunked result was
+    "identical"; it is not. Consuming the same Generator in several smaller calls
+    yields a different sequence of index draws, and with o=[10,11,12,13],
+    n=[11,12,13,14], k=2, 12 pairs and the same seed, one chunk gives 0.500000 while
+    six give 0.333333. Both are unbiased estimates of the same quantity -- every draw
+    is still uniform and independent -- so no reported figure depends on the chunk
+    size. What is NOT true is bitwise reproducibility against an unchunked run at the
+    same seed. Reported Monte-Carlo figures are therefore quoted to a precision their
+    standard error supports, not to the last digit the estimator happens to emit.
     """
     fr = Fraction(threshold).limit_denominator(10 ** 9)
     p, q = fr.numerator, fr.denominator

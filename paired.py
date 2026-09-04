@@ -153,18 +153,29 @@ def prove(args):
 # ----------------------------------------------------- part B: real measurement
 
 def exact_paired_rate(old_vals, new_vals, threshold, k):
-    """P(call) when the SAME k seed indices produce both arms. Exact over n**k."""
+    """P(call) when the SAME k seed indices produce both arms. Exact over n**k.
+
+    ⚠ A NON-POSITIVE BASELINE IS REFUSED (added 2026-09-04, finding F3). This used to
+    mask zero-baseline tuples out with `ok = a != 0` and divide by the surviving count,
+    which silently changed the denominator, and raised ZeroDivisionError when every
+    tuple was masked. intervals.exact_call_rate returned 1.0 on the same input. The two
+    exact estimators now refuse identically rather than disagreeing. Unreachable from
+    the study's data: the minimum recorded two-qubit gate count is 34.
+    """
     o = np.asarray(old_vals, dtype=float)
     n = np.asarray(new_vals, dtype=float)
     if o.size != n.size:
         raise ValueError("paired comparison needs equal-length, seed-aligned arms")
+    if np.any(o <= 0):
+        raise ValueError(
+            f"relative change is undefined for a non-positive baseline; "
+            f"min(old_vals) = {float(np.min(o))!r}")
     if k == 1:
         a, b = o, n
     else:
         g = _grid(o.size, k)
         a, b = o[g].mean(axis=1), n[g].mean(axis=1)
-    ok = a != 0
-    return float(((b[ok] - a[ok]) / a[ok] >= threshold).sum()) / int(ok.sum())
+    return float(((b - a) / a >= threshold).sum()) / a.size
 
 
 def bootstrap_both(old_vals, new_vals, threshold, k, rng, mode, b=BOOTSTRAP_B):

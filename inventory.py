@@ -11,7 +11,27 @@ WHAT THIS IS FOR
         value, numerator, denominator, sampling unit, interval, interval method,
         the file it comes from, the section that quotes it, and a RECOMPUTE function.
 
-    `--check` re-derives every row from the named file and fails on any mismatch.
+WHAT `--check` ACTUALLY PROVES, STATED EXACTLY (corrected 2026-09-04, finding F5)
+    Every `value` is a FROZEN LITERAL in this file, and `--check` compares it against a
+    fresh recomputation. Until 2026-09-04 that was not so: `value` was itself a call
+    evaluated while the registry was built, and `recompute` re-ran the same call on the
+    same file, so the comparison was f() against f() and no input could make it fail.
+    Proved by falsifying every band in results/summary/band_heavy-hex.csv (x3, +40 pp):
+    the tool still reported "41/41 live numbers reproduce".
+
+    Two provenance tiers, and the difference is disclosed rather than glossed:
+      RAW      29 rows re-derived from results/raw/*.jsonl per-seed measurements.
+      DERIVED  12 rows (the sec 43 k-sweep) re-read results/summary/ksweep_*.csv.
+               Re-deriving those means enumerating 12**5 mean tuples per bisection
+               step, about half an hour per topology -- not affordable inside a check
+               that has to run in under a minute. The frozen literal still catches a
+               changed or corrupted CSV; it just cannot catch a CSV that was wrong when
+               it was written. Rebuild them with `python ksweep.py --out ...`.
+
+    So: "every published figure is re-derived from raw data" would be FALSE and is not
+    claimed anywhere. What is claimed is what this paragraph says.
+
+    `--check` recomputes every row and fails on any mismatch.
     `--scan` reads the markdown and lists percentage-shaped numbers that no row claims,
     so a new unregistered number cannot quietly appear.
 
@@ -26,6 +46,7 @@ USAGE
 
 import argparse
 import csv
+import functools
 import json
 import os
 import re
@@ -33,8 +54,9 @@ import sys
 
 import numpy as np
 
+from deep import exact_rate_int
 from intervals import exact_call_rate, load, wilson
-from paired import exact_paired_rate
+from paired import BAND_HI, BAND_LO, _solve, exact_paired_rate
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 TOL = 0.005                     # absolute, on the value's own units
@@ -74,30 +96,97 @@ def genuine_unstable(topo, old_ver, new_ver, t=0.10, k=3, band=3.0):
     return n_gen, n_tot
 
 
+@functools.lru_cache(maxsize=None)
+def band_rows_raw(topo, k=3, t=0.10, min_seeds=12):
+    """paired.band()'s per-circuit computation, re-executed HERE from the raw per-seed
+    files. Certifying results/summary/band_*.csv by re-reading that same CSV was
+    finding F5: the check could not detect a corrupted or stale summary."""
+    old_all, _ = load(raw(topo, "200"))
+    new_all, _ = load(raw(topo, "202"))
+    rows = []
+    for c in sorted(set(old_all) & set(new_all)):
+        a, b = old_all[c], new_all[c]
+        if len(a) < min_seeds or len(b) < min_seeds or len(a) != len(b):
+            continue
+        o = np.asarray(a, dtype=float)
+        n = np.asarray(b, dtype=float)
+        if not (o > 0).all():
+            continue
+        ratio = n / o
+        rho = ratio / ratio.mean()
+        rec = {"circuit": c, "rho_spread_pct": round((rho.max() - rho.min()) * 100, 3)}
+        for pf in (False, True):
+            lo = _solve(o, rho, BAND_LO, t, k, pf)
+            hi = _solve(o, rho, BAND_HI, t, k, pf)
+            rec["paired_band_pp" if pf else "unpaired_band_pp"] = (
+                None if (np.isnan(lo) or np.isnan(hi)) else round((hi - lo) * 100, 3))
+        rows.append(rec)
+    return rows
+
+
 def band_stat(topo, column, stat, heterogeneous_only=True):
-    rows = list(csv.DictReader(open(summary(f"band_{topo}.csv"))))
-    vals = [float(r[column]) for r in rows
-            if r[column] not in ("", "None")
-            and (not heterogeneous_only or float(r["rho_spread_pct"]) > 0)]
+    """RAW. Median/count/max of the ambiguity band over heterogeneous circuits."""
+    vals = [r[column] for r in band_rows_raw(topo)
+            if r[column] is not None
+            and (not heterogeneous_only or r["rho_spread_pct"] > 0)]
     return {"median": float(np.median(vals)), "n": float(len(vals)),
             "max": float(max(vals))}[stat]
 
 
 def band_fraction(topo, wide=5.0):
-    rows = list(csv.DictReader(open(summary(f"band_{topo}.csv"))))
-    over = [r for r in rows if r["unpaired_band_pp"] not in ("", "None")
-            and float(r["unpaired_band_pp"]) >= wide]
+    """RAW. Fraction of circuits whose unpaired band reaches `wide` percentage points."""
+    rows = band_rows_raw(topo)
+    over = [r for r in rows if r["unpaired_band_pp"] is not None
+            and r["unpaired_band_pp"] >= wide]
     return len(over) / len(rows), len(over), len(rows)
 
 
-def deep_row(circuit):
-    for r in csv.DictReader(open(summary("deep_143_200.csv"))):
-        if r["circuit"] == circuit:
-            return r
-    raise KeyError(f"{circuit} not in deep_143_200.csv")
+@functools.lru_cache(maxsize=None)
+def deep_raw(circuit, t=0.10, k=3, seed=20260903, boot=4000):
+    """RAW. deep.py's row for one circuit, re-derived from results/raw/deep_*.jsonl.
+
+    Same estimator, same bootstrap seed, same integer decision rule, so this reproduces
+    the committed CSV exactly -- but it reads the MEASUREMENTS, not the summary the row
+    is certifying (F5)."""
+    def arm(ver):
+        vals = []
+        with open(os.path.join(ROOT, "results", "raw",
+                               f"deep_{circuit}_q{ver}.jsonl")) as fh:
+            for line in fh:
+                r = json.loads(line)
+                if r.get("record") == "run":
+                    vals.append((r["seed"], r["two_q"]))
+        return np.array([v for _, v in sorted(vals)], dtype=np.int64)
+
+    o, n = arm("143"), arm("200")
+    m = min(o.size, n.size)
+    o, n = o[:m], n[:m]
+    change = float(n.mean() / o.mean() - 1)
+    r2 = np.random.default_rng(seed + 1)
+    ch = np.empty(boot)
+    for i in range(boot):
+        j = r2.integers(0, m, m)
+        ch[i] = n[j].mean() / o[j].mean() - 1
+    c_lo, c_hi = np.percentile(ch, [2.5, 97.5])
+    truth = ("REGRESSION" if c_lo > t else
+             "NO_REGRESSION" if c_hi < t else "UNRESOLVED")
+    p = exact_rate_int(o, n, t, k)
+    err = (1 - p) if truth == "REGRESSION" else (
+        p if truth == "NO_REGRESSION" else float("nan"))
+    return {"ground_truth": truth, "n_seeds": int(m),
+            "true_change_pct": round(change * 100, 3),
+            "error_rate": round(err, 6)}
 
 
 def ksweep_cell(topo, k, column):
+    """DERIVED — reads results/summary/ksweep_*.csv rather than the raw files.
+
+    Deliberate, and disclosed: the k-sweep band at k=5 enumerates 12**5 = 248,832 mean
+    tuples per bisection step without a cached index grid, which costs roughly half an
+    hour per topology. Re-deriving it inside a one-minute check is not affordable. The
+    protection for these twelve rows is that `value` below is a FROZEN LITERAL, so a
+    changed or corrupted CSV still fails the check -- it just fails against the
+    recorded number rather than against the measurements."""
     for r in csv.DictReader(open(summary(f"ksweep_{topo}.csv"))):
         if int(r["k"]) == k:
             return float(r[column])
@@ -132,13 +221,17 @@ def entries():
     E = []
 
     def add(**kw):
+        kw.setdefault("tier", "RAW" if kw.get("status") == "LIVE" else "n/a")
         E.append(kw)
 
     # ---- sec 41: the direction table. Both directions, because the point IS the pair.
+    S41 = {("linear", "fwd"): (1, 51), ("linear", "rev"): (2, 51),
+           ("square", "fwd"): (0, 52), ("square", "rev"): (10, 52),
+           ("heavy-hex", "fwd"): (0, 52), ("heavy-hex", "rev"): (14, 52)}
     for topo in ("linear", "square", "heavy-hex"):
-        for label, (o, n) in (("forward_2.0.0_to_2.0.2", ("200", "202")),
-                              ("reverse_2.0.2_to_2.0.0", ("202", "200"))):
-            g, tot = genuine_unstable(topo, o, n)
+        for label, tag, (o, n) in (("forward_2.0.0_to_2.0.2", "fwd", ("200", "202")),
+                                   ("reverse_2.0.2_to_2.0.0", "rev", ("202", "200"))):
+            g, tot = S41[(topo, tag)]
             lo, hi = wilson(g, tot)
             add(id=f"s41.unstable.{topo}.{label}", status="LIVE", section="41",
                 claim=f"genuinely unstable circuits, {topo}, {label.replace('_',' ')}",
@@ -150,35 +243,43 @@ def entries():
                     genuine_unstable(t, a, b)))
 
     # ---- sec 42: the direction-free band
+    S42 = {("linear", "unpaired"): (2.5495, 24), ("linear", "paired"): (0.858, 24),
+           ("square", "unpaired"): (9.775, 30), ("square", "paired"): (2.407, 30),
+           ("heavy-hex", "unpaired"): (14.0435, 32),
+           ("heavy-hex", "paired"): (2.0605, 32)}
+    S42_WIDE = {"linear": (11, 51), "square": (27, 52), "heavy-hex": (34, 52)}
     for topo in ("linear", "square", "heavy-hex"):
         for arm in ("unpaired", "paired"):
+            med, n_het = S42[(topo, arm)]
             add(id=f"s42.band.{topo}.{arm}.median", status="LIVE", section="42",
                 claim=f"median {arm} ambiguity band, {topo}, heterogeneous circuits",
-                value=band_stat(topo, f"{arm}_band_pp", "median"),
-                numerator="", denominator=int(band_stat(topo, f"{arm}_band_pp", "n")),
+                value=med, numerator="", denominator=n_het,
                 sampling_unit="circuit with a non-zero measured per-seed change",
                 ci_lo="", ci_hi="",
                 ci_method="seed bootstrap B=200 shared, reported in sec 42; biased low "
                           "(D-8.4)",
-                source=f"results/summary/band_{topo}.csv",
+                source=f"results/raw/bp_large_{topo}_q{{200,202}}.jsonl",
                 recompute=lambda t=topo, a=arm: band_stat(t, f"{a}_band_pp", "median"))
-        f, over, tot = band_fraction(topo)
+        over, tot = S42_WIDE[topo]
         lo, hi = wilson(over, tot)
         add(id=f"s42.wideband.{topo}", status="LIVE", section="42",
             claim=f"circuits whose unpaired band is >= 5 pp, {topo}",
-            value=f, numerator=over, denominator=tot,
+            value=over / tot, numerator=over, denominator=tot,
             sampling_unit="circuit", ci_lo=lo, ci_hi=hi,
             ci_method="Wilson score, 95%",
-            source=f"results/summary/band_{topo}.csv",
+            source=f"results/raw/bp_large_{topo}_q{{200,202}}.jsonl",
             recompute=lambda t=topo: band_fraction(t)[0])
 
-    # ---- sec 43: k sensitivity
+    # ---- sec 43: k sensitivity. DERIVED tier -- see ksweep_cell's docstring for why.
+    S43 = {"linear": ({1: 4.483, 2: 3.461, 3: 2.55, 5: 2.112}, 24),
+           "square": ({1: 16.704, 2: 12.024, 3: 9.775, 5: 7.551}, 30),
+           "heavy-hex": ({1: 23.803, 2: 17.222, 3: 14.043, 5: 10.862}, 32)}
     for topo in ("linear", "square", "heavy-hex"):
+        by_k, n_het = S43[topo]
         for k in (1, 2, 3, 5):
-            add(id=f"s43.k{k}.{topo}", status="LIVE", section="43",
+            add(id=f"s43.k{k}.{topo}", status="LIVE", section="43", tier="DERIVED",
                 claim=f"median unpaired band at k={k}, {topo}",
-                value=ksweep_cell(topo, k, "unpaired_median_band_pp"),
-                numerator="", denominator=int(ksweep_cell(topo, k, "n_heterogeneous")),
+                value=by_k[k], numerator="", denominator=n_het,
                 sampling_unit="circuit with a non-zero measured per-seed change",
                 ci_lo="", ci_hi="", ci_method="point estimate, exact enumeration; no "
                                               "interval computed for this table",
@@ -187,8 +288,10 @@ def entries():
                     t, kk, "unpaired_median_band_pp"))
 
     # ---- sec 30: within-version spread (single version, so direction-free)
+    S30 = {"linear": (0.8958700664507562, 56), "square": (5.940159705959671, 56),
+           "heavy-hex": (10.7094894120623, 56)}
     for topo in ("linear", "square", "heavy-hex"):
-        med, n = within_version_spread(topo, "202")
+        med, n = S30[topo]
         add(id=f"s30.spread.{topo}.q202", status="LIVE", section="30",
             claim=f"median within-version seed spread (max-min)/min, {topo}, 2.0.2",
             value=med, numerator="", denominator=n,
@@ -198,38 +301,46 @@ def entries():
             recompute=lambda t=topo: within_version_spread(t, "202")[0])
 
     # ---- sec 44: the replication
-    ok, n = replication_exact_matches()
     add(id="s44.replication.exact", status="LIVE", section="44",
         claim="per-seed values reproduced exactly by replication/replicate.py",
-        value=ok / n, numerator=ok, denominator=n,
+        value=144 / 144, numerator=144, denominator=144,
         sampling_unit="(circuit, seed, version) triple",
         ci_lo="", ci_hi="", ci_method="none — a census of the artifact's own 144 checks",
         source="replication/out_q{200,202}.jsonl vs replication/expected.json",
         recompute=lambda: (lambda r: r[0] / r[1])(replication_exact_matches()))
 
-    # ---- sec 48: the demonstrated decision errors, 200 seeds/arm
-    for cid, truth in (("bv_n140", "REGRESSION"), ("bv_n30", "REGRESSION"),
-                       ("bv_n70", "REGRESSION"), ("adder_n64", "REGRESSION"),
-                       ("qft_n29", "NO_REGRESSION")):
-        r = deep_row(cid)
+    # ---- sec 48: the demonstrated decision errors, 200 seeds/arm.
+    # error_rate and true_change re-derive from the raw per-seed files (deep_raw).
+    # The bootstrap INTERVALS are frozen metadata, not recomputed: B=400 replicates x
+    # 400,000 Monte-Carlo pairs per circuit is minutes of work and --check verifies
+    # point values. Regenerate them with `python deep.py --out ...`.
+    S48 = {"bv_n140": ("REGRESSION", 0.029801, 0.01722, 0.049909,
+                       31.035, 28.377, 33.796),
+           "bv_n30": ("REGRESSION", 0.007054, 0.002259, 0.014318,
+                      24.18, 22.691, 25.724),
+           "bv_n70": ("REGRESSION", 0.001496, 0.000196, 0.004053,
+                      30.295, 28.525, 32.139),
+           "adder_n64": ("REGRESSION", 0.215973, 0.152316, 0.289732,
+                         10.818, 10.567, 11.071),
+           "qft_n29": ("NO_REGRESSION", 7.3e-05, 5e-06, 0.00026,
+                       0.491, -0.007, 0.994)}
+    for cid, (truth, err, e_lo, e_hi, chg, c_lo, c_hi) in S48.items():
         add(id=f"s48.error.{cid}", status="LIVE", section="48",
             claim=f"{cid}: rate at which the 3-run unseeded protocol returns the "
                   f"WRONG verdict on the real 1.4.3 -> 2.0.0 change",
-            value=float(r["error_rate"]), numerator="", denominator=int(r["n_seeds"]),
+            value=err, numerator="", denominator=200,
             sampling_unit="seed (200 per arm); rate is exact over 200**3 sum-tuples",
-            ci_lo=float(r["error_ci_lo"]), ci_hi=float(r["error_ci_hi"]),
+            ci_lo=e_lo, ci_hi=e_hi,
             ci_method="seed bootstrap B=400 joint, 95%; point exact by integer rule",
-            source="results/summary/deep_143_200.csv",
-            recompute=lambda c=cid: float(deep_row(c)["error_rate"]))
+            source=f"results/raw/deep_{cid}_q{{143,200}}.jsonl",
+            recompute=lambda c=cid: deep_raw(c)["error_rate"])
         add(id=f"s48.truth.{cid}", status="LIVE", section="48",
             claim=f"{cid}: true mean change, 1.4.3 -> 2.0.0, 200 seeds/arm ({truth})",
-            value=float(r["true_change_pct"]), numerator="",
-            denominator=int(r["n_seeds"]), sampling_unit="seed",
-            ci_lo=float(r["true_change_ci_lo_pct"]),
-            ci_hi=float(r["true_change_ci_hi_pct"]),
+            value=chg, numerator="", denominator=200, sampling_unit="seed",
+            ci_lo=c_lo, ci_hi=c_hi,
             ci_method="percentile bootstrap over seeds, B=4000, 95%",
-            source="results/summary/deep_143_200.csv",
-            recompute=lambda c=cid: float(deep_row(c)["true_change_pct"]))
+            source=f"results/raw/deep_{cid}_q{{143,200}}.jsonl",
+            recompute=lambda c=cid: deep_raw(c)["true_change_pct"])
 
     # ---- withdrawn, kept on the books
     add(id="s38.heavyhex.unstable.WITHDRAWN", status="WITHDRAWN", section="38 -> 41",
@@ -268,9 +379,24 @@ def entries():
 # ------------------------------------------------------------------------ commands
 
 def cmd_check(E):
+    """Compare each RECORDED value against a fresh recomputation.
+
+    The `value` fields above are frozen literals. That is the whole point: until
+    2026-09-04 each one was itself a function call evaluated when the registry was
+    built, and `recompute` called the same function on the same file, so this loop
+    compared f() with f() and could not fail. It was demonstrated: falsifying every
+    band in results/summary/band_heavy-hex.csv (x3, +40 pp) still produced
+    "41/41 live numbers reproduce". Frozen literals make a corrupted or stale source
+    fail loudly whichever tier it belongs to."""
     bad = 0
     live = [e for e in E if e["status"] == "LIVE"]
-    print(f"\n  recomputing {len(live)} live numbers from their named sources\n")
+    n_raw = sum(1 for e in live if e["tier"] == "RAW")
+    print(f"\n  {len(live)} recorded numbers, recomputed and compared to the literal "
+          f"in this file")
+    print(f"  RAW     {n_raw:>2d} re-derived from results/raw/*.jsonl per-seed "
+          f"measurements")
+    print(f"  DERIVED {len(live) - n_raw:>2d} re-read from a summary CSV "
+          f"(too expensive to re-derive; see ksweep_cell)\n")
     for e in live:
         if e["recompute"] is None:
             print(f"  SKIP  {e['id']:<40s} no recompute defined")
@@ -279,11 +405,12 @@ def cmd_check(E):
         ok = abs(got - float(e["value"])) <= TOL
         bad += (not ok)
         mark = "ok  " if ok else "FAIL"
-        print(f"  {mark}  {e['id']:<40s} {float(e['value']):>9.4f}"
+        print(f"  {mark}  {e['tier']:<7s} {e['id']:<40s} {float(e['value']):>9.4f}"
               + ("" if ok else f"   recomputed {got:.4f}"))
     n_w = len([e for e in E if e["status"] == "WITHDRAWN"])
-    print(f"\n  {len(live) - bad}/{len(live)} live numbers reproduce from their source; "
-          f"{n_w} withdrawn numbers on the books.")
+    print(f"\n  {len(live) - bad}/{len(live)} recorded numbers match a fresh "
+          f"recomputation ({n_raw} of them from raw measurements);")
+    print(f"  {n_w} withdrawn numbers on the books.")
     return bad
 
 
@@ -315,8 +442,8 @@ def cmd_scan(E, path):
 
 
 def cmd_write(E, out):
-    cols = ["id", "status", "section", "claim", "value", "numerator", "denominator",
-            "sampling_unit", "ci_lo", "ci_hi", "ci_method", "source"]
+    cols = ["id", "status", "tier", "section", "claim", "value", "numerator",
+            "denominator", "sampling_unit", "ci_lo", "ci_hi", "ci_method", "source"]
     os.makedirs(os.path.dirname(out), exist_ok=True)
     with open(out, "w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=cols)

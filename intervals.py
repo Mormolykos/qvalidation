@@ -123,11 +123,23 @@ def exact_call_rate(old_vals, new_vals, threshold, k):
     which is integer arithmetic with no rounding anywhere. That path is taken whenever
     both arms are integral. Synthetic candidates (sec 42 sweeps a real-valued r) are
     not integral, and there the float form is used and is documented as such.
+
+    ⚠ A NON-POSITIVE BASELINE IS REFUSED (added 2026-09-04, finding F3). Relative
+    change (b-a)/a is undefined at a = 0, and the two exact estimators used to disagree
+    about what to do: this function returned 1.0 for exact_call_rate([0],[0],0.10,1) --
+    the `o > 0` clause below failed, so it silently took the float path and evaluated
+    0 >= 0 as a call -- while paired.exact_paired_rate raised ZeroDivisionError on the
+    same input. Neither is reachable from the study's data: the minimum two-qubit gate
+    count across all 41,790 recorded runs is 34. Both now refuse identically.
     """
     o = np.asarray(old_vals)
     n = np.asarray(new_vals)
     if o.size == 0 or n.size == 0:
         return float("nan")
+    if np.any(o <= 0):
+        raise ValueError(
+            f"relative change is undefined for a non-positive baseline; "
+            f"min(old_vals) = {float(np.min(o))!r}")
 
     integral = (np.all(np.equal(np.mod(o, 1), 0)) and np.all(np.equal(np.mod(n, 1), 0))
                 and np.all(o > 0))
