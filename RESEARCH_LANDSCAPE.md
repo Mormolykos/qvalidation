@@ -19,6 +19,9 @@ file without checking it here first.
 | ✅ **LIVE** | Benchpress passes no `seed_transpiler` in any of its 8 SDK gyms | §33, source-verified |
 | ✅ **LIVE** | The transpiler seed is the dominant entropy source | §28, cross-process control |
 | ✅ **LIVE** | A fixed seed reproduces bit-identically; different seeds do not | §44, re-run from clean |
+| ⭐⭐ **LIVE** | **PRE-REGISTERED: 12 of 26 circuits (46.2%, Wilson [28.8, 64.5]) have a decision-error rate excluding zero — circuits and analysis committed BEFORE the data** | §52 |
+| ⭐ **LIVE** | **All three circuits named in issue #14402 show a measurable error rate**: `bv_n140` 24.4%, `bv_n280` 17.3% [11.6, 23.7], `knn_341` 4.7% [2.7, 7.7] — the latter two selected blind | §52 |
+| ⚠ **LIVE** | But **14 of 39 circuits are perfectly deterministic** (zero change, zero error) and the median eligible rate is **0.0000** — the phenomenon is concentrated, not universal | §52 |
 | ⭐ **LIVE** | **`bv_n140` on heavy-hex has a long-run change of +5.37% [+4.27, +6.50] and is FALSELY CALLED a ≥+10% regression 24.4% of the time [19.5, 31.1]** — 400 seeds across 21 processes | §50, §51 |
 | ✅ **LIVE** | That result **reproduces on a disjoint scattered seed set across 10 fresh processes** (22.6% vs 26.3%, CIs overlap) — the PRNG/process-state confound is removed | §51 |
 | ⭐ **LIVE** | **That false positive is NOT fixed by running more: pooled k=20 (~40 h compute) still leaves 3.74%** | §50, §51 |
@@ -766,6 +769,91 @@ direct evidence of how hard. It is also direct evidence that the problem is real
 **Phase 0 for C2 before anything is built:** search specifically for a study treating
 SDK version as the independent variable and transpiler output quality as the dependent
 variable. If it exists, C1 is next in line.
+
+---
+
+## 52. ⭐⭐⭐ PRE-REGISTERED REPLICATION — it is a CLASS, not one circuit — 2026-09-04
+
+The post-hoc selection objection was the last fatal one: *you ran 58 circuits, kept the
+noisiest, and built a finding on it.* It was correct. It is now answered by design rather
+than by argument.
+
+### The design was fixed and committed before the data existed
+
+| commit | time | what |
+|---|---|---|
+| `a36a34a` | 2026-09-03 **23:51:08** | `PREREGISTRATION.md` — circuits, protocol, analysis, falsification criteria |
+| `fbc573d` | 2026-09-03 **23:52:38** | `prereg_analysis.py` + the 39-circuit list |
+| `30224a0` | 2026-09-04 **09:13:07** | the raw data, 78 files, still unanalysed |
+
+Anyone can check the order: `git log --diff-filter=A -- prereg_analysis.py results/raw/prereg`
+
+Selection was on **compute cost only** — every circuit whose 12-seed heavy-hex runtime
+under 2.0.2 was ≤10 s — which is independent of both the between-version change and the
+error rate. **39 circuits, 28 to 420 qubits. `bv_n140` excluded** because it was chosen
+post-hoc. 200 scattered seeds per arm, 10 processes each, 15,600 transpilations.
+
+### ⭐ PRIMARY ENDPOINT
+
+> **12 of 26 eligible circuits (46.2%, Wilson 95% CI 28.8%–64.5%) have a decision-error
+> rate whose interval excludes zero.**
+>
+> Pre-registered label, computed by the script and not chosen afterwards: **STRONG**
+> (§6 defined STRONG as ≥0.25 with the interval excluding zero).
+
+**`bv_n140` is not an isolated freak.** The phenomenon is a property of the protocol
+applied to this corpus, not of one circuit.
+
+### And two of #14402's own circuits are in the blind sample
+
+Neither was chosen by us — both satisfied the cost rule:
+
+| circuit | est. long-run change | 95% CI | per-seed t-CI | **false-positive rate** | 95% CI |
+|---|---:|---|---|---:|---|
+| **`bv_n280`** | +4.89% | [+3.67, +6.11] | [+4.01, +6.64] | **17.31%** | [11.60, 23.69] |
+| **`knn_341`** | +6.20% | [+5.69, +6.71] | [+5.75, +6.79] | **4.68%** | [2.70, 7.68] |
+
+Both are below the +10% cut under **both** interval methods, and both are called a
+regression anyway. Together with `bv_n140` (§51), **all three circuits named in issue
+#14402 show a measurable decision-error rate on heavy-hex.**
+
+### ⚠ What this result does NOT say — and the honest shape of it
+
+**1. Fourteen of the 39 circuits are perfectly deterministic.** `cat_*`, `ising_*`,
+`wstate_*`, `ghz_*`, `32`, `ising_n420` — zero change, zero seed spread, zero error.
+The phenomenon is **concentrated, not universal**, and a benchmark suite containing many
+such circuits will look healthy in aggregate. That is §34's aggregate-masking result
+confirmed on pre-registered data.
+
+**2. The median error rate over eligible circuits is 0.0000.** Half of them are exactly
+zero. p75 = 6.9%, p90 = 14.2%, max = 17.3%. **The endpoint counts circuits with a
+non-zero rate; it does not claim the typical rate is large.** Quoting 46.2% without this
+sentence would misrepresent it.
+
+**3. The exclusions are conservative, and they cut against us.** The 10 BOUNDARY circuits
+carry the **highest** rates in the entire study — `bv_n30` 39.8%, `bv_n70` 37.4%,
+`knn_n31` 33.1%, `qugan_n111` 33.1%, `qugan_n39` 30.5% — and are all excluded by the
+pre-registered D-1.6 rule because their estimated change sits within 3 pp of the cut.
+Including them would roughly double the endpoint. **They stay excluded.** The rule was
+written down first and is not being relaxed now that its cost is visible.
+
+**4. Three circuits are UNRESOLVED** (`dnn_n33` +9.93%, `dnn_n51` +9.73%,
+`qugan_n71` +10.47%) — their change intervals straddle the threshold, so no verdict can
+be called wrong. Excluded per §5.2, reported here as required by §7.1.
+
+**5. Cost-based selection means fast circuits.** Fast correlates with small, though the
+sample spans 28–420 qubits. Generalisation to the slowest circuits in the corpus is
+untested.
+
+**6. One topology, one version pair, one SDK, one machine.** Unchanged.
+
+### The structure the data reveals
+
+Error rate tracks **distance from the estimated change to the threshold**, and nothing
+else. Circuits at ~0% change have exactly 0% error; circuits at +6–8% have 5–17%;
+circuits within 3 pp of the cut reach 30–40%. That is §42's ambiguity band, confirmed
+across 26 circuits chosen blind — and it is why the band, not any single rate, is the
+right way to state the finding.
 
 ---
 

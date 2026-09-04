@@ -41,6 +41,9 @@ variance rather than version drift.
 
 | result | value | where |
 |---|---|---|
+| ⭐ **pre-registered**: circuits with a decision-error rate excluding zero | **12 of 26 = 46.2%**, Wilson [28.8%, 64.5%] | §52 |
+| all three circuits named in issue #14402 show an error rate | `bv_n140` 24.4%, `bv_n280` 17.3%, `knn_341` 4.7% | §52 |
+| ⚠ but 14 of 39 circuits are perfectly deterministic | median eligible error rate **0.0000** | §52 |
 | **`bv_n140` real regression MISSED by the 3-run protocol** | **2.98%** of the time, 95% CI [1.72%, 4.99%] | §48 |
 | `bv_n140` true change, 1.4.3 → 2.0.0, 200 seeds/arm | **+31.0%**, 95% CI [+28.4%, +33.8%] | §48 |
 | what a single 3-run comparison of it can return | **−10.5% to +100.0%** | §48 |
