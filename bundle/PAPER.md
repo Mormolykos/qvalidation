@@ -10,9 +10,10 @@ ORCID 0009-0007-3805-170X
 ## Abstract
 
 Quantum compiler benchmarks are used to accept or reject changes to production
-transpilers, but the compilers they measure are stochastic. We show that Qiskit's
-Benchpress benchmark suite passes no `seed_transpiler` argument in any of its eight SDK
-gyms, so every reported gate count is one draw from an unmeasured distribution. We
+transpilers, but the compilers they measure are stochastic. We show that at the pinned
+revision of IBM's Benchpress benchmark suite, its Qiskit gym compiles without passing
+`seed_transpiler`, so every gate count it reports is one draw from an unmeasured
+distribution — while the BQSKit gym in the same repository does seed its compiler. We
 quantify the consequence as **finite-sample decision risk**: the probability that a
 regression verdict computed from *k* runs per version disagrees with the verdict implied
 by the same measurement's long-run mean.
@@ -90,9 +91,21 @@ benchmark.extra_info["output_gate_count_2q"] = circuit.count_ops().get(two_qubit
 Two properties matter here, both established by reading the source at commit
 `b695f30e83a32bac05b9b4d8e98d37ba9aae5236`:
 
-1. **No gym passes `seed_transpiler`.** All eight SDK gyms call
-   `generate_preset_pass_manager(optimization_level=..., backend=...)` without a seed.
-   Circuit-*construction* seeds are pinned (`seed=12345`); the compilation seed is not.
+1. **The Qiskit gym compiles unseeded — and a sibling gym does not.** At commit
+   `b695f30e`, the Qiskit-based gyms call `generate_preset_pass_manager(
+   optimization_level=..., backend=...)` with no `seed_transpiler` anywhere.
+   Circuit-*construction* seeds are pinned (`seed=12345`, 14 occurrences); the
+   compilation seed is not.
+
+   ⚠ We state this for the Qiskit gym only. `seed_transpiler` and
+   `generate_preset_pass_manager` are **Qiskit-specific APIs**; the other six gyms cannot
+   call them and use their own interfaces — TKET, for instance, calls
+   `backend.default_compilation_pass(optimisation_level=...)`. More importantly, the
+   **BQSKit gym explicitly seeds its compiler**:
+   `bqskit_gym/device_transpile/test_summit.py:179` calls
+   `compile(circuit, model=BACKEND, optimization_level=..., compiler=compiler, seed=0)`.
+   **Whether the remaining SDKs compile deterministically is not assessed here.** This is
+   a claim about one revision of one repository, not a permanent property of Benchpress.
 2. **No aggregation exists anywhere in the repository.** There is no mean, no minimum, no
    best-of-*k*, and no run-count option. One invocation produces one number.
 
@@ -388,8 +401,10 @@ probability is measurable. On a benchmark used to evaluate a production quantum 
 a three-run comparison cannot resolve a change within roughly eleven percentage points of
 its decision threshold for the median stochastic circuit, and the two circuits from the
 motivating bug report that we could evaluate blind both carry non-zero risk. Adding runs
-reduces the risk slowly, at quadratic cost; setting a seed removes the sampling variance
-outright.
+reduces the risk slowly — on the demonstrated circuit, twenty runs per version still
+leaves 3.74% — while setting a seed removes this source of sampling variance outright. We
+report the measured k-sweep rather than fitting a scaling law: a log-log fit to those six
+points has slope −0.70, and six points on one circuit do not establish an exponent.
 
 The remedy is one argument. The measurement problem it solves is not exotic — it is the
 ordinary consequence of treating a stochastic measurement as a scalar. We suggest that

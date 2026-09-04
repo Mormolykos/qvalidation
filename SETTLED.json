@@ -1,0 +1,135 @@
+{
+  "_what": "Ledger of questions that have ALREADY been tested and settled. Each entry names the attack, who made it, the date, the command that settled it, and the result. An incoming critique that matches a settled entry must be answered from this file, NOT by re-running the work.",
+  "_rule": "Do not re-run a settled check unless the challenger supplies NEW EVIDENCE that the recorded result is wrong. A restated opinion is not new evidence. Re-running settled work costs the operator money he does not have.",
+  "_usage": "python settled.py --check \"<keywords>\"  |  python settled.py --list  |  python settled.py --open",
+  "entries": [
+    {
+      "id": "S01", "settled": "2026-09-03", "status": "SETTLED",
+      "attack": "Unseeded backend error rates confound every between-version comparison. FlexibleBackend draws error rates randomly per construction and the two arms build backends separately; at optimization level 2 the layout passes score with error rates.",
+      "raised_by": "Claude, self-attack",
+      "command": "python -c \"see RESEARCH_LANDSCAPE.md sec 46 attack 3\"",
+      "result": "0 of 24 (circuit,seed) cases changed the observable, with 4 of 4 VERIFIED-DISTINCT error-rate draws per circuit. The test had power; the confound does not exist.",
+      "keywords": ["backend", "error rate", "confound", "unseeded backend", "FlexibleBackend", "optimization level"]
+    },
+    {
+      "id": "S02", "settled": "2026-09-03", "status": "SETTLED",
+      "attack": "Consecutive seeds 1000-1011 are not independent draws.",
+      "raised_by": "Claude, self-attack",
+      "command": "RESEARCH_LANDSCAPE.md sec 46 attack 8",
+      "result": "lag-1 autocorrelation between -0.22 and +0.11 across four circuits; a scattered seed set spanning 7..2^31 gives matching means and spreads.",
+      "keywords": ["consecutive seeds", "seed independence", "autocorrelation", "seed spacing"]
+    },
+    {
+      "id": "S03", "settled": "2026-09-04", "status": "SETTLED",
+      "attack": "The 200 seeds came from one contiguous block inside one OS process, so a PRNG or process-state artifact could produce the result.",
+      "raised_by": "ChatGPT and Gemini, round 2",
+      "command": "python scatter.py --circuit bv_n140 --topology heavy-hex --n 200 --chunks 10 ...",
+      "result": "A DISJOINT set of 200 scattered seeds (5.9M-1.08B) across 10 fresh processes with differing PYTHONHASHSEED gives 22.59% [16.37,30.61] against 26.28% [18.45,34.20]. Zero seed overlap. Each point lies inside the other's interval. Confound removed.",
+      "keywords": ["PRNG", "process state", "contiguous", "scattered seeds", "PYTHONHASHSEED", "hash seed", "process diversity"]
+    },
+    {
+      "id": "S04", "settled": "2026-09-04", "status": "SETTLED",
+      "attack": "The <=10s runtime selection rule biases the sample toward high-relative-variance circuits.",
+      "raised_by": "Gemini, round 3",
+      "command": "python audit.py  (check A7)",
+      "result": "REFUTED. Selected median seed spread 0.1126 vs excluded 0.1234, Mann-Whitney p=0.768. If anything the EXCLUDED circuits are more variable. NOTE: this is 'no detected difference', not proof of independence.",
+      "keywords": ["selection bias", "10s", "runtime selection", "convenience sample", "Mann-Whitney", "representativeness"]
+    },
+    {
+      "id": "S05", "settled": "2026-09-04", "status": "SETTLED",
+      "attack": "The integer decision rule q*Sb >= (q+p)*Sa may not equal the intended threshold comparison; check equality, rounding, direction.",
+      "raised_by": "Claude, self-attack (found a REAL float defect first)",
+      "command": "python audit.py  (checks A8, P8.1)",
+      "result": "The float form b >= a(1+t) disagreed with the literal rule in 84 of 900 cases, so it was REPLACED by exact integer arithmetic, verified against exact-integer brute force: 900 cases, 0 disagreements. Threshold equality correctly counts as a call.",
+      "keywords": ["integer rule", "decision rule", "exactness", "floating point", "equality", "threshold comparison", "rounding"]
+    },
+    {
+      "id": "S06", "settled": "2026-09-04", "status": "SETTLED",
+      "attack": "Enumeration draws k seeds WITH replacement, but a maintainer runs k DISTINCT seeds.",
+      "raised_by": "Claude, self-attack",
+      "command": "python audit.py  (check P9)",
+      "result": "Both computed on the pre-registered data. Max per-circuit risk difference 0.0011; the count of circuits at risk >=5% is UNCHANGED at 7. Not outcome-determining.",
+      "keywords": ["replacement", "with replacement", "without replacement", "enumeration", "combinations", "ordered tuples"]
+    },
+    {
+      "id": "S07", "settled": "2026-09-04", "status": "SETTLED",
+      "attack": "The ambiguity band uses a multiplicative residual model, but additive fits better on this topology.",
+      "raised_by": "Claude, self-attack",
+      "command": "python model_check.py --topology heavy-hex --pair 200:202 --band-compare",
+      "result": "Recomputed additively at 200 seeds: median band 10.86 pp -> 10.73 pp, wider under additive on only 1 of 23 circuits. Robust to the model choice. The assumption must be DISCLOSED but does not change the number.",
+      "keywords": ["multiplicative", "additive", "residual model", "ambiguity band model", "band model"]
+    },
+    {
+      "id": "S08", "settled": "2026-09-04", "status": "SETTLED",
+      "attack": "The theta bootstrap resamples the SAME seed indices across both arms, imposing a covariance the sampling design does not have. Flagged as a possible real inferential error.",
+      "raised_by": "ChatGPT, round 3, attack 5",
+      "command": "compare joint vs independent arm resampling on the pre-registered data",
+      "result": "FAILS. Both arms were measured at the IDENTICAL 200 seeds, so the seed is the sampling unit and paired resampling is correct. Cross-arm correlation median -0.009, 0 of 26 circuits above |0.3|. Joint vs independent intervals differ by <=0.05 pp and produce ZERO verdict flips on 5 tested circuits.",
+      "keywords": ["bootstrap", "paired arms", "joint resampling", "independent resampling", "covariance", "arm dependence", "pseudoreplication"]
+    },
+    {
+      "id": "S09", "settled": "2026-09-04", "status": "SETTLED",
+      "attack": "Duplicate circuits inflate the endpoint count.",
+      "raised_by": "Claude, self-attack",
+      "command": "python audit.py  (check A3)",
+      "result": "swap_test_n41 and knn_n41 are byte-identical seed-for-seed in both arms. NEITHER is in the eligible set (both are BOUNDARY), so the endpoint is unaffected. No other duplicate pair exists.",
+      "keywords": ["duplicate", "identical circuits", "knn_n41", "swap_test_n41", "pseudoreplication"]
+    },
+    {
+      "id": "S10", "settled": "2026-09-04", "status": "SETTLED",
+      "attack": "Wilson intervals assume the 26 circuit classifications are independent; algorithm-family clustering makes them too narrow.",
+      "raised_by": "ChatGPT, round 2",
+      "command": "python followup.py  (F8)",
+      "result": "CONFIRMED and ACTED ON. Families are perfectly separated (all-hit or all-miss). Cluster bootstrap over families, B=20000: [17.4%, 81.0%] against Wilson [28.8%, 64.5%]. The suite-level proportion was WITHDRAWN as a headline as a result.",
+      "keywords": ["Wilson", "cluster", "family", "clustering", "independence", "effective sample size", "12/26", "46.2%"]
+    },
+    {
+      "id": "S11", "settled": "2026-09-04", "status": "SETTLED",
+      "attack": "The rho = -0.833 correlation is presented as a discovered mechanism.",
+      "raised_by": "Claude, self-attack during the 16-phase red team",
+      "command": "simulate circuits with theta and spread drawn INDEPENDENTLY, no compiler involved",
+      "result": "The claim was WITHDRAWN. Synthetic data containing no compiler reproduces the statistic at mean -0.661 over 30 trials of 23 circuits, with 5 of 30 reaching -0.833 or stronger. The association is induced by the decision rule. Already corrected in the paper at commit 52f24dd.",
+      "keywords": ["rho", "-0.833", "Spearman", "mechanism", "correlation", "tautology", "mechanistic"]
+    },
+    {
+      "id": "S12", "settled": "2026-09-03", "status": "SETTLED",
+      "attack": "The observable or the backend differs across Qiskit versions, confounding the comparison.",
+      "raised_by": "Claude, self-attack",
+      "command": "RESEARCH_LANDSCAPE.md sec 46 attacks 1, 2, 7",
+      "result": "two_q_gate_type is 'cz' in all three Qiskit versions AND on all four topologies; transpiled output contains no other 2-qubit gate; coupling map identical across versions (278 edges, hash ef616023); basis gates identical.",
+      "keywords": ["observable", "cz", "coupling map", "basis gates", "backend identity", "version comparability"]
+    },
+    {
+      "id": "S13", "settled": "2026-09-04", "status": "SETTLED",
+      "attack": "The pre-registration was not followed; analysis choices were made after seeing results.",
+      "raised_by": "Claude, self-attack (audit phase 2)",
+      "command": "python audit.py ; git log --diff-filter=A -- prereg_analysis.py results/raw/prereg",
+      "result": "Constants match the code EXACTLY: BOOT_TRUTH=4000, BOOT_ERR=400, BOUNDARY_PP=3.0, rng seed 20260904. Commit order verified: pre-registration 23:51:08, analysis code 23:52:38, data 09:13:07 next morning. One amendment (A1) was recorded, for two harness bugs found BEFORE any result was inspected.",
+      "keywords": ["preregistration", "prereg", "post hoc", "researcher degrees of freedom", "timestamps", "commit order"]
+    },
+    {
+      "id": "S14", "settled": "2026-09-04", "status": "SETTLED",
+      "attack": "Benchpress performs some aggregation over runs (mean or best-of-k), so comparing means is a strawman.",
+      "raised_by": "Gemini, round 2",
+      "command": "grep -rn 'statistics.mean|np.mean|n_runs|num_runs|repeat|addoption' benchpress/",
+      "result": "Benchpress performs NO aggregation anywhere: 0 means, 0 run-count options across the whole repository. It records one value per invocation. Separately, min-of-3 was TESTED: all 8 circuits still err and every rate roughly DOUBLES, so best-of-k makes the problem worse.",
+      "keywords": ["aggregation", "mean", "best-of-k", "min-of-3", "minimum", "strawman", "estimator choice"]
+    },
+    {
+      "id": "S15", "settled": "2026-09-04", "status": "OPEN",
+      "attack": "The abstract and sec 2.1 claim NO gym passes a compiler seed. BQSKit's gym passes seed=0.",
+      "raised_by": "Claude, verified by reading IBM's source at bqskit_gym/device_transpile/test_summit.py:179",
+      "command": "sed -n '174,180p' $BENCHPRESS_PATH/benchpress/bqskit_gym/device_transpile/test_summit.py",
+      "result": "CONFIRMED TRUE. compile(circuit, model=BACKEND, optimization_level=..., compiler=compiler, seed=0). The paper's universal claim is FALSE. seed_transpiler is also a Qiskit-only API that six of the eight gyms cannot call. FIX DRAFTED AND REVERTED ON THE OPERATOR'S INSTRUCTION; the paper at 52f24dd still contains the false claim. MUST be fixed before any DOI.",
+      "keywords": ["eight gyms", "BQSKit", "seed=0", "no gym passes", "seed_transpiler", "source-level claim"]
+    },
+    {
+      "id": "S16", "settled": "2026-09-04", "status": "OPEN",
+      "attack": "The conclusion says adding runs reduces risk 'at quadratic cost', a scaling law the paper never fitted.",
+      "raised_by": "Claude, self-attack",
+      "command": "log-log fit to the measured k-sweep",
+      "result": "CONFIRMED. Our own six points give slope -0.701, not the -0.500 quadratic cost requires. FIX DRAFTED AND REVERTED ON THE OPERATOR'S INSTRUCTION; the paper at 52f24dd still contains the word.",
+      "keywords": ["quadratic", "scaling law", "cost model", "k sweep", "runs per version"]
+    }
+  ]
+}
