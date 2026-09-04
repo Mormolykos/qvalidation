@@ -41,7 +41,9 @@ variance rather than version drift.
 
 | result | value | where |
 |---|---|---|
-| ⭐ **pre-registered**: circuits with a decision-error rate excluding zero | **12 of 26 = 46.2%**, Wilson [28.8%, 64.5%] | §52 |
+| ⭐ **pre-registered**, circuits whose compilation is stochastic | **12 of 13 = 92.3%**, Wilson [66.7%, 98.6%] | §52, §54 |
+| same, over all eligible circuits (cluster-robust interval) | 12 of 26 = 46.2%, **[17.4%, 81.0%]** | §54 |
+| holds at every threshold 5%–20%; doubles under best-of-3 | min-of-3 raises `bv_n280` from 17.3% to 28.4% | §54 |
 | all three circuits named in issue #14402 show an error rate | `bv_n140` 24.4%, `bv_n280` 17.3%, `knn_341` 4.7% | §52 |
 | ⚠ but 14 of 39 circuits are perfectly deterministic | median eligible error rate **0.0000** | §52 |
 | **`bv_n140` real regression MISSED by the 3-run protocol** | **2.98%** of the time, 95% CI [1.72%, 4.99%] | §48 |

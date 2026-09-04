@@ -210,3 +210,36 @@ Two of the three are in the blind sample, selected by the cost rule:
 4. **Is the Wilson interval valid** given family-level dependence, given F3?
 5. **Is 46.2% a meaningful summary** when the median rate is 0 and the max is 17.3%?
 6. **Any reason the whole thing is an artifact** we have not considered.
+
+---
+
+## 8. Round two — results of the attacks by Gemini and ChatGPT, 2026-09-04
+
+Six follow-up tests, `followup.py`. The frozen experiment was **not** modified.
+
+| id | attack | outcome |
+|---|---|---|
+| **C3** | Wilson assumes independent circuits; family structure means it is too narrow | **CONFIRMED — our interval was wrong.** Families are *perfectly separated* (adder 3/3, knn 3/3, cc 2/2, swap_test 2/2, bv 1/1, qft 1/1 all hit; cat 0/3, ghz 0/3, ising 0/4, wstate 0/3, 32 0/1 all miss). Cluster bootstrap over families, B=20,000: **46.2%, 95% CI [17.4%, 81.0%]** vs Wilson [28.8%, 64.5%]. The cluster interval now replaces Wilson. |
+| **G2** | 12/26 blends deterministic and stochastic populations | **CONFIRMED, and it sharpens the result.** Exactly 13 eligible circuits have zero per-seed variance (0 hits) and 13 have non-zero variance (12 hits). **Among stochastic circuits: 12/13 = 92.3%, Wilson [66.7%, 98.6%].** Reported alongside 12/26, not instead of it. |
+| **G1** | the mean is a strawman; practice may be best-of-k | **REJECTED, and it inverts.** Benchpress performs no aggregation at all (source-verified). Under **min-of-3**, all 8 tested circuits still err and every rate roughly **doubles** (`bv_n280` 0.173 → 0.284). Best-of-k makes the problem worse. |
+| **G3** | no formalised threshold, so a false positive is a hallucination | **REJECTED on the numbers**, conceded on wording. Endpoint recomputed at every cut: 5% → 36.4%, 7.5% → 22.2%, 10% → 46.2%, 12.5% → 60.0%, 15% → 60.5%, 20% → 46.2%. Non-zero everywhere, interval excludes zero everywhere. Terminology changed to **finite-sample decision risk relative to the long-run reference**. |
+| **G4** | excluding boundary circuits destroys ecological validity | **ANSWERED.** Including them: 22/36 = **61.1%** [44.9, 75.2]. The exclusion costs ~15 points and **stays**, because the rule was fixed before the data. |
+| **C2** | θ is a 200-seed plug-in; propagate its uncertainty | **ANSWERED.** Joint bootstrap recomputing θ, verdict, boundary and error each replicate: endpoint median 0.4615, CI [0.4167, 0.5000]. ⚠ This isolates θ-uncertainty **only** and is not a total-uncertainty interval; that is C3's [17.4%, 81.0%]. |
+| **C1** | "wrong" overstates the estimand | **ADOPTED** throughout. |
+
+### The claim after round two
+
+> On heavy-hex, comparing Qiskit 1.4.3 with 2.0.0, **12 of 13 pre-registered circuits
+> whose compilation is stochastic (92.3%, Wilson [66.7%, 98.6%]) exhibit a finite-sample
+> decision risk demonstrably above zero** under the three-run protocol. Over all 26
+> eligible circuits the proportion is 46.2% with a family-cluster-robust interval of
+> **[17.4%, 81.0%]**. It holds at every threshold from 5% to 20% and roughly doubles under
+> best-of-3 aggregation.
+
+### Still open after round two
+
+1. The perfect family separation means the real unit of analysis may be the **algorithm
+   family**, not the circuit — 6 of 11 families. With 11 units, no interval will be tight.
+2. Whether `cat`/`ghz`/`ising`/`wstate` being deterministic is a property of those
+   algorithms or of this topology and qubit range. Untested.
+3. One SDK, one version pair, one topology, one machine. Unchanged.

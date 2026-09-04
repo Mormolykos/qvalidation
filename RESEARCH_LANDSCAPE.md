@@ -19,7 +19,10 @@ file without checking it here first.
 | ✅ **LIVE** | Benchpress passes no `seed_transpiler` in any of its 8 SDK gyms | §33, source-verified |
 | ✅ **LIVE** | The transpiler seed is the dominant entropy source | §28, cross-process control |
 | ✅ **LIVE** | A fixed seed reproduces bit-identically; different seeds do not | §44, re-run from clean |
-| ⭐⭐ **LIVE** | **PRE-REGISTERED: 12 of 26 circuits (46.2%, Wilson [28.8, 64.5]) have a decision-error rate excluding zero — circuits and analysis committed BEFORE the data** | §52 |
+| ⭐⭐ **LIVE** | **PRE-REGISTERED: among circuits whose compilation is STOCHASTIC, 12 of 13 (92.3%, [66.7, 98.6]) show finite-sample decision risk above zero** — circuits and analysis committed BEFORE the data | §52, §54 |
+| ⭐ **LIVE** | Across all 26 eligible circuits: 46.2%, **family-cluster-robust 95% CI [17.4%, 81.0%]** | §54 |
+| ⛔ **CORRECTED** | §52's Wilson interval [28.8, 64.5] **assumed independence and was too narrow** — families are perfectly separated (all-hit or all-miss) | §54 F8 |
+| ✅ **LIVE** | Holds at **every threshold 5%–20%**, and **roughly doubles** under best-of-3 aggregation instead of mean | §54 |
 | ⭐ **LIVE** | **All three circuits named in issue #14402 show a measurable error rate**: `bv_n140` 24.4%, `bv_n280` 17.3% [11.6, 23.7], `knn_341` 4.7% [2.7, 7.7] — the latter two selected blind | §52 |
 | ⚠ **LIVE** | But **14 of 39 circuits are perfectly deterministic** (zero change, zero error) and the median eligible rate is **0.0000** — the phenomenon is concentrated, not universal | §52 |
 | ⭐ **LIVE** | **`bv_n140` on heavy-hex has a long-run change of +5.37% [+4.27, +6.50] and is FALSELY CALLED a ≥+10% regression 24.4% of the time [19.5, 31.1]** — 400 seeds across 21 processes | §50, §51 |
@@ -769,6 +772,131 @@ direct evidence of how hard. It is also direct evidence that the problem is real
 **Phase 0 for C2 before anything is built:** search specifically for a study treating
 SDK version as the independent variable and transpiler output quality as the dependent
 variable. If it exists, C1 is next in line.
+
+---
+
+## 54. ⛔ TWO CRITICS ATTACK THE 46.2% — it survives, and one of our intervals was wrong — 2026-09-04
+
+Gemini (writing as IBM's lead engineer, desk-rejecting) and ChatGPT attacked the frozen
+result independently. Six tests, `followup.py`. **The frozen experiment was not modified:
+no exclusion changed, no re-run, no edit to `PREREGISTRATION.md`.**
+
+### ⛔ C3 CONFIRMED — the Wilson interval was too narrow. Ours was wrong.
+
+ChatGPT: *"Wilson assumes the 26 circuit-level classifications are independent. Family
+structure means the effective sample size is smaller and the CI is too narrow."*
+
+**Correct.** The family breakdown is not merely clustered — it is **perfectly separated**:
+
+| all-hit families | `adder` 3/3 · `knn` 3/3 · `cc` 2/2 · `swap_test` 2/2 · `bv` 1/1 · `qft` 1/1 |
+|---|---|
+| **all-miss families** | `cat` 0/3 · `ghz` 0/3 · `ising` 0/4 · `wstate` 0/3 · `32` 0/1 |
+
+Every family is entirely hits or entirely misses. The outcome is determined by **algorithm
+family**, not by individual circuit, so 26 circuits are nowhere near 26 independent
+observations.
+
+> **Cluster bootstrap, family as the resampling unit, B = 20,000: 46.2%, 95% CI
+> [17.4%, 81.0%].** Against Wilson's [28.8%, 64.5%] — nearly **twice as wide**.
+>
+> **The cluster interval replaces Wilson as the headline uncertainty.** It still excludes
+> zero, but anyone quoting [28.8%, 64.5%] is overstating the precision, and that includes
+> §52 as first written.
+
+### ⭐ G2 CONFIRMED, and adopting Gemini's own denominator makes the result sharper
+
+Gemini: *"By padding the denominator with 14 deterministic circuits you answer the wrong
+question."* **Right.** The partition is exact:
+
+| eligible circuits | n | hits |
+|---|---:|---:|
+| **zero** per-seed variance (compilation is deterministic) | 13 | **0** |
+| **non-zero** per-seed variance (compilation is stochastic) | 13 | **12** |
+
+> **Among eligible circuits whose compilation is actually stochastic: 12 of 13 = 92.3%,
+> Wilson 95% CI [66.7%, 98.6%].**
+
+Gemini said 12/12; it is 12/13 — the circuit named `32` has seed variance and still shows
+no detectable error. **This is now reported alongside 12/26, not instead of it.** 12/26
+answers the pre-registered population question; 12/13 answers the mechanistic one, and
+the mechanistic one is the more informative.
+
+### ⭐ G1 REJECTED — best-of-k makes it WORSE, not better
+
+Gemini: *"What if the utility is the minimum of the distribution? Then comparing means is
+a strawman."*
+
+First, from source: **Benchpress performs no aggregation at all** — no mean, no min, no
+best-of-k anywhere in the repository. It records one value per invocation. The mean was
+the *reporter's* choice in #14402 ("avg. percent increase"). So the mean-based estimand
+matches the documented practice of the actual incident.
+
+Second, the alternative was measured rather than argued:
+
+| circuit | θ | mean-of-3 | **MIN-of-3** | median-of-3 |
+|---|---:|---:|---:|---:|
+| `bv_n280` | +4.89% | 0.1732 | **0.2837** | 0.2026 |
+| `knn_n67` | +6.67% | 0.1667 | **0.3002** | 0.1987 |
+| `swap_test_n83` | +6.76% | 0.1560 | **0.2650** | 0.1857 |
+| `adder_n118` | +6.47% | 0.1267 | **0.2581** | 0.1544 |
+| `knn_341` | +6.20% | 0.0467 | **0.1080** | 0.0798 |
+
+**8 of 8 circuits still err under min-of-3, and every rate is roughly double.** A ratio of
+two minima is noisier than a ratio of two means. **The attack inverts: if practice is
+best-of-k, the problem is worse.**
+
+### G3 REJECTED — the endpoint is non-zero at every threshold
+
+Gemini: *"A false positive cannot exist without a formalised classification boundary."*
+
+The whole endpoint recomputed at each cut, eligibility and boundary flags recomputed too:
+
+| cut | 5% | 7.5% | **10%** | 12.5% | 15% | 20% |
+|---|---:|---:|---:|---:|---:|---:|
+| eligible | 22 | 18 | **26** | 35 | 38 | 39 |
+| endpoint | 36.4% | 22.2% | **46.2%** | 60.0% | 60.5% | 46.2% |
+
+Non-zero at every cut, with the interval excluding zero at every cut. The finding does not
+depend on +10%. (The dip at 7.5% is an eligibility effect — only 18 circuits are resolved
+and non-boundary there.)
+
+**What Gemini is still right about:** "false positive" is defined against a rule we
+specified. The honest phrasing is **finite-sample decision risk relative to the long-run
+reference**, adopted below.
+
+### G4 ANSWERED — including the boundary circuits raises it
+
+| | endpoint | Wilson |
+|---|---:|---|
+| pre-registered, boundary **excluded** | 12/26 = **46.2%** | [28.8, 64.5] |
+| follow-up, boundary **included** | 22/36 = **61.1%** | [44.9, 75.2] |
+
+The exclusion costs us ~15 points. **It stays.** The rule was fixed before the data.
+
+### C2 ANSWERED — θ uncertainty barely moves the endpoint
+
+Joint bootstrap, B = 300, recomputing θ, verdict, boundary flag and error rate in every
+replicate: endpoint median 0.4615, **95% CI [0.4167, 0.5000]**. ⚠ This interval isolates
+*θ-uncertainty only* — it does not resample circuits, so it is **not** a total-uncertainty
+interval and must never be quoted as one. The total-uncertainty interval is F8's
+[17.4%, 81.0%].
+
+### C1 ADOPTED — terminology
+
+"Wrong verdict" becomes **decision error relative to the long-run reference**, or
+**finite-sample decision risk**. Nobody can then read the 200-seed estimate as ground
+truth. G5 (median is zero) is answered by the same discipline: **46.2% is the proportion
+of circuits with statistical *evidence* of non-zero risk, not the proportion with large
+risk.**
+
+### The claim after both critics
+
+> On heavy-hex, comparing Qiskit 1.4.3 with 2.0.0, **12 of 13 pre-registered circuits
+> whose compilation is stochastic (92.3%, Wilson [66.7%, 98.6%]) exhibit a finite-sample
+> decision risk demonstrably above zero** under the three-run protocol. Across all 26
+> eligible circuits the proportion is 46.2%, with a family-cluster-robust 95% interval of
+> **[17.4%, 81.0%]**. The result holds at every threshold from 5% to 20%, and roughly
+> doubles if runs are aggregated by minimum instead of mean.
 
 ---
 
