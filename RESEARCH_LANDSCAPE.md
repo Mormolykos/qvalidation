@@ -19,8 +19,12 @@ file without checking it here first.
 | ✅ **LIVE** | Benchpress passes no `seed_transpiler` in any of its 8 SDK gyms | §33, source-verified |
 | ✅ **LIVE** | The transpiler seed is the dominant entropy source | §28, cross-process control |
 | ✅ **LIVE** | A fixed seed reproduces bit-identically; different seeds do not | §44, re-run from clean |
-| ⭐⭐ **LIVE** | **PRE-REGISTERED: among circuits whose compilation is STOCHASTIC, 12 of 13 (92.3%, [66.7, 98.6]) show finite-sample decision risk above zero** — circuits and analysis committed BEFORE the data | §52, §54 |
-| ⭐ **LIVE** | Across all 26 eligible circuits: 46.2%, **family-cluster-robust 95% CI [17.4%, 81.0%]** | §54 |
+| ⭐⭐ **LIVE** | **MECHANISM: risk is predicted by two measurable properties — is routing stochastic (Spearman +0.876) and how far θ sits from the cut (−0.833). All 13 deterministic circuits carry EXACTLY zero risk.** | §55 |
+| ⭐⭐ **LIVE** | **Among the 23 stochastic circuits, median ambiguity band 10.9 pp** (max 25.2) — θ-free, direction-free, version-pair-free | §55 |
+| ⭐ **LIVE** | `cc_n32` is miscalled with θ **18 points clear** of the threshold — not a proximity artifact | §55 |
+| ✅ **LIVE** | Operational levels: **4 of 26 circuits carry risk ≥10%**; 7 of 26 ≥5% | §55 |
+| ⛔ **WITHDRAWN as a headline** | any suite-level failure rate. 46.2% [17.4, 81.0] is underpowered (effective n = 11 families) and is now a descriptive count only | §55 R4 |
+| ⚠ **REPHRASED** | "12 of 13 stochastic circuits" is a **detectability** statement, not a claim that the 13th has zero true risk | §55 C4 |
 | ⛔ **CORRECTED** | §52's Wilson interval [28.8, 64.5] **assumed independence and was too narrow** — families are perfectly separated (all-hit or all-miss) | §54 F8 |
 | ✅ **LIVE** | Holds at **every threshold 5%–20%**, and **roughly doubles** under best-of-3 aggregation instead of mean | §54 |
 | ⭐ **LIVE** | **All three circuits named in issue #14402 show a measurable error rate**: `bv_n140` 24.4%, `bv_n280` 17.3% [11.6, 23.7], `knn_341` 4.7% [2.7, 7.7] — the latter two selected blind | §52 |
@@ -772,6 +776,124 @@ direct evidence of how hard. It is also direct evidence that the problem is real
 **Phase 0 for C2 before anything is built:** search specifically for a study treating
 SDK version as the independent variable and transpiler output quality as the dependent
 variable. If it exists, C1 is next in line.
+
+---
+
+## 55. ⛔ ROUND THREE — the suite-level claim is WITHDRAWN and replaced by a mechanism — 2026-09-04
+
+Both critics converged: the circuit is not the effective independent unit, and
+[17.4%, 81.0%] is too wide to be a population estimate. **They are right. The
+suite-level proportion is withdrawn as a headline.** What replaces it is stronger,
+because it is a mechanism rather than a rate.
+
+### R1 — the Proximity Trap. Gemini's mechanism is right; its prediction is WRONG.
+
+Gemini: *"If your boundary exclusion was 5 pp instead of 3, your 12/13 claim would
+evaporate."* Tested rather than argued — the band swept from 0 to 8 pp:
+
+| band | 0 pp | 1 pp | 2 pp | **3 pp** | 4 pp | 5 pp | 6 pp | 8 pp |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| eligible | 36 | 36 | 34 | **26** | 20 | 19 | 16 | 16 |
+| endpoint | 61.1% | 61.1% | 58.8% | **46.2%** | 30.0% | **26.3%** | 12.5% | 12.5% |
+| stochastic hits | 22/23 | 22/23 | 20/21 | **12/13** | 6/7 | **5/6** | 2/3 | 2/3 |
+
+**It does not evaporate.** At 5 pp it is 5/6; at 8 pp it is still 2/3. But the
+suite-level *proportion* moves from 61% to 12.5% on an arbitrary choice, which is
+exactly why that proportion should not be a headline. **Gemini wins the larger point and
+loses the specific prediction.**
+
+The two circuits that survive an 8 pp exclusion are the decisive counter-example:
+
+| circuit | θ | distance to cut | risk | ambiguity band |
+|---|---:|---:|---:|---:|
+| `cc_n32` | **−8.28%** | **18.3 pp** | 0.37% | **24.50 pp** |
+| `cc_n64` | −0.40% | 10.4 pp | 7.65% | **25.19 pp** |
+
+`cc_n32`'s reference change is **eighteen percentage points below** the +10% cut and the
+three-run protocol still calls a regression. That is not threshold proximity. That is a
+seed distribution wide enough to reach across 18 points.
+
+### R2 — the "non-zero tautology". Half-rejected on the data, conceded on framing.
+
+Gemini: *"If two distributions overlap even slightly, a non-zero error rate is
+mathematically guaranteed."* **False as stated here** — 13 of 26 eligible circuits have
+*exactly* zero risk, because their compilation is deterministic and the distributions do
+not overlap at all. Non-zero is an empirical finding, not an identity.
+
+But the framing concession is accepted, and operational levels are now the reporting unit:
+
+| criterion | hits / 26 | proportion | Wilson 95% CI |
+|---|---:|---:|---|
+| risk > 0 (frozen endpoint) | 12 | 46.2% | [28.8, 64.5] |
+| risk ≥ 1% | 11 | 42.3% | [25.5, 61.1] |
+| **risk ≥ 5%** | **7** | **26.9%** | [13.7, 46.1] |
+| **risk ≥ 10%** | **4** | **15.4%** | [6.2, 33.5] |
+| risk ≥ 15% | 3 | 11.5% | [4.0, 29.0] |
+
+### ⭐ R3 — "the fatal asymmetry". Largely CORRECT, and it forces the right statistic.
+
+Gemini: *"All 12 hits are false positives because this version pair sits just below the
+cut. You have conflated the variance of the protocol with the θ distribution of one
+version pair."* **Correct.** The error *rate* is a joint property of the protocol and
+where θ happens to sit. It is not a version-pair-free property of Benchpress.
+
+The statistic that **is** free of θ, of direction, and of the version pair is the
+**ambiguity band** — the width of the interval of true change over which P(call) runs
+0.05 → 0.95. Recomputed at 200 seeds on the pre-registered circuits:
+
+> **23 of 36 resolved circuits have a non-zero ambiguity band. Median 10.86 pp,
+> p75 14.82 pp, max 25.19 pp.**
+
+Widest: `cc_n64` 25.19, `cc_n32` 24.50, `bv_n70` 23.79, `bv_n30` 21.78, `bv_n280` 18.42.
+
+**This is the new headline.** It says: for the median stochastic circuit in this sample,
+there is an ~11-percentage-point-wide window of true change that the three-run protocol
+cannot resolve — *whatever* the change happens to be, in *either* direction, for *any*
+version pair.
+
+### ⭐ C6 — the mechanism, and it is clean
+
+ChatGPT asked whether the six hit families are intrinsically more stochastic. They are,
+and the effect reduces to **two measurable quantities**:
+
+| predictor | Spearman vs error rate |
+|---|---:|
+| per-seed ratio SD (is routing stochastic at all?) | **+0.876** |
+| distance from θ to the cut, among stochastic circuits | **−0.833** |
+
+**All 13 zero-SD circuits have exactly zero risk.** So the "perfect family separation" of
+§54 is not family magic — `cat`, `ghz`, `ising`, `wstate` compile deterministically on
+this topology, and everything else follows. **The unit of analysis is not the family. It
+is whether routing is stochastic, and then how far θ sits from the decision boundary.**
+
+### R4 and C4 — conceded without qualification
+
+- **R4:** [17.4%, 81.0%] is too wide to be a population estimate. **The suite-level
+  proportion is withdrawn as a headline claim.** It is retained only as a descriptive
+  count of these 26 circuits, with the interval attached and labelled underpowered.
+- **C4:** "12 of 13 stochastic circuits" is a **detectability** statement. `32` has seed
+  variance and no *detected* risk; that is not evidence its true risk is zero. Every
+  such phrase now reads *"showed evidence of non-zero risk"*.
+- **"This exclusion is conservative"** is withdrawn as a blanket statistical claim. It is
+  conservative for the observed endpoint in this dataset; it also defines a restricted
+  estimand.
+
+### The restructured claim — no 63-point interval to defend
+
+> In a pre-registered sample of 39 QASMBench circuits transpiled to a heavy-hex lattice
+> under Qiskit 1.4.3 and 2.0.0, **finite-sample decision risk is fully predicted by two
+> measurable circuit properties**: whether routing is stochastic (Spearman +0.876 with
+> the risk) and how far the reference change sits from the decision boundary (−0.833).
+> **Circuits whose compilation is deterministic carry exactly zero risk; among the 23
+> whose compilation is stochastic, the median ambiguity band is 10.9 percentage points**
+> — a window of true change the three-run protocol cannot resolve in either direction,
+> independent of the version pair. Four of 26 eligible circuits carry a risk of 10% or
+> more under this version pair, and `cc_n32` is miscalled despite a reference change
+> **18 points clear of the threshold**.
+
+**What is no longer claimed:** any suite-level failure rate, any population parameter,
+and anything about Benchpress as a whole. The next experiment is more algorithm families,
+not more seeds.
 
 ---
 

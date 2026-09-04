@@ -41,8 +41,11 @@ variance rather than version drift.
 
 | result | value | where |
 |---|---|---|
-| ⭐ **pre-registered**, circuits whose compilation is stochastic | **12 of 13 = 92.3%**, Wilson [66.7%, 98.6%] | §52, §54 |
-| same, over all eligible circuits (cluster-robust interval) | 12 of 26 = 46.2%, **[17.4%, 81.0%]** | §54 |
+| ⭐ **mechanism**: risk vs "is routing stochastic" | Spearman **+0.876**; all 13 deterministic circuits carry **exactly zero** risk | §55 |
+| ⭐ **mechanism**: risk vs distance from θ to the cut | Spearman **−0.833** among stochastic circuits | §55 |
+| ⭐ median ambiguity band, 23 stochastic circuits | **10.9 pp** (max 25.2 pp) — θ-free and direction-free | §55 |
+| circuits carrying risk ≥10% under this version pair | **4 of 26** (7 of 26 at ≥5%) | §55 |
+| ⛔ suite-level failure rate | **withdrawn** — underpowered, effective n = 11 families | §55 |
 | holds at every threshold 5%–20%; doubles under best-of-3 | min-of-3 raises `bv_n280` from 17.3% to 28.4% | §54 |
 | all three circuits named in issue #14402 show an error rate | `bv_n140` 24.4%, `bv_n280` 17.3%, `knn_341` 4.7% | §52 |
 | ⚠ but 14 of 39 circuits are perfectly deterministic | median eligible error rate **0.0000** | §52 |
