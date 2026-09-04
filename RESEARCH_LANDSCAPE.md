@@ -813,7 +813,11 @@ Neither was chosen by us — both satisfied the cost rule:
 | **`bv_n280`** | +4.89% | [+3.67, +6.11] | [+4.01, +6.64] | **17.31%** | [11.60, 23.69] |
 | **`knn_341`** | +6.20% | [+5.69, +6.71] | [+5.75, +6.79] | **4.68%** | [2.70, 7.68] |
 
-Both are below the +10% cut under **both** interval methods, and both are called a
+Both are below the +10% cut under **both** interval methods — ⚠ which are *not*
+independent: they use the same 200 seeds and differ only in their assumptions
+(nonparametric bootstrap vs normal-theory t). An earlier draft of this section called
+them "two independent interval methods", which was wrong (§53 F5). Agreement rules out
+gross distributional mis-specification; it is not a second sample. Both are called a
 regression anyway. Together with `bv_n140` (§51), **all three circuits named in issue
 #14402 show a measurable decision-error rate on heavy-hex.**
 
@@ -854,6 +858,31 @@ else. Circuits at ~0% change have exactly 0% error; circuits at +6–8% have 5�
 circuits within 3 pp of the cut reach 30–40%. That is §42's ambiguity band, confirmed
 across 26 circuits chosen blind — and it is why the band, not any single rate, is the
 right way to state the finding.
+
+### §53 — follow-up attacks on the frozen result, 2026-09-04
+
+Run **after** the endpoint was computed and labelled as follow-ups. The frozen experiment
+is untouched: no exclusion changed, no re-run, no edit to `PREREGISTRATION.md`.
+Full detail in `ATTACK_PACKET.md`.
+
+| # | attack | verdict |
+|---|---|---|
+| F1 | eligibility reproduces from the pre-registered rule | ✅ 39 = 39, 26 eligible, 12 hits |
+| F2 | exact duplicate circuits inflating the count | `swap_test_n41` ≡ `knn_n41` byte-identical in both arms — **both BOUNDARY, endpoint unaffected** |
+| F3 | family structure inflating 12/26 | hits span **6 distinct families**; family-level 6/11 = 54.5% Wilson [28.0, 78.7] — same sign, wider |
+| F4 | same-family circuits are near-duplicates | ✅ none — zero same-family pairs with \|r\| > 0.5 |
+| F5 | the two interval methods are independent | ⛔ **NO. Wording corrected.** Same 200 seeds, different assumptions. 13/13 agreement where both are defined; the other 13 have zero variance so t is undefined, not disagreeing |
+| F6 | 200 runs enough to call a rate non-zero | ✅ split-half max diff 0.062, median 0.000, **0/26 flip** between zero and non-zero |
+
+**The one real correction is F5**, and it was ours: §52 claimed "two independent interval
+methods". They are not independent. Agreement across estimators on one sample rules out
+distributional mis-specification and nothing more.
+
+**Open questions we could not settle ourselves**, listed in `ATTACK_PACKET.md` §7 for an
+adversarial reviewer: whether 12/26 is the right denominator when 14 of the 26 are
+deterministic circuits that cannot err; whether excluding the 10 largest effects
+mis-describes the phenomenon even while being conservative for the endpoint; and whether
+46.2% is a meaningful summary when the median rate is 0.
 
 ---
 
