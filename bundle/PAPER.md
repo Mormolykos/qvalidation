@@ -293,7 +293,10 @@ the +10% choice, though that choice remains ours.
 
 | *k* | 1 | 3 | 5 | 8 | 10 | 20 |
 |---|---:|---:|---:|---:|---:|---:|
-| risk | 34.58% | 24.38% | 18.57% | 12.94% | 10.36% | **3.74%** |
+| risk | 34.58% | 24.38% | 18.56% | 12.94% | 10.36% | **3.74%** |
+
+Monte-Carlo standard error ≤ 0.02 pp per entry; the final digit of each is not
+significant and should not be quoted alone.
 
 **Twenty runs per version — on the order of 40 hours of compute at the issue's stated
 ~2 h per suite run — still leaves 3.74%.** By contrast, one `seed_transpiler` argument removes the sampling variance at

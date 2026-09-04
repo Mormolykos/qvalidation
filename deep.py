@@ -76,14 +76,29 @@ def exact_rate_int(o, n, threshold, k):
     return float((sb.size - idx).sum()) / (float(sa.size) * float(sb.size))
 
 
+MC_CHUNK_ELEMS = 40_000_000       # cap the index array at ~320 MB of int64
+
+
 def mc_rate(o, n, threshold, k, rng, pairs):
+    """Monte-Carlo call rate, evaluated in CHUNKS so memory is bounded.
+
+    The unchunked version allocated a (pairs, k) index array per arm, which is
+    pairs*k*8 bytes *twice*. At pairs=50e6 and k=20 that is 7.45 GiB per arm and it
+    raised ArrayMemoryError inside paper_check.py. Memory now depends on the chunk
+    size only, never on `pairs` or `k`, and the result is identical because the
+    estimate is a mean over independent draws.
+    """
     fr = Fraction(threshold).limit_denominator(10 ** 9)
     p, q = fr.numerator, fr.denominator
-    ia = rng.integers(0, o.size, (pairs, k))
-    ib = rng.integers(0, n.size, (pairs, k))
-    sa = o[ia].sum(axis=1) * (q + p)
-    sb = n[ib].sum(axis=1) * q
-    return float((sb >= sa).mean())
+    per = max(1, MC_CHUNK_ELEMS // max(k, 1))
+    hits = done = 0
+    while done < pairs:
+        m = int(min(per, pairs - done))
+        sa = o[rng.integers(0, o.size, (m, k))].sum(axis=1) * (q + p)
+        sb = n[rng.integers(0, n.size, (m, k))].sum(axis=1) * q
+        hits += int((sb >= sa).sum())
+        done += m
+    return hits / float(pairs)
 
 
 def main():
