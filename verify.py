@@ -15,10 +15,19 @@ FOR A DELEGATED AGENT (Antigravity IDE, a CI job, a reviewer)
 
 WHAT IT CHECKS
     1 toolchain pin   Benchpress commit SHA, tracked-file cleanliness, 5 module hashes
-    2 test suite      pytest, including four regression tests for the D-2.1 tautology
-    3 inventory       every live number in the record re-derived from its raw file
+    2 test suite      pytest, including the D-2.1 tautology and seed-integrity regressions
+    3 inventory       41 recorded numbers vs a fresh recomputation (29 raw, 12 derived)
     4 replication     6 circuits x 12 seeds x 2 Qiskit versions against the reference
     5 tautology proof the withdrawn paired column is still provably data-independent
+    6 paper claims    paper_check.py -- every quantitative claim in PAPER.md recomputed
+
+WHAT CHECK 6 DOES NOT PROVE (added 2026-09-08, and stated here so nobody assumes more)
+    paper_check.py recomputes each figure and then asserts the formatted value APPEARS
+    in PAPER.md. Presence is not placement: a number can be found in an unrelated
+    sentence and the check still passes. The section-bound assertions added alongside
+    this stage narrow that for the load-bearing figures, but the weakness is structural,
+    not fixed. Check 6 catches drift between the code and the manuscript. It does not
+    prove a number is quoted in the right claim.
 
 USAGE
     set BENCHPRESS_PATH, then:
@@ -78,6 +87,7 @@ def main():
                               "--old", "replication/out_q200.jsonl",
                               "--new", "replication/out_q202.jsonl"]),
         run("5 tautology proof", [PY, "paired.py", "--prove"]),
+        run("6 paper claims", [PY, "paper_check.py"]),
     ]
 
     print(f"\n  {'check':<20s} {'result':>7s} {'time':>8s}")

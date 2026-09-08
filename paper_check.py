@@ -49,17 +49,43 @@ def check_near(label, value, reported, tol):
               f"close={close} present={present}")
 
 
-def check(label, value, fmt="{:.1f}", must_appear=True):
-    """Assert the formatted value literally occurs in the paper."""
+def check(label, value, fmt="{:.1f}", must_appear=True, near=None, window=140):
+    """Assert the formatted value occurs in the paper.
+
+    ⚠ WHAT PRESENCE DOES NOT PROVE (stated 2026-09-08 after an external audit). Without
+    `near`, this asks only whether the formatted string appears ANYWHERE in PAPER.md.
+    The token "26" occurs seventeen times, eight of them inside a larger number such as
+    26.9 or 126. So a bare presence check can pass while the figure is quoted in the
+    wrong sentence, or while the right sentence carries a different number entirely.
+
+    `near` fixes that for one claim at a time: the value must appear within `window`
+    characters AFTER the anchor string, which for a table is the row label. That binds
+    the number to its row rather than to the document. Anchors are used on the
+    load-bearing figures -- the endpoint table -- because those are small integers with
+    many innocent collisions elsewhere in the prose.
+
+    This is a narrowing, not a cure. A checker bound to a section can still pass on a
+    number that is wrong in a way the section does not reveal.
+    """
     global OK
     s = fmt.format(value)
-    present = s in PAPER
+    if near is None:
+        present, scope = s in PAPER, ""
+    else:
+        i = PAPER.find(near)
+        if i < 0:
+            FAIL.append((label, f"anchor {near!r} missing from PAPER.md"))
+            print(f"  FAIL  {label:<52s} anchor {near!r} not in PAPER.md")
+            return
+        present = s in PAPER[i:i + window]
+        scope = f"  [in row {near!r}]"
     if present == must_appear:
         OK += 1
-        print(f"  ok    {label:<52s} {s}")
+        print(f"  ok    {label:<52s} {s}{scope}")
     else:
         FAIL.append((label, s))
-        print(f"  FAIL  {label:<52s} {s}  <-- not found in PAPER.md")
+        print(f"  FAIL  {label:<52s} {s}  <-- not found"
+              + (f" near {near!r}" if near else " in PAPER.md"))
 
 
 def arms(c):
@@ -98,13 +124,22 @@ def main():
     print(f"  ok    {'Spearman p < 0.001':<52s} p={sp.pvalue:.2e}")
 
     print("\n=== §4.2 magnitude ===")
+    # Anchored to the table ROW, not the document: these are small integers (12, 26, 7,
+    # 4) and two-digit percentages that collide with unrelated prose all over PAPER.md.
+    # The leading pipe matters. "risk ≥ 5%" alone first matches §3.2's prose sentence
+    # "the count of circuits at risk ≥ 5% is", 90 lines above the table -- which is
+    # precisely the wrong-location failure this anchoring exists to catch. It caught it
+    # on the first run.
+    ROW = {0.0: "| risk > 0 (pre-registered endpoint) |",
+           0.05: "| risk ≥ 5% |", 0.10: "| risk ≥ 10% |"}
     for lab, thr in (("risk > 0", 0.0), ("risk >= 5%", 0.05), ("risk >= 10%", 0.10)):
         h = sum(1 for c, v in risk.items() if (v > 0 if thr == 0 else v >= thr))
         lo, hi = wilson(h, len(elig))
-        check(f"{lab} count", h, "{:d}")
-        check(f"{lab} pct", h / len(elig) * 100, "{:.1f}")
-        check(f"{lab} Wilson lo", lo * 100, "{:.1f}")
-        check(f"{lab} Wilson hi", hi * 100, "{:.1f}")
+        row = ROW[thr]
+        check(f"{lab} count", h, "{:d}", near=row)
+        check(f"{lab} pct", h / len(elig) * 100, "{:.1f}", near=row)
+        check(f"{lab} Wilson lo", lo * 100, "{:.1f}", near=row)
+        check(f"{lab} Wilson hi", hi * 100, "{:.1f}", near=row)
     vals = sorted(risk.values())
     check("median risk (eligible)", float(np.median(vals)), "{:.0f}")
     check("p75 risk", float(np.percentile(vals, 75)) * 100, "{:.1f}")

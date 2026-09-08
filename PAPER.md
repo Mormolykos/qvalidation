@@ -63,13 +63,16 @@ apparatus is specific to Qiskit: it requires only a benchmark whose observable i
 scalar, a source of run-to-run variation that can be enumerated or sampled, and a
 decision rule.
 
-Our contribution is threefold. First, a source-level finding: **Benchpress, IBM's
-cross-SDK benchmark suite, sets no transpiler seed anywhere**, and performs no
-aggregation over runs, so a reported figure is one sample and the choice of estimator is
-left entirely to the reader. Second, a definition and measurement: **finite-sample
-decision risk**, the probability that a *k*-run verdict disagrees with the long-run
-verdict of the same measurement. Third, a pre-registered experiment that measures this
-risk on 39 circuits and identifies the mechanism that governs it.
+Our contribution is threefold. First, a source-level finding: **at the pinned revision,
+the Qiskit gym of IBM's Benchpress suite compiles without passing `seed_transpiler`**,
+and the suite performs no aggregation over runs, so a reported figure is one sample and
+the choice of estimator is left entirely to the reader. This is a claim about one gym at
+one revision and not about the suite as a whole: the sibling BQSKit gym does seed its
+compiler, and the remaining six gyms are not assessed here (§2.1). Second, a definition
+and measurement: **finite-sample decision risk**, the probability that a *k*-run verdict
+disagrees with the long-run verdict of the same measurement. Third, a pre-registered
+experiment that measures this risk on 39 circuits and reports what predicts it — while
+declining to call that association a compiler mechanism (§4.1).
 
 We are deliberately narrow about what follows. We do not claim any published decision was
 wrong, we do not attribute anything to a specific commit, and we withdraw — in §5 — a
@@ -131,7 +134,8 @@ itself offers no such parameter.
 For circuit *c*, topology *T* and compiler versions *A* (baseline) and *B* (candidate),
 let *X<sub>A</sub>(s)*, *X<sub>B</sub>(s)* be the 2-qubit gate counts produced with
 `seed_transpiler = s`. These are deterministic functions of *s*; we verify this across
-processes and machines (§3.4). Define the **reference change**
+processes and across an independently reconstructed environment on the same machine
+(§3.4). Define the **reference change**
 
 > θ = E<sub>s</sub>[X<sub>B</sub>(s)] / E<sub>s</sub>[X<sub>A</sub>(s)] − 1
 
@@ -213,15 +217,19 @@ Controls, each of which could have invalidated the study:
   `ef616023`), as are the basis gates.
 - **Seed independence.** Lag-1 autocorrelation of consecutive seeds between −0.22 and
   +0.11; contiguous and scattered seed sets give matching spreads.
-- **Determinism.** A fixed seed reproduces bit-identically across processes and machines;
-  a six-circuit replication artifact reproduces **144 of 144** per-seed values from a
-  clean state.
+- **Determinism.** A fixed seed reproduces bit-identically across separate OS processes
+  with differing `PYTHONHASHSEED`, and across an independently reconstructed clone and
+  environment; a six-circuit replication artifact reproduces **144 of 144** per-seed
+  values from a clean state. **All of this was executed on one machine** — every
+  environment record in `results/raw/` carries the same platform string,
+  `Windows-10-10.0.26200-SP0`, and the schema records no CPU vendor, so no
+  cross-hardware claim is made or supportable from these data.
 - **Selection bias.** The cost rule does not favour high-variance circuits: median seed
   spread 0.1126 among selected versus 0.1234 among excluded, Mann-Whitney p = 0.768.
 
 ## 4. Results
 
-### 4.1 The mechanism
+### 4.1 What predicts the risk — and why it is not a mechanism
 
 Of the 26 eligible circuits, **13 compile deterministically** — every seed gives the same
 gate count in both arms. Their risk is zero *by arithmetic*, not by measurement, and we
@@ -372,8 +380,10 @@ empirical.
 
 ### 5.2 Limitations
 
-1. **One SDK, one version pair, one topology, one machine.** No other SDK was measured,
-   though source inspection shows seven further gyms also pass no seed.
+1. **One SDK, one version pair, one topology, one machine.** No other SDK was measured.
+   Source inspection covers two of the eight gyms: the Qiskit gym passes no compiler
+   seed, and the BQSKit gym passes `seed=0`. The remaining six use their own compilation
+   interfaces and are **not assessed here** (§2.1).
 2. **θ is a plug-in estimate** from 200 seeds, not an external criterion (§3.1).
 3. **The threshold is ours.** Benchpress defines none; #14402 states no formal cut.
 4. **Selection favours fast circuits**, which correlates with small, though the sample
@@ -389,10 +399,20 @@ empirical.
 ### 5.3 Adversarial review
 
 The result was attacked in three rounds by two independent language models acting as
-hostile reviewers, and by a first-principles audit that re-derived every reported number
-from raw data. That audit returned **zero invalidating findings, three rewordings — two of
-which are §5.1 — and two limitations**. The repository records every withdrawn claim,
-including four from earlier phases of the work.
+hostile reviewers, and by a first-principles audit. That audit returned **zero
+invalidating findings, three rewordings — two of which are §5.1 — and two limitations**.
+A later independent audit of the *code* rather than the claims found six implementation
+defects, none of which changed a reported number; they are recorded in `SETTLED.json` as
+S17–S22.
+
+`inventory.py --check` compares all **41** recorded figures against a fresh
+recomputation: **29 are re-derived from the raw per-seed measurements, and 12 — the
+sec 43 k-sweep — are re-read from a derived summary table**, each row labelled with which
+tier it belongs to. Re-deriving the k-sweep from raw means enumerating 12⁵ mean tuples
+per bisection step, roughly half an hour per topology, which is not affordable inside a
+check that has to run in under a minute. **We therefore do not claim that every reported
+number is re-derived from raw data**, and the tool says so in its own documentation. The
+repository records every withdrawn claim, including four from earlier phases of the work.
 
 ## 6. Conclusion
 

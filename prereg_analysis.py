@@ -95,18 +95,40 @@ def analyse(circuit, t, k, rng):
     if o is None or n is None:
         return {"circuit": circuit, "status": "MISSING_OR_CRASHED",
                 "qiskit_baseline": v_o, "qiskit_candidate": v_n}
-    # §5.1 resamples the two arms JOINTLY, which is only correct if position i means
-    # the same seed in both. That held for all 39 pre-registered pairs, but nothing
-    # checked it: load() discarded the seed IDs and the arms were paired by position,
-    # so a partially-rerun arm would have been silently mispaired (F2, 2026-09-04).
-    # A misaligned pair is now REPORTED, per §7.1, not analysed.
-    m = min(o.size, n.size)
-    if not np.array_equal(s_o[:m], s_n[:m]):
-        return {"circuit": circuit, "status": "MISALIGNED_SEEDS", "n_seeds": int(m),
-                "qiskit_baseline": v_o, "qiskit_candidate": v_n}
-    o, n = o[:m], n[:m]
+    # §5.1 resamples the two arms JOINTLY, which is only correct if position i means the
+    # same seed in both. THREE ways that can fail, and all three are now refused rather
+    # than worked around (F2 2026-09-04; hardened 2026-09-08 after an external audit):
+    #
+    #   unequal lengths  The first version of this guard took m = min(len(a), len(b)) and
+    #                    compared only the first m seeds. A 200-seed arm paired with an
+    #                    accidentally truncated 199-seed arm whose first 199 seeds match
+    #                    therefore PASSED, and the good arm was then silently cut to 199
+    #                    by `o, n = o[:m], n[:m]`. The guard was weaker than its own
+    #                    comment claimed: it detected mispairing but not truncation.
+    #   duplicate seeds  A seed recorded twice makes "identical seed sets" meaningless
+    #                    and double-weights one measurement inside the bootstrap.
+    #   different seeds  Equal length, different identities.
+    #
+    # A malformed pair is REPORTED per §7.1 with a machine-readable reason, never
+    # analysed, and NEVER truncated. load_seeded() returns seeds sorted, so identical
+    # sets imply identical arrays and a whole-array comparison is exact.
+    if s_o.size != s_n.size:
+        return {"circuit": circuit, "status": "MISALIGNED_SEEDS",
+                "reason": f"unequal arm lengths: baseline {s_o.size}, candidate {s_n.size}",
+                "n_seeds": 0, "qiskit_baseline": v_o, "qiskit_candidate": v_n}
+    if np.unique(s_o).size != s_o.size or np.unique(s_n).size != s_n.size:
+        return {"circuit": circuit, "status": "DUPLICATE_SEEDS",
+                "reason": (f"duplicate seed ids: baseline {s_o.size - np.unique(s_o).size}, "
+                           f"candidate {s_n.size - np.unique(s_n).size}"),
+                "n_seeds": 0, "qiskit_baseline": v_o, "qiskit_candidate": v_n}
+    if not np.array_equal(s_o, s_n):
+        return {"circuit": circuit, "status": "MISALIGNED_SEEDS",
+                "reason": "arms carry different seed identities",
+                "n_seeds": 0, "qiskit_baseline": v_o, "qiskit_candidate": v_n}
+
+    m = int(o.size)
     if m == 0 or not (o > 0).all():
-        return {"circuit": circuit, "status": "UNUSABLE_ZERO_OR_EMPTY", "n_seeds": int(m)}
+        return {"circuit": circuit, "status": "UNUSABLE_ZERO_OR_EMPTY", "n_seeds": m}
 
     change = float(n.mean() / o.mean() - 1)
     ch = np.empty(BOOT_TRUTH)

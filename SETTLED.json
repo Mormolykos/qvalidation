@@ -178,6 +178,54 @@
       "command": "read scatter.py:114-137; census the record types in results/raw/scatter_*.jsonl",
       "result": "CONFIRMED AS DESCRIBED, AND DELIBERATELY NOT FIXED. Both committed scatter files hold exactly 10 env + 200 run records, so nothing was dropped. A failed chunk calls sys.exit and writes NO output file at all, which cannot produce a silently truncated dataset; emitting partial rows plus an error record would CREATE that risk. Fail-loud-with-no-output is the safer design and is kept. NO PUBLISHED NUMBER AFFECTED; S03 already settles the comparison this run supports.",
       "keywords": ["scatter", "failure rows", "chunk abort", "run_error", "partial output", "F6", "fail loud"]
+    },
+    {
+      "id": "S23", "settled": "2026-09-08", "status": "SETTLED",
+      "attack": "The paper contradicts itself about Benchpress seeding: the contribution paragraph said the suite 'sets no transpiler seed anywhere' while sec 2.1 correctly records that the BQSKit gym passes seed=0.",
+      "raised_by": "GPT-5.6 Sol, external audit; a further instance found by Claude during the repair",
+      "command": "grep -nE 'no .{0,15}seed|sets no|anywhere|seven further' PAPER.md",
+      "result": "CONFIRMED, and there were TWO bad statements, not one. PAPER.md:67 made the global claim, and PAPER.md:376 separately said 'seven further gyms also pass no seed' -- which would include BQSKit and also contradicts sec 2.1's own statement that the remaining SDKs are NOT assessed. FIXED: the contribution now claims only the Qiskit gym at the pinned revision, and the limitation now states the true arithmetic -- eight gyms, two inspected (Qiskit unseeded, BQSKit seeds), six not assessed. NOTE: the 2026-09-04 fix of this same claim (S15) repaired the abstract and sec 2.1 and MISSED both of these, because it searched for specific phrasings rather than for the claim.",
+      "keywords": ["benchpress seeding", "no seed anywhere", "BQSKit", "seven gyms", "eight gyms", "contribution overclaim", "scope"]
+    },
+    {
+      "id": "S24", "settled": "2026-09-08", "status": "SETTLED",
+      "attack": "Methods and sec 3.4 claimed fixed-seed determinism was verified 'across processes and machines', while sec 5.2 lists 'one machine' as a limitation.",
+      "raised_by": "GPT-5.6 Sol, external audit",
+      "command": "python -c \"count distinct platform/cpu_count/python across every env record in results/raw and replication\"",
+      "result": "CONFIRMED and the provenance was checked before changing a word. Across all 196 environment records there is exactly ONE distinct platform string (Windows-10-10.0.26200-SP0), ONE cpu_count (16) and ONE python (3.10.10), and the schema records NO cpu vendor or model field at all -- so a second machine is neither documented nor provable from these data. The operator initially recalled an independent AMD/Windows-10 replication, then corrected himself: that rerun was a fresh clone and environment on the SAME physical rig. FIXED: 'machines' removed from both places; the claim now says processes plus an independently reconstructed environment on one machine, and sec 3.4 states explicitly that no cross-hardware claim is supportable. A genuine second-machine run is planned and will be added only with artifact output as evidence.",
+      "keywords": ["across machines", "one machine", "determinism", "cross-machine", "platform string", "cpu vendor", "provenance"]
+    },
+    {
+      "id": "S25", "settled": "2026-09-08", "status": "SETTLED",
+      "attack": "The introduction said the experiment 'identifies the mechanism that governs it', while sec 4.1 correctly says the distance-risk association is largely induced by the decision rule and is NOT a discovered mechanism.",
+      "raised_by": "GPT-5.6 Sol, external audit",
+      "command": "grep -n mechanism PAPER.md",
+      "result": "CONFIRMED. PAPER.md:72 made the claim and the sec 4.1 HEADING itself read 'The mechanism', both contradicting the warning at :237. FIXED: the contribution now says the experiment 'reports what predicts it -- while declining to call that association a compiler mechanism', and the heading is now 'What predicts the risk -- and why it is not a mechanism'. The empirical content is untouched: seed-induced variability, ambiguity bands, deterministic vs stochastic behaviour and finite-sample decision risk all stand. Related to S11, which withdrew rho = +0.876 for the same reason.",
+      "keywords": ["mechanism", "overclaim", "introduction", "4.1 heading", "decision rule induced", "rho"]
+    },
+    {
+      "id": "S26", "settled": "2026-09-08", "status": "SETTLED",
+      "attack": "The seed-alignment guard added on 2026-09-04 (F2/S18) used m = min(len(a), len(b)) and compared only the first m seeds, so a 200-seed arm paired with a truncated 199-seed arm sharing that prefix PASSED and the good arm was then silently cut to 199.",
+      "raised_by": "GPT-5.6 Sol, external audit -- a defect in the fix Claude wrote four days earlier",
+      "command": "python -m pytest tests/test_seed_alignment.py -q",
+      "result": "CONFIRMED. The guard detected MISPAIRING but not TRUNCATION, so it was weaker than its own comment claimed. FIXED: analyse() now requires equal arm lengths, no duplicate seed ids in either arm, and identical COMPLETE seed arrays; it returns MISALIGNED_SEEDS or DUPLICATE_SEEDS with a machine-readable reason and never truncates. Eight regression tests pin the three refusals and the acceptance: 200-vs-199 prefix, equal-length different identity, duplicate seed, the valid case keeping all 12 seeds, refusals reporting n_seeds 0, and no refused row reaching endpoint(). ACCEPTANCE TEST PASSED: the committed prereg summary regenerates BYTE-FOR-BYTE IDENTICAL, so no published number moved.",
+      "keywords": ["seed alignment", "truncation", "min length", "duplicate seeds", "guard", "prereg_analysis", "byte-identical"]
+    },
+    {
+      "id": "S27", "settled": "2026-09-08", "status": "SETTLED",
+      "attack": "sec 5.3 said the hostile audit 're-derived every reported number from raw data', which inventory.py's own documentation says would be false.",
+      "raised_by": "GPT-5.6 Sol, external audit",
+      "command": "grep -nE 're-derived every|every reported number' PAPER.md",
+      "result": "CONFIRMED. This was a FOURTH instance of the claim corrected on 2026-09-04 (S21) -- three sentences were fixed then and PAPER.md:392 was missed, again because the fix matched phrasings instead of hunting the claim. FIXED: sec 5.3 now states the actual tiers, 29 of 41 re-derived from raw per-seed measurements and 12 (the sec 43 k-sweep) from a derived summary table, says why the k-sweep is not affordable to re-derive inside a one-minute check, and states plainly that no claim of full raw re-derivation is made. The later code audit and its six findings, S17-S22, are now also disclosed there.",
+      "keywords": ["re-derived from raw", "every reported number", "inventory tiers", "29 of 41", "k-sweep", "overclaim"]
+    },
+    {
+      "id": "S28", "settled": "2026-09-08", "status": "SETTLED",
+      "attack": "verify.py did not run paper_check.py, so the manuscript could drift from the code without any check failing; and paper_check's core assertion is only that a formatted number appears SOMEWHERE in PAPER.md.",
+      "raised_by": "GPT-5.6 Sol, external audit",
+      "command": "BENCHPRESS_PATH=... envs/bp202/Scripts/python.exe verify.py",
+      "result": "CONFIRMED on both counts. FIXED: paper_check.py is now stage 6 of verify.py (6/6 PASS, 95s total), and check() gained a `near=` anchor binding a value to a location instead of the whole document. The twelve load-bearing endpoint-table figures are now bound to their table ROW. The anchoring immediately earned its keep: anchored to 'risk >= 5%' it FAILED, because that string first occurs in a sec 3.2 prose sentence ninety lines above the table -- exactly the wrong-location failure it exists to catch. Anchors now include the leading pipe. ⚠ STATED, NOT HIDDEN: this is a narrowing, not a cure. Presence near an anchor still does not prove a number is quoted in the right claim, and verify.py's docstring says so.",
+      "keywords": ["verify.py", "paper_check", "substring", "presence not placement", "anchor", "near", "stage 6"]
     }
   ]
 }
