@@ -101,7 +101,16 @@ uv pip install --python envs/bp202/Scripts/python.exe \
 uv venv envs/bp200 --python 3.10
 uv pip install --python envs/bp200/Scripts/python.exe \
     "qiskit==2.0.0" qiskit-ibm-runtime rustworkx scipy
+
+uv venv envs/bp143 --python 3.10
+uv pip install --python envs/bp143/Scripts/python.exe \
+    "qiskit==1.4.3" qiskit-ibm-runtime rustworkx scipy
 ```
+
+> `bp143` is not optional. **The primary pre-registered study is 1.4.3 → 2.0.0**, so
+> without it a fresh machine can reproduce the replication artifact (2.0.0 → 2.0.2) but
+> not the experiment the paper is actually about. It was missing from these instructions
+> until 2026-09-08, found while preparing a second-machine run.
 
 > **Do not install `qiskit-ibm-runtime` separately.** Doing so silently upgraded Qiskit
 > 2.0.2 → 2.5.2 during this work and an experiment ran against a version it did not
@@ -110,9 +119,18 @@ uv pip install --python envs/bp200/Scripts/python.exe \
 ### 2. Benchpress
 
 ```bash
-git clone --depth 1 https://github.com/Qiskit/benchpress.git
+git clone https://github.com/Qiskit/benchpress.git
+cd benchpress && git checkout b695f30e83a32bac05b9b4d8e98d37ba9aae5236 && cd ..
 export BENCHPRESS_PATH=$PWD/benchpress
 ```
+
+> **The checkout line is load-bearing and `--depth 1` must not come back.** This used to
+> read `git clone --depth 1`, which fetches whatever Benchpress `main` happens to be
+> today — not the pinned revision every number here was measured against. A fresh clone
+> would then fail `verify.py` check 1 with a commit mismatch, and the failure would look
+> like a broken repository rather than a broken instruction. A shallow clone also cannot
+> check out an older commit, so the two lines have to be in this order. Found
+> 2026-09-08 while preparing a second-machine run.
 
 Benchpress's own `FlexibleBackend`, circuit loader, topologies and observable are
 **imported and called**, never reimplemented, so equivalence is true by construction.
