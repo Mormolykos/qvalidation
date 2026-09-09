@@ -181,7 +181,29 @@ def test_C_changed_source_qasm_is_refused(tmp_path):
     p = write(tmp_path, "qasm.jsonl", rs)
     code, out = run(DESKTOP, p)
     assert code == 3, out
-    assert "source-QASM hash" in out or "source QASM differs" in out
+    assert "source QASM" in out
+
+
+def test_C_different_counted_gate_is_refused(tmp_path):
+    """`two_q` is a count OF `two_q_gate`. Two files that counted different gates are
+    not comparable however equal the integers are. Found while attacking the S31 fix."""
+    rs = [dict(r, two_q_gate="ecr") if r.get("record") == "run" else r
+          for r in rows(LAPTOP)]
+    p = write(tmp_path, "gate.jsonl", rs)
+    code, out = run(DESKTOP, p)
+    assert code == 3, out
+    assert "counted gate differs" in out
+
+
+def test_C_dirty_benchpress_checkout_is_refused(tmp_path):
+    """A pinned commit does not describe the code that ran if the checkout was edited,
+    and the module hashes cover only five files. Found while attacking the S31 fix."""
+    rs = rows(LAPTOP)
+    rs[0] = dict(rs[0], benchpress_dirty=True)
+    p = write(tmp_path, "dirty.jsonl", rs)
+    code, out = run(DESKTOP, p)
+    assert code == 3, out
+    assert "benchpress_dirty" in out
 
 
 def test_C_different_qiskit_versions_still_refused():

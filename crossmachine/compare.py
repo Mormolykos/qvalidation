@@ -29,7 +29,8 @@ WHAT IT REFUSES (S31, 2026-09-09)
                      contradicting one, so the disagreement was erased before the
                      comparison it was supposed to fail.
         incomparable different topology, optimisation level, seed list, Benchpress
-                     commit, module hashes or source-QASM hashes. Equality of counts
+                     commit, module hashes, source-QASM hashes or COUNTED GATE, or a
+                     dirty Benchpress checkout on either side. Equality of counts
                      between two different experiments means nothing, and the script
                      used to accept a candidate declaring topology=linear.
         incomplete   anything other than the frozen selection imported below. Two files
@@ -82,8 +83,18 @@ MACHINE = ("platform", "processor", "cpu_count")
 
 # Must agree before equality of counts carries any meaning. `benchpress_path` is
 # deliberately excluded: it is a local directory and differs between machines by design.
+#
+# `benchpress_dirty` is here, and separately required to be False on both sides, because
+# a pinned commit does not describe the code that ran if the checkout was modified, and
+# `benchpress_module_sha256` covers only the five pinned modules -- an edit anywhere else
+# in Benchpress would pass every other check in this file.
 PROVENANCE = ("qiskit_version", "topology", "optimization_level", "seeds",
-              "benchpress_commit", "benchpress_module_sha256")
+              "benchpress_commit", "benchpress_module_sha256", "benchpress_dirty")
+
+# Per-run fields that must also agree, checked per circuit rather than per file.
+# `two_q_gate` is the one that matters: `two_q` is a count OF this gate, so two files
+# that counted different gates are not comparable no matter how equal the integers are.
+RUN_FIELDS = {"input_qasm_sha256": "source QASM", "two_q_gate": "counted gate"}
 
 
 def _is_int(x):
@@ -123,20 +134,21 @@ def load(path):
                     continue
                 if (circuit, seed) in vals:
                     bad.append(f"line {n}: {circuit} seed {seed} measured twice "
-                               f"({vals[(circuit, seed)][0]} then {two_q})")
+                               f"({vals[(circuit, seed)]['two_q']} then {two_q})")
                     continue
-                vals[(circuit, seed)] = (two_q, r.get("input_qasm_sha256"))
+                vals[(circuit, seed)] = {"two_q": two_q,
+                                         **{f: r.get(f) for f in RUN_FIELDS}}
     if len(envs) != 1:
         bad.append(f"{len(envs)} env records; exactly one is required, because the "
                    f"environment a file reports must be unambiguous")
     return vals, (envs[0] if len(envs) == 1 else {}), bad
 
 
-def qasm_hashes(vals):
-    """{circuit: set of source hashes seen}. More than one means the file mixes inputs."""
+def per_circuit(vals, field):
+    """{circuit: set of values of `field` seen}. More than one means the file mixes."""
     out = {}
-    for (circuit, _), (_, h) in vals.items():
-        out.setdefault(circuit, set()).add(h)
+    for (circuit, _), row in vals.items():
+        out.setdefault(circuit, set()).add(row[field])
     return out
 
 
@@ -208,18 +220,27 @@ def main():
         sys.exit(3)
 
     differing = [f for f in PROVENANCE if ref_env.get(f) != cand_env.get(f)]
-    ref_h, cand_h = qasm_hashes(ref), qasm_hashes(cand)
-    mixed = sorted(c for h in (ref_h, cand_h) for c, s in h.items() if len(s) > 1)
-    hash_diff = sorted(c for c in set(ref_h) & set(cand_h) if ref_h[c] != cand_h[c])
-    if differing or mixed or hash_diff:
+    dirty = [n for n, e in ((args.reference, ref_env), (args.candidate, cand_env))
+             if e.get("benchpress_dirty")]
+    mixed, run_diff = [], []
+    for field, label in RUN_FIELDS.items():
+        ref_f, cand_f = per_circuit(ref, field), per_circuit(cand, field)
+        mixed += [f"{c}: one file reports more than one {label} ({sorted(s)})"
+                  for f in (ref_f, cand_f) for c, s in f.items() if len(s) > 1]
+        run_diff += [f"{c}: {label} differs between the two files "
+                     f"({sorted(ref_f[c])} vs {sorted(cand_f[c])})"
+                     for c in sorted(set(ref_f) & set(cand_f))
+                     if ref_f[c] != cand_f[c]]
+    if differing or dirty or mixed or run_diff:
         print("\n  ✗ REFUSED — the two runs are not comparable, so equality of their "
               "counts would mean nothing:\n")
         for f in differing:
             print(f"    '{f}' differs: {ref_env.get(f)!r} vs {cand_env.get(f)!r}")
-        for c in mixed:
-            print(f"    {c}: one file contains more than one source-QASM hash")
-        for c in hash_diff:
-            print(f"    {c}: source QASM differs between the two files")
+        for n in dirty:
+            print(f"    {n}: benchpress_dirty is true, so the pinned commit does not "
+                  f"describe the code that ran")
+        for m in mixed + run_diff:
+            print(f"    {m}")
         print()
         sys.exit(3)
 
@@ -230,8 +251,8 @@ def main():
 
     # ---- the comparison ------------------------------------------------------------
     shared = sorted(set(ref) & set(cand))
-    diffs = [(c, s, ref[(c, s)][0], cand[(c, s)][0])
-             for c, s in shared if ref[(c, s)][0] != cand[(c, s)][0]]
+    diffs = [(c, s, ref[(c, s)]["two_q"], cand[(c, s)]["two_q"])
+             for c, s in shared if ref[(c, s)]["two_q"] != cand[(c, s)]["two_q"]]
 
     print(f"\n  {len(shared)} (circuit, seed) pairs present in both, of "
           f"{len(EXPECTED_KEYS)} in the frozen selection")
