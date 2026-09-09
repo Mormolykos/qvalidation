@@ -134,8 +134,8 @@ itself offers no such parameter.
 For circuit *c*, topology *T* and compiler versions *A* (baseline) and *B* (candidate),
 let *X<sub>A</sub>(s)*, *X<sub>B</sub>(s)* be the 2-qubit gate counts produced with
 `seed_transpiler = s`. These are deterministic functions of *s*; we verify this across
-processes and across an independently reconstructed environment on the same machine
-(§3.4). Define the **reference change**
+processes, across an independently reconstructed environment, and across two machines
+with different CPU vendors (§3.4). Define the **reference change**
 
 > θ = E<sub>s</sub>[X<sub>B</sub>(s)] / E<sub>s</sub>[X<sub>A</sub>(s)] − 1
 
@@ -218,12 +218,32 @@ Controls, each of which could have invalidated the study:
 - **Seed independence.** Lag-1 autocorrelation of consecutive seeds between −0.22 and
   +0.11; contiguous and scattered seed sets give matching spreads.
 - **Determinism.** A fixed seed reproduces bit-identically across separate OS processes
-  with differing `PYTHONHASHSEED`, and across an independently reconstructed clone and
-  environment; a six-circuit replication artifact reproduces **144 of 144** per-seed
-  values from a clean state. **All of this was executed on one machine** — every
-  environment record in `results/raw/` carries the same platform string,
-  `Windows-10-10.0.26200-SP0`, and the schema records no CPU vendor, so no
-  cross-hardware claim is made or supportable from these data.
+  with differing `PYTHONHASHSEED`, across an independently reconstructed clone and
+  environment, and **across two physical machines with different CPU vendors**. The
+  six-circuit replication artifact reproduces **144 of 144** per-seed values from a clean
+  state on both.
+
+  The cross-machine check was pre-registered before the second machine existed
+  (`crossmachine/PREREGISTRATION.md`; the commit order is checkable) and inherits the
+  frozen six-circuit, twelve-seed selection wholesale, so it introduces no selection
+  freedom. It covers **all three Qiskit versions**, including the 1.4.3 → 2.0.0 pair the
+  primary study uses. **All 216 per-seed gate counts are identical**:
+
+  | | machine 1 | machine 2 |
+  |---|---|---|
+  | CPU | AMD64 Family 26, `AuthenticAMD` | Intel64 Family 6, `GenuineIntel` |
+  | cores | 16 | 8 |
+  | Python | 3.10.10 | 3.10.21 |
+
+  The differing Python patch version was not controlled and cuts in the same direction:
+  more uncontrolled variation, still bit-identical integers.
+
+  ⚠ **What this does not establish.** Both machines ran **rustworkx 0.18.1**. The routing
+  pass's graph library is the component most likely to make layout architecture-dependent,
+  so this result cannot separate *"the CPU does not matter"* from *"the graph library was
+  identical, so the CPU never had the opportunity to matter"*. The stronger claim needs a
+  second rustworkx build, which is not tested here. The primary 200-seed study itself was
+  executed on **one machine**; only this six-circuit determinism control is cross-machine.
 - **Selection bias.** The cost rule does not favour high-variance circuits: median seed
   spread 0.1126 among selected versus 0.1234 among excluded, Mann-Whitney p = 0.768.
 
@@ -380,7 +400,10 @@ empirical.
 
 ### 5.2 Limitations
 
-1. **One SDK, one version pair, one topology, one machine.** No other SDK was measured.
+1. **One SDK, one version pair, one topology, one machine.** The 200-seed measurements
+   were all produced on a single machine; only the six-circuit determinism control was
+   repeated on a second one, and both ran the same rustworkx build (§3.4). No other SDK
+   was measured.
    Source inspection covers two of the eight gyms: the Qiskit gym passes no compiler
    seed, and the BQSKit gym passes `seed=0`. The remaining six use their own compilation
    interfaces and are **not assessed here** (§2.1).

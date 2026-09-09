@@ -67,11 +67,23 @@ def main():
     pin = check_pin(expected)          # same Benchpress revision or it stops here
 
     version = qiskit.__version__
+    # rustworkx is recorded because PREREGISTRATION.md names a differing rustworkx build
+    # as "the interesting one" -- the mechanism most likely to make routing
+    # architecture-dependent. The first cross-machine run (2026-09-09) did NOT capture
+    # it, so that run cannot distinguish "architecture did not matter" from "the graph
+    # library was identical on both machines, so architecture never got a chance to
+    # matter". Recording it makes the stronger reading available to a future run.
+    try:
+        import rustworkx
+        rwx = rustworkx.__version__
+    except Exception:                                   # noqa: BLE001
+        rwx = None
     machine = {"platform": platform.platform(),
                "machine": platform.machine(),
                "processor": platform.processor(),
                "cpu_count": os.cpu_count(),
-               "python": platform.python_version()}
+               "python": platform.python_version(),
+               "rustworkx": rwx}
     proc = machine["processor"] or "processor not reported"
     print(f"  qiskit {version}  |  {len(CIRCUITS)} circuits x {len(SEEDS)} seeds "
           f"on {TOPOLOGY}")

@@ -226,6 +226,22 @@
       "command": "BENCHPRESS_PATH=... envs/bp202/Scripts/python.exe verify.py",
       "result": "CONFIRMED on both counts. FIXED: paper_check.py is now stage 6 of verify.py (6/6 PASS, 95s total), and check() gained a `near=` anchor binding a value to a location instead of the whole document. The twelve load-bearing endpoint-table figures are now bound to their table ROW. The anchoring immediately earned its keep: anchored to 'risk >= 5%' it FAILED, because that string first occurs in a sec 3.2 prose sentence ninety lines above the table -- exactly the wrong-location failure it exists to catch. Anchors now include the leading pipe. ⚠ STATED, NOT HIDDEN: this is a narrowing, not a cure. Presence near an anchor still does not prove a number is quoted in the right claim, and verify.py's docstring says so.",
       "keywords": ["verify.py", "paper_check", "substring", "presence not placement", "anchor", "near", "stage 6"]
+    },
+    {
+      "id": "S29", "settled": "2026-09-09", "status": "SETTLED",
+      "attack": "Determinism was claimed 'across machines' with no second machine in the record (S24), so the claim was withdrawn. Does a fixed seed actually reproduce on different hardware, or was the withdrawal hiding a real machine dependence?",
+      "raised_by": "GPT-5.6 Sol raised the contradiction; the operator supplied a second physical machine to settle it",
+      "command": "crossmachine/measure.py on each machine, then crossmachine/compare.py for all three Qiskit versions; re-verified from the primary machine after merging",
+      "result": "EARNED, NOT ASSUMED. All 216 per-seed gate counts (6 circuits x 12 seeds x 3 versions) are IDENTICAL across an AMD64 AuthenticAMD 16-core box and an Intel64 GenuineIntel 8-core box, INCLUDING the 1.4.3 -> 2.0.0 pair the primary study uses. The frozen artifact also passed unmodified on the second machine: 144/144 per-seed values, both negative controls constant, all six ambiguity bands matching to 0.00 pp. Python differed uncontrolled (3.10.10 vs 3.10.21) and the integers still matched. Pre-registered before the second machine existed and inherits the frozen six-circuit twelve-seed selection, so there was no selection freedom. §3.4 now states the two-machine claim; §5.2 still records that the 200-seed study itself ran on ONE machine and only the determinism control is cross-machine. ⚠ SCOPE, STATED IN THE PAPER: both machines ran rustworkx 0.18.1, so this CANNOT separate 'the CPU does not matter' from 'the graph library was identical, so the CPU never had the opportunity to matter'. A differing rustworkx build is the untested case.",
+      "keywords": ["cross-machine", "two machines", "determinism", "AMD", "Intel", "rustworkx", "216", "second machine", "fixed seed", "reproducibility"]
+    },
+    {
+      "id": "S30", "settled": "2026-09-09", "status": "SETTLED",
+      "attack": "Two defects in the cross-machine tooling itself, found by the second machine while running it: measure.py did not record the rustworkx version, and compare.py's same-machine test ignored the CPU vendor it was already recording.",
+      "raised_by": "the second machine, reviewing the tooling it had just been handed",
+      "command": "grep -c rustworkx crossmachine/desktop_q143.jsonl ; read compare.py same_box",
+      "result": "BOTH CONFIRMED AND FIXED. (1) PREREGISTRATION.md names a differing rustworkx build as 'the interesting one' -- the component most likely to make routing architecture-dependent -- and measure.py then failed to record it, so the first run cannot distinguish the weak reading from the strong one. rustworkx is now in the env record; the desktop reference files were deliberately NOT regenerated, because a reference must not be rewritten after the test has run against it, and the desktop version (0.18.1, all three envs) is recorded here instead. (2) compare.py tested platform == platform and cpu_count == cpu_count while ignoring `processor`. It resolved correctly on 2026-09-09 only because the core counts differed, 16 vs 8; the platform strings were byte-identical. Two boxes with the same OS build and the same core count would have been flagged as possibly-one-machine even across vendors. `processor` is now part of the test.",
+      "keywords": ["rustworkx not recorded", "same_box", "processor", "cpu vendor", "measure.py", "compare.py", "tooling defect"]
     }
   ]
 }

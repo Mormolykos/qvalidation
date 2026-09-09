@@ -81,11 +81,19 @@ def main():
     # "recorded on two distinct configurations: None / None cpus". That is the same
     # defect class this whole audit has been chasing -- an absence scored as evidence.
     # Caught on this script's first run, 2026-09-08.
+    # `processor` is part of this test, not decoration. Comparing only platform and
+    # cpu_count was wrong: on 2026-09-09 both machines reported the byte-identical
+    # platform string "Windows-10-10.0.26200-SP0", and the check resolved correctly only
+    # because the core counts happened to differ (16 vs 8). Two boxes with the same OS
+    # build and the same core count would have been flagged as possibly-one-machine even
+    # with AuthenticAMD on one and GenuineIntel on the other. The vendor string was
+    # already being recorded and simply was not consulted.
     unknown = [n for n, e in (("reference", ref_env), ("candidate", cand_env))
                if not e.get("platform")]
     same_box = (bool(ref_env.get("platform"))
                 and ref_env.get("platform") == cand_env.get("platform")
-                and ref_env.get("cpu_count") == cand_env.get("cpu_count"))
+                and ref_env.get("cpu_count") == cand_env.get("cpu_count")
+                and ref_env.get("processor") == cand_env.get("processor"))
     if unknown:
         print(f"\n  ⚠ NO MACHINE RECORDED in the {' and '.join(unknown)} file.")
         print("    Values may still be compared, but this pair CANNOT support a")
