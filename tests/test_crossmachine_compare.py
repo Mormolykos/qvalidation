@@ -141,7 +141,8 @@ def test_B_non_integer_count_is_refused_not_truncated(tmp_path):
     p = write(tmp_path, "float.jsonl", rs)
     code, out = run(DESKTOP, p)
     assert code == 3, out
-    assert "is not an integer" in out
+    assert "60.9" in out                  # the offending value is named, not swallowed
+    assert "IDENTICAL" not in out
 
 
 # --- attack 3: incomparable provenance must be refused --------------------------------
@@ -157,8 +158,9 @@ def test_C_provenance_mismatch_is_refused(tmp_path, field, value):
     rs[0] = dict(rs[0], **{field: value})
     p = write(tmp_path, f"prov_{field}.jsonl", rs)
     code, out = run(DESKTOP, p)
-    assert code == 3, out
-    assert "not comparable" in out and field in out
+    assert code == 3, out                 # the exit code is the contract, not the prose
+    assert field in out                   # and the refusal names what was wrong
+    assert "IDENTICAL" not in out
 
 
 def test_C_second_env_record_is_refused(tmp_path):

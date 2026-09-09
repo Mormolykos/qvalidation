@@ -60,6 +60,7 @@ USAGE
 
 import argparse
 import json
+import math
 import os
 import sys
 
@@ -84,25 +85,126 @@ EXPECTED_KEYS = frozenset((c, s) for c in CIRCUITS for s in SEEDS)
 # list consulted by both tests is what stops a third.
 MACHINE = ("platform", "processor", "cpu_count")
 
-# Must agree before equality of counts carries any meaning. `benchpress_path` is
-# deliberately excluded: it is a local directory and differs between machines by design.
+# ---------------------------------------------------------------------------------
+# WHAT EACH FIELD MUST BE
 #
-# `benchpress_dirty` is here, and separately required to be False on both sides, because
-# a pinned commit does not describe the code that ran if the checkout was modified, and
-# `benchpress_module_sha256` covers only the five pinned modules -- an edit anywhere else
-# in Benchpress would pass every other check in this file.
-PROVENANCE = ("qiskit_version", "topology", "optimization_level", "seeds",
-              "benchpress_commit", "benchpress_module_sha256", "benchpress_dirty")
-
-# Per-run fields that must also agree, checked per circuit rather than per file.
-# `two_q_gate` is the one that matters: `two_q` is a count OF this gate, so two files
-# that counted different gates are not comparable no matter how equal the integers are.
-RUN_FIELDS = {"input_qasm_sha256": "source QASM", "two_q_gate": "counted gate"}
+# Four audit rounds found the same defect four times, in four disguises: a field absent
+# on one side, a field absent on both, a field spelled differently, a field present but
+# meaningless -- `cpu_count` as "NaN", 0 or -1; `qiskit_version` as "" or []; a source
+# hash as the empty string. Each round was fixed by teaching one comparison one more
+# thing to reject, and each time the next value that nobody had thought of walked
+# through.
+#
+# The common cause was never the individual field. It was that a value's DOMAIN was
+# nowhere declared, so "is it present" could only ever mean "is it not None", and
+# equality was asked of values that had never been checked to mean anything.
+#
+# So the domains are declared here, once, as predicates. A value is USABLE only if it
+# satisfies the predicate for its field; unusable is treated exactly as absent; and
+# equality is asked only of usable values. Adding a field means adding its meaning, not
+# remembering to patch three comparisons.
+# ---------------------------------------------------------------------------------
 
 
 def _is_int(x):
     """JSON ints only. bool is an int in Python and is not a gate count."""
     return isinstance(x, int) and not isinstance(x, bool)
+
+
+def _unique_members(pairs):
+    """Build the object, refusing a repeated member instead of keeping the last.
+
+    `{"two_q": 61, "two_q": 60}` is valid JSON, and every default decoder silently keeps
+    60. The duplicate-ROW guard added in S31 therefore never saw the contradiction: it
+    had already been resolved inside a single object before the guard could run (Astra,
+    third audit, 2026-09-09).
+    """
+    out = {}
+    for k, v in pairs:
+        if k in out:
+            raise ValueError(f"repeated object member {k!r} "
+                             f"({out[k]!r} then {v!r}) -- one of them is being erased")
+        out[k] = v
+    return out
+
+
+def _text(v):
+    """A non-empty string. Not a number, not a container, not blank."""
+    return isinstance(v, str) and bool(v.strip())
+
+
+def _count(v):
+    """A positive whole number of cores. Zero cores, minus one core, 2.5 cores and NaN
+    cores all identify no machine; `identity()` used to treat every one of them as a
+    perfectly good value that simply differed from 16."""
+    if isinstance(v, bool):
+        return False
+    if isinstance(v, str):
+        try:
+            v = float(v.strip())
+        except ValueError:
+            return False
+    if isinstance(v, float):
+        return math.isfinite(v) and v.is_integer() and v > 0
+    return isinstance(v, int) and v > 0
+
+
+def _hex(n):
+    """Exactly n hexadecimal characters -- a real digest, not a placeholder."""
+    def check(v):
+        return (isinstance(v, str) and len(v) == n
+                and all(c in "0123456789abcdefABCDEF" for c in v))
+    return check
+
+
+def _seeds(v):
+    return isinstance(v, list) and bool(v) and all(_is_int(s) for s in v)
+
+
+def _module_hashes(v):
+    return (isinstance(v, dict) and bool(v)
+            and all(_text(k) and _hex(64)(h) for k, h in v.items()))
+
+
+def _opt_level(v):
+    return _is_int(v) and 0 <= v <= 3
+
+
+def _gate(v):
+    """A gate name: one bare token, no whitespace."""
+    return _text(v) and v.split() == [v]
+
+
+def _clean(v):
+    """Not merely falsy. A missing or null dirty flag is unknown, not clean."""
+    return v is False
+
+
+# Machine identity. Both "is anything missing" and "is it the same box" read this one
+# mapping, so a field cannot be added to one test and forgotten in the other.
+MACHINE_SCHEMA = {"platform": _text, "processor": _text, "cpu_count": _count}
+MACHINE = tuple(MACHINE_SCHEMA)
+
+# Environment provenance: must be valid, then equal. `benchpress_path` is deliberately
+# absent -- it is a local directory and differs between machines by design.
+# `benchpress_dirty` is here because a pinned commit does not describe the code that ran
+# if the checkout was modified, and `benchpress_module_sha256` covers only five modules,
+# so an edit anywhere else in Benchpress would pass every other check in this file.
+ENV_SCHEMA = {"qiskit_version": _text, "topology": _text,
+              "optimization_level": _opt_level, "seeds": _seeds,
+              "benchpress_commit": _hex(40), "benchpress_module_sha256": _module_hashes,
+              "benchpress_dirty": _clean}
+PROVENANCE = tuple(ENV_SCHEMA)
+
+# Per-run fields. `two_q_gate` is the one that matters most: `two_q` is a count OF this
+# gate, so two files that counted different gates are not comparable however equal the
+# integers are. `topology` is here because a row used to be able to say "linear" while
+# its own env record said "heavy-hex" and nothing looked.
+RUN_SCHEMA = {"circuit": _text, "seed": _is_int, "two_q": lambda v: _is_int(v) and v >= 0,
+              "input_qasm_sha256": _hex(64), "two_q_gate": _gate, "topology": _text}
+
+# Of those, the ones compared across the two files, per circuit.
+RUN_FIELDS = {"input_qasm_sha256": "source QASM", "two_q_gate": "counted gate"}
 
 
 def identity(v):
@@ -147,9 +249,12 @@ def load(path):
             if not line:
                 continue
             try:
-                r = json.loads(line)
+                r = json.loads(line, object_pairs_hook=_unique_members)
             except json.JSONDecodeError as exc:
                 bad.append(f"line {n}: not JSON ({exc.msg})")
+                continue
+            except ValueError as exc:      # a repeated member, from the hook above
+                bad.append(f"line {n}: {exc}")
                 continue
             if not isinstance(r, dict):
                 # A bare `null` or `[]` line parses fine and then has no .get, so this
@@ -157,40 +262,50 @@ def load(path):
                 # which this script's own contract reserves for "the counts differ".
                 bad.append(f"line {n}: JSON {type(r).__name__}, not an object")
                 continue
-            if r.get("record") == "env":
+            if r.get("record") not in ("env", "run"):
+                # Not skipped. A record this script cannot account for is one it cannot
+                # certify around, and silently ignoring `{}` is the same habit -- an
+                # unaccounted thing treated as nothing -- that produced every finding
+                # above it in this file.
+                bad.append(f"line {n}: record={r.get('record')!r}, which is neither "
+                           f"'env' nor 'run'")
+                continue
+            if r["record"] == "env":
                 envs.append(r)
-            elif r.get("record") == "run":
-                circuit, seed, two_q = r.get("circuit"), r.get("seed"), r.get("two_q")
-                if not _is_int(seed):
-                    bad.append(f"line {n}: seed {seed!r} is not an integer")
+            else:
+                # Validated against the declared domain BEFORE anything is stored, so a
+                # value that means nothing -- a negative count, a blank hash, a list
+                # where a circuit name belongs -- never reaches a comparison. A list
+                # used to reach one and kill the process on an unhashable dict key,
+                # exiting 1: the code this script reserves for "the counts differ".
+                unusable = [f"{f}={r.get(f)!r}" for f, ok in RUN_SCHEMA.items()
+                            if not ok(r.get(f))]
+                if unusable:
+                    bad.append(f"line {n}: unusable run record ({', '.join(unusable)})")
                     continue
-                if not _is_int(two_q):
-                    bad.append(f"line {n}: {circuit} seed {seed}: two_q {two_q!r} is "
-                               f"not an integer")
-                    continue
-                if two_q < 0:
-                    # A count of gates has no negative values. Every row set to -1 was
-                    # "72 identical counts" before this line existed.
-                    bad.append(f"line {n}: {circuit} seed {seed}: two_q {two_q} is "
-                               f"negative, and a gate count cannot be")
-                    continue
-                missing = [f for f in RUN_FIELDS if r.get(f) is None]
-                if missing:
-                    # Required, not merely compared: a field absent from BOTH files
-                    # compares equal to itself and used to pass.
-                    bad.append(f"line {n}: {circuit} seed {seed}: no "
-                               f"{', '.join(RUN_FIELDS[f] for f in missing)}")
-                    continue
+                circuit, seed = r["circuit"], r["seed"]
                 if (circuit, seed) in vals:
                     bad.append(f"line {n}: {circuit} seed {seed} measured twice "
-                               f"({vals[(circuit, seed)]['two_q']} then {two_q})")
+                               f"({vals[(circuit, seed)]['two_q']} then {r['two_q']})")
                     continue
-                vals[(circuit, seed)] = {"two_q": two_q,
-                                         **{f: r.get(f) for f in RUN_FIELDS}}
+                vals[(circuit, seed)] = {f: r[f] for f in RUN_SCHEMA}
     if len(envs) != 1:
         bad.append(f"{len(envs)} env records; exactly one is required, because the "
                    f"environment a file reports must be unambiguous")
-    return vals, (envs[0] if len(envs) == 1 else {}), bad
+        return vals, {}, bad
+
+    env = envs[0]
+    # Same validation one level up. "Present" used to mean "not None", so `""`, `[]` and
+    # `{}` all counted as recorded provenance and, being equal on both sides, passed.
+    bad += [f"env: unusable {f}={env.get(f)!r}" for f, ok in ENV_SCHEMA.items()
+            if not ok(env.get(f))]
+    # A row must not contradict the env record it ships with: one row saying "linear"
+    # while its own env said "heavy-hex" used to be compared without comment.
+    rogue = sorted({v["topology"] for v in vals.values()} - {env.get("topology")})
+    if rogue:
+        bad.append(f"rows declare topology {rogue}, but the env record declares "
+                   f"{env.get('topology')!r}")
+    return vals, env, bad
 
 
 def per_circuit(vals, field):
@@ -210,7 +325,7 @@ def machine_verdict(ref_env, cand_env):
     """
     absent = {}
     for name, env in (("reference", ref_env), ("candidate", cand_env)):
-        gone = [f for f in MACHINE if identity(env.get(f)) is None]
+        gone = [f for f, ok in MACHINE_SCHEMA.items() if not ok(env.get(f))]
         if gone:
             absent[name] = gone
     if absent:
@@ -268,16 +383,12 @@ def main():
               f"This compares one version across two machines, not two versions.\n")
         sys.exit(3)
 
-    # Present, THEN equal. A field missing from both files compares equal to itself:
-    # deleting `qiskit_version` from both used to pass and report success "for qiskit
-    # None" (Astra, second audit). Absence is not agreement, on either side or both.
-    absent = [f"{n}: no {f}" for n, e in ((args.reference, ref_env),
-                                          (args.candidate, cand_env))
-              for f in PROVENANCE if e.get(f) is None]
+    # Valid, THEN equal. Validity is settled in load() against ENV_SCHEMA, so by here
+    # both records are known to carry real provenance and this only asks whether they
+    # agree. A field deleted -- or blanked -- on both sides used to compare equal to
+    # itself and pass; removing `qiskit_version` from both reported success "for qiskit
+    # None". Absence is not agreement, on either side or both.
     differing = [f for f in PROVENANCE if ref_env.get(f) != cand_env.get(f)]
-    # `is not False`, not falsy: a missing or null value is not a clean checkout.
-    dirty = [n for n, e in ((args.reference, ref_env), (args.candidate, cand_env))
-             if e.get("benchpress_dirty") is not False]
     # The env record declares which seeds were measured, and every row must be covered
     # by that declaration: setting both files' seed lists to [999] while the rows stayed
     # at 1000-1011 used to pass, because the two declarations were equal to each other
@@ -301,16 +412,11 @@ def main():
                      f"({sorted(ref_f[c])} vs {sorted(cand_f[c])})"
                      for c in sorted(set(ref_f) & set(cand_f))
                      if ref_f[c] != cand_f[c]]
-    if absent or differing or dirty or mixed or run_diff or inconsistent:
+    if differing or mixed or run_diff or inconsistent:
         print("\n  ✗ REFUSED — the two runs are not comparable, so equality of their "
               "counts would mean nothing:\n")
-        for a in absent:
-            print(f"    {a}")
         for f in differing:
             print(f"    '{f}' differs: {ref_env.get(f)!r} vs {cand_env.get(f)!r}")
-        for n in dirty:
-            print(f"    {n}: benchpress_dirty is not false, so the pinned commit does "
-                  f"not describe the code that ran")
         for m in mixed + run_diff + inconsistent:
             print(f"    {m}")
         print()
