@@ -16,14 +16,42 @@ WHAT IT COMPARES
     second-machine run of the SAME Qiskit version. Not "close" -- identical. A single
     differing integer is a finding, not a rounding artifact.
 
-    It also prints the platform, CPU count and Python of both runs, because "two
-    machines" has to be checkable rather than asserted. If both files report the same
-    platform string, this script says so and the claim is NOT earned.
+WHAT IT REFUSES (S31, 2026-09-09)
+    An external audit demonstrated four inputs this script certified and should not have.
+    All four were the same disease: the checker repaired or ignored what it could not
+    compare, instead of stopping. It now refuses, in this order, before any count is
+    compared:
+
+        malformed    two env records, a repeated (circuit, seed), a non-integer count.
+                     `int(two_q)` used to be applied on load, so a candidate value of
+                     60.9 was truncated to 60 and matched a reference 60. And a dict
+                     assignment let a later duplicate row overwrite an earlier
+                     contradicting one, so the disagreement was erased before the
+                     comparison it was supposed to fail.
+        incomparable different topology, optimisation level, seed list, Benchpress
+                     commit, module hashes or source-QASM hashes. Equality of counts
+                     between two different experiments means nothing, and the script
+                     used to accept a candidate declaring topology=linear.
+        incomplete   anything other than the frozen selection imported below. Two files
+                     containing no measurements at all used to print
+                     "ALL 0 per-seed gate counts are IDENTICAL".
+
+    It also prints which machine produced each file, because "two machines" has to be
+    checkable rather than asserted, and `--require-distinct-machines` turns that from a
+    printed sentence into an exit code.
+
+EXIT CODES
+    0  every count identical, and every refusal above passed
+    1  at least one count differs -- a finding; see PREREGISTRATION.md
+    2  incomplete: the frozen selection is not fully covered by both files
+    3  refused: malformed or incomparable input, nothing was concluded
+    4  --require-distinct-machines was given and two distinct machines were not proven
 
 USAGE
     python crossmachine/compare.py \
-        --reference replication/out_q200.jsonl \
-        --candidate crossmachine/laptop_q200.jsonl
+        --reference crossmachine/desktop_q200.jsonl \
+        --candidate crossmachine/laptop_q200.jsonl \
+        --require-distinct-machines
 """
 
 import argparse
@@ -31,22 +59,105 @@ import json
 import os
 import sys
 
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(ROOT, "replication"))
+
+from replicate import CIRCUITS, SEEDS, TOPOLOGY  # noqa: E402  the frozen selection
+
+# Imported, never restated. PREREGISTRATION.md claims this check introduces no selection
+# freedom; that claim is only true if the expected set comes from the artifact itself.
+EXPECTED_KEYS = frozenset((c, s) for c in CIRCUITS for s in SEEDS)
+
+# Every field the machine-identity test consults. Both the "is anything missing" test and
+# the "is it the same box" test are derived from THIS tuple and nothing else.
+#
+# This is the shape of the fix, not a detail of it. On 2026-09-09 `same_box` compared
+# platform, cpu_count and processor while the missing-data test looked at platform alone,
+# so deleting `processor` from a file made it unequal to itself -- and the script
+# announced desktop_q143.jsonl versus a copy of itself as "two distinct machines". That
+# was the second time an absence was scored as evidence here (S30 was the first, on this
+# same pair of tests). Patching a field at a time is what produced two occurrences; one
+# list consulted by both tests is what stops a third.
+MACHINE = ("platform", "processor", "cpu_count")
+
+# Must agree before equality of counts carries any meaning. `benchpress_path` is
+# deliberately excluded: it is a local directory and differs between machines by design.
+PROVENANCE = ("qiskit_version", "topology", "optimization_level", "seeds",
+              "benchpress_commit", "benchpress_module_sha256")
+
+
+def _is_int(x):
+    """JSON ints only. bool is an int in Python and is not a gate count."""
+    return isinstance(x, int) and not isinstance(x, bool)
+
 
 def load(path):
-    """(values keyed by circuit+seed, environment metadata, qiskit version)."""
-    vals, env, ver = {}, {}, None
+    """(counts and QASM hash keyed by circuit+seed, the one env record, refusals).
+
+    Nothing is coerced and nothing is overwritten. Both used to happen on this line and
+    both destroyed evidence: `int(r["two_q"])` silently truncated a non-integer into
+    agreement, and `vals[key] = ...` let a later row overwrite an earlier one that
+    disagreed with it.
+    """
+    vals, envs, bad = {}, [], []
     with open(path, encoding="utf-8") as fh:
-        for line in fh:
-            r = json.loads(line)
-            if r.get("qiskit_version"):
-                ver = r["qiskit_version"]
+        for n, line in enumerate(fh, 1):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                r = json.loads(line)
+            except json.JSONDecodeError as exc:
+                bad.append(f"line {n}: not JSON ({exc.msg})")
+                continue
             if r.get("record") == "env":
-                env = {k: r.get(k) for k in
-                       ("platform", "processor", "machine", "cpu_count", "python",
-                        "topology", "hashseed")}
-            if r.get("record") == "run":
-                vals[(r["circuit"], int(r["seed"]))] = int(r["two_q"])
-    return vals, env, ver
+                envs.append(r)
+            elif r.get("record") == "run":
+                circuit, seed, two_q = r.get("circuit"), r.get("seed"), r.get("two_q")
+                if not _is_int(seed):
+                    bad.append(f"line {n}: seed {seed!r} is not an integer")
+                    continue
+                if not _is_int(two_q):
+                    bad.append(f"line {n}: {circuit} seed {seed}: two_q {two_q!r} is "
+                               f"not an integer")
+                    continue
+                if (circuit, seed) in vals:
+                    bad.append(f"line {n}: {circuit} seed {seed} measured twice "
+                               f"({vals[(circuit, seed)][0]} then {two_q})")
+                    continue
+                vals[(circuit, seed)] = (two_q, r.get("input_qasm_sha256"))
+    if len(envs) != 1:
+        bad.append(f"{len(envs)} env records; exactly one is required, because the "
+                   f"environment a file reports must be unambiguous")
+    return vals, (envs[0] if len(envs) == 1 else {}), bad
+
+
+def qasm_hashes(vals):
+    """{circuit: set of source hashes seen}. More than one means the file mixes inputs."""
+    out = {}
+    for (circuit, _), (_, h) in vals.items():
+        out.setdefault(circuit, set()).add(h)
+    return out
+
+
+def machine_verdict(ref_env, cand_env):
+    """('DISTINCT' | 'SAME' | 'UNKNOWN', explanation).
+
+    UNKNOWN whenever any field in MACHINE is absent on either side. An unrecorded
+    machine is unknown, not different: replication/out_q*.jsonl record no platform at
+    all, and a naive inequality test reads None != "Windows-..." as two machines.
+    """
+    absent = {}
+    for name, env in (("reference", ref_env), ("candidate", cand_env)):
+        gone = [f for f in MACHINE if env.get(f) in (None, "")]
+        if gone:
+            absent[name] = gone
+    if absent:
+        return "UNKNOWN", "; ".join(f"the {n} file records no {', '.join(f)}"
+                                    for n, f in absent.items())
+    if all(ref_env.get(f) == cand_env.get(f) for f in MACHINE):
+        return "SAME", "both files report the same " + ", ".join(MACHINE)
+    return "DISTINCT", ""
 
 
 def main():
@@ -54,71 +165,76 @@ def main():
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--reference", required=True, help="the run recorded on machine 1")
     p.add_argument("--candidate", required=True, help="the run recorded on machine 2")
+    p.add_argument("--require-distinct-machines", action="store_true",
+                   help="exit 4 unless both files identify a machine and the two "
+                        "machines differ. Use this whenever the output is going to "
+                        "support a cross-machine sentence.")
     args = p.parse_args()
 
     for f in (args.reference, args.candidate):
         if not os.path.isfile(f):
-            sys.exit(f"ABORT: {f} does not exist")
+            print(f"ABORT: {f} does not exist")
+            sys.exit(3)
 
-    ref, ref_env, ref_ver = load(args.reference)
-    cand, cand_env, cand_ver = load(args.candidate)
+    ref, ref_env, ref_bad = load(args.reference)
+    cand, cand_env, cand_bad = load(args.candidate)
 
     print(f"\n  reference  {args.reference}")
-    print(f"    qiskit {ref_ver} | {ref_env.get('platform')} | "
+    print(f"    qiskit {ref_env.get('qiskit_version')} | {ref_env.get('platform')} | "
+          f"{ref_env.get('processor') or 'processor not recorded'} | "
           f"cpu_count {ref_env.get('cpu_count')} | python {ref_env.get('python')}")
     print(f"  candidate  {args.candidate}")
-    print(f"    qiskit {cand_ver} | {cand_env.get('platform')} | "
+    print(f"    qiskit {cand_env.get('qiskit_version')} | {cand_env.get('platform')} | "
+          f"{cand_env.get('processor') or 'processor not recorded'} | "
           f"cpu_count {cand_env.get('cpu_count')} | python {cand_env.get('python')}")
 
+    # ---- refusal 1: malformed ------------------------------------------------------
+    malformed = ([f"{args.reference}: {m}" for m in ref_bad]
+                 + [f"{args.candidate}: {m}" for m in cand_bad])
+    if malformed:
+        print("\n  ✗ REFUSED — the input is malformed. Nothing was compared:\n")
+        for m in malformed[:20]:
+            print(f"    {m}")
+        if len(malformed) > 20:
+            print(f"    ... and {len(malformed) - 20} more")
+        print()
+        sys.exit(3)
+
+    # ---- refusal 2: incomparable ---------------------------------------------------
+    ref_ver, cand_ver = ref_env.get("qiskit_version"), cand_env.get("qiskit_version")
     if ref_ver != cand_ver:
-        sys.exit(f"\n  ABORT: different Qiskit versions ({ref_ver} vs {cand_ver}). "
-                 f"This compares one version across two machines, not two versions.")
+        print(f"\n  ✗ REFUSED: different Qiskit versions ({ref_ver} vs {cand_ver}). "
+              f"This compares one version across two machines, not two versions.\n")
+        sys.exit(3)
 
-    # "Two machines" is a claim, so it gets checked like one.
-    #
-    # UNKNOWN IS NOT DIFFERENT. replication/out_q*.jsonl record no platform at all, so a
-    # naive inequality test reads None != "Windows-..." as two machines and prints
-    # "recorded on two distinct configurations: None / None cpus". That is the same
-    # defect class this whole audit has been chasing -- an absence scored as evidence.
-    # Caught on this script's first run, 2026-09-08.
-    # `processor` is part of this test, not decoration. Comparing only platform and
-    # cpu_count was wrong: on 2026-09-09 both machines reported the byte-identical
-    # platform string "Windows-10-10.0.26200-SP0", and the check resolved correctly only
-    # because the core counts happened to differ (16 vs 8). Two boxes with the same OS
-    # build and the same core count would have been flagged as possibly-one-machine even
-    # with AuthenticAMD on one and GenuineIntel on the other. The vendor string was
-    # already being recorded and simply was not consulted.
-    unknown = [n for n, e in (("reference", ref_env), ("candidate", cand_env))
-               if not e.get("platform")]
-    same_box = (bool(ref_env.get("platform"))
-                and ref_env.get("platform") == cand_env.get("platform")
-                and ref_env.get("cpu_count") == cand_env.get("cpu_count")
-                and ref_env.get("processor") == cand_env.get("processor"))
-    if unknown:
-        print(f"\n  ⚠ NO MACHINE RECORDED in the {' and '.join(unknown)} file.")
-        print("    Values may still be compared, but this pair CANNOT support a")
-        print("    cross-machine claim: an unrecorded machine is unknown, not different.")
-        print("    Use crossmachine/measure.py, which records platform and CPU.")
-    if same_box:
-        print("\n  ⚠ BOTH RUNS REPORT THE SAME PLATFORM AND CPU COUNT.")
-        print("    Matching values here do NOT support a cross-machine claim: this may")
-        print("    be one machine twice. The schema records no CPU vendor or model, so")
-        print("    it cannot distinguish two identical configurations. State the")
-        print("    hardware separately, or record a vendor field, before claiming two.")
+    differing = [f for f in PROVENANCE if ref_env.get(f) != cand_env.get(f)]
+    ref_h, cand_h = qasm_hashes(ref), qasm_hashes(cand)
+    mixed = sorted(c for h in (ref_h, cand_h) for c, s in h.items() if len(s) > 1)
+    hash_diff = sorted(c for c in set(ref_h) & set(cand_h) if ref_h[c] != cand_h[c])
+    if differing or mixed or hash_diff:
+        print("\n  ✗ REFUSED — the two runs are not comparable, so equality of their "
+              "counts would mean nothing:\n")
+        for f in differing:
+            print(f"    '{f}' differs: {ref_env.get(f)!r} vs {cand_env.get(f)!r}")
+        for c in mixed:
+            print(f"    {c}: one file contains more than one source-QASM hash")
+        for c in hash_diff:
+            print(f"    {c}: source QASM differs between the two files")
+        print()
+        sys.exit(3)
 
-    missing_c = sorted(set(ref) - set(cand))
-    missing_r = sorted(set(cand) - set(ref))
+    if ref_env.get("topology") != TOPOLOGY:
+        print(f"\n  ✗ REFUSED: both files declare topology "
+              f"{ref_env.get('topology')!r}, not the frozen {TOPOLOGY!r}.\n")
+        sys.exit(3)
+
+    # ---- the comparison ------------------------------------------------------------
     shared = sorted(set(ref) & set(cand))
-    diffs = [(c, s, ref[(c, s)], cand[(c, s)])
-             for c, s in shared if ref[(c, s)] != cand[(c, s)]]
+    diffs = [(c, s, ref[(c, s)][0], cand[(c, s)][0])
+             for c, s in shared if ref[(c, s)][0] != cand[(c, s)][0]]
 
-    print(f"\n  {len(shared)} (circuit, seed) pairs present in both")
-    if missing_c:
-        print(f"  {len(missing_c)} present in the reference but MISSING from the "
-              f"candidate: {missing_c[:6]}")
-    if missing_r:
-        print(f"  {len(missing_r)} present in the candidate but not the reference: "
-              f"{missing_r[:6]}")
+    print(f"\n  {len(shared)} (circuit, seed) pairs present in both, of "
+          f"{len(EXPECTED_KEYS)} in the frozen selection")
 
     if diffs:
         print(f"\n  ✗ {len(diffs)} of {len(shared)} DIFFER — the observable is NOT "
@@ -132,25 +248,55 @@ def main():
         print("  PREREGISTRATION.md records in advance what it means. Report it.\n")
         sys.exit(1)
 
-    if missing_c or missing_r:
-        print("\n  INCOMPLETE: the two runs do not cover the same set. A partial run is "
-              "reported as partial; nothing is claimed beyond the pairs compared.\n")
+    # ---- refusal 3: incomplete -----------------------------------------------------
+    #
+    # Checked AFTER the diff, so a partial run that already disagrees is reported as a
+    # disagreement rather than dismissed as partial. Checked against the frozen set
+    # rather than against the other file: two files can agree perfectly on the empty
+    # set, and this script used to call that "ALL 0 per-seed gate counts are IDENTICAL".
+    gaps = []
+    for name, vals in ((args.reference, ref), (args.candidate, cand)):
+        missing = sorted(EXPECTED_KEYS - set(vals))
+        extra = sorted(set(vals) - EXPECTED_KEYS)
+        if missing:
+            gaps.append(f"{name}: {len(missing)} of {len(EXPECTED_KEYS)} frozen "
+                        f"(circuit, seed) pairs missing, e.g. {missing[:4]}")
+        if extra:
+            gaps.append(f"{name}: {len(extra)} pairs outside the frozen selection, "
+                        f"e.g. {extra[:4]}")
+    if gaps:
+        print("\n  ✗ INCOMPLETE — the frozen selection is not covered. Nothing is "
+              "claimed:\n")
+        for g in gaps:
+            print(f"    {g}")
+        print("\n    PREREGISTRATION.md: an uncompleted run earns no claim.\n")
         sys.exit(2)
 
+    # ---- the verdict ---------------------------------------------------------------
+    verdict, why = machine_verdict(ref_env, cand_env)
     print(f"\n  ✓ ALL {len(shared)} per-seed gate counts are IDENTICAL "
           f"for qiskit {ref_ver}.")
-    if unknown:
-        print("    Values match. NO cross-machine claim is earned here — see the "
-              "warning above.")
-    elif same_box:
-        print("    Both runs report the same machine, so this shows repeatability, "
-              "not machine-independence.")
+    print(f"  MACHINE VERDICT: {verdict}")
+    if verdict == "UNKNOWN":
+        print(f"    {why}.")
+        print("    Values match, but this pair CANNOT support a cross-machine claim:")
+        print("    an unrecorded machine is unknown, not different. Use")
+        print("    crossmachine/measure.py, which records platform, CPU and vendor.")
+    elif verdict == "SAME":
+        print(f"    {why}.")
+        print("    This shows repeatability on one machine, not machine-independence.")
     else:
         print("    Recorded on two distinct machines:")
         for e in (ref_env, cand_env):
-            print(f"      {e.get('platform')} | {e.get('processor') or '?'} | "
-                  f"{e.get('cpu_count')} cpus")
+            print(f"      {e.get('platform')} | {e.get('processor')} | "
+                  f"{e.get('cpu_count')} cpus | rustworkx "
+                  f"{e.get('rustworkx') or 'not recorded'}")
     print()
+
+    if args.require_distinct_machines and verdict != "DISTINCT":
+        print(f"  ✗ --require-distinct-machines was given and the verdict is "
+              f"{verdict}.\n")
+        sys.exit(4)
 
 
 if __name__ == "__main__":
