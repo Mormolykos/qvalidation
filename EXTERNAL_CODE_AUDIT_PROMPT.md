@@ -16,7 +16,9 @@ Then, for every concern you are about to investigate, run:
 python settled.py --check "<your keywords>"
 ```
 
-If it returns **ALREADY ANSWERED**, do not re-test it. Cite the entry ID and move on. Twenty-two entries are already closed, including: backend error-rate confounding, seed independence, PRNG/process-state artifacts, selection bias, the integer decision rule, with/without replacement, multiplicative vs additive residual models, bootstrap arm pairing, duplicate circuits, family clustering, the ρ = −0.833 tautology, observable identity across versions, pre-registration compliance, Benchpress aggregation, and the six code-implementation findings F1–F6 (unsupported-k enumeration, seed-alignment enforcement, zero-baseline handling, Monte-Carlo chunk order, the inventory's circular self-check, and scatter.py's abort-on-chunk-failure).
+If it returns **ALREADY ANSWERED**, do not re-test it. Cite the entry ID and move on. **Thirty entries are already closed**, including: backend error-rate confounding, seed independence, PRNG/process-state artifacts, selection bias, the integer decision rule, with/without replacement, multiplicative vs additive residual models, bootstrap arm pairing, duplicate circuits, family clustering, the ρ = −0.833 tautology, observable identity across versions, pre-registration compliance, Benchpress aggregation, the six code-implementation findings F1–F6 (unsupported-k enumeration, seed-alignment enforcement, zero-baseline handling, Monte-Carlo chunk order, the inventory's circular self-check, scatter.py's abort-on-chunk-failure), **and the eight most recent, S23–S30**: the Benchpress seeding overclaim, the "across machines" contradiction, the "mechanism" overclaim, the seed-guard truncation hole, the raw-data overclaim, verify.py not running paper_check, the cross-machine determinism result, and two defects in the cross-machine tooling itself.
+
+**Two prior audits already ran and their findings are fixed.** Re-reporting S17–S30 as new findings is the failure mode to avoid: those defects are gone from the code, and the entries record what the code does *now*, not what it used to do.
 
 **Re-testing settled ground wastes the owner's paid quota. It is the single most common failure of external reviewers on this project.** Three separate reviews have re-raised the same closed questions.
 
@@ -37,7 +39,16 @@ If it returns **ALREADY ANSWERED**, do not re-test it. Cite the entry ID and mov
 
 Roughly 4,600 lines of Python have never been read by an independent auditor. Every prior review examined *claims*. You examine *implementation*.
 
-Audit these specifically:
+### PRIORITY TARGET — `crossmachine/`
+
+**Start here.** It is the newest code in the repository, it has had exactly one reviewer, and it underwrites a claim the paper now makes in §3.4: that a fixed seed reproduces bit-identically on two physical machines with different CPU vendors.
+
+- `crossmachine/measure.py` — imports the circuit/seed selection from `replication/replicate.py` rather than restating it. Does it actually hold the selection identical? Does `--require-qiskit` fail closed? Is the recorded environment sufficient to identify a machine?
+- `crossmachine/compare.py` — the same-machine test reads platform, cpu_count and processor. **Can it be fooled?** Can a genuine difference be reported as a match, or an absence as a difference? It got the second one wrong once already (S30).
+- `crossmachine/PREREGISTRATION.md` vs what the code does. The document claims the check introduces **no selection freedom** because it inherits a frozen set. Verify that claim against the code.
+- The paper's §3.4 claim vs the 216 committed measurements. **Does the evidence support the sentence?** The stated scope limit is that both machines ran rustworkx 0.18.1 — check whether any stronger reading has leaked into the wording.
+
+### Then audit these:
 
 ### 1. Estimator correctness
 - `intervals.py` — `exact_call_rate`, the integer path `q·Sb ≥ (q+p)·Sa`, `wilson`, `k_means`, `_grid` caching.
