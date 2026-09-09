@@ -22,17 +22,20 @@ WHAT IT REFUSES (S31, 2026-09-09)
     compare, instead of stopping. It now refuses, in this order, before any count is
     compared:
 
-        malformed    two env records, a repeated (circuit, seed), a non-integer count.
-                     `int(two_q)` used to be applied on load, so a candidate value of
-                     60.9 was truncated to 60 and matched a reference 60. And a dict
-                     assignment let a later duplicate row overwrite an earlier
-                     contradicting one, so the disagreement was erased before the
-                     comparison it was supposed to fail.
-        incomparable different topology, optimisation level, seed list, Benchpress
-                     commit, module hashes, source-QASM hashes or COUNTED GATE, or a
-                     dirty Benchpress checkout on either side. Equality of counts
-                     between two different experiments means nothing, and the script
-                     used to accept a candidate declaring topology=linear.
+        malformed    two env records, a record that is not a JSON object, a repeated
+                     (circuit, seed), a non-integer or negative count, a row with no
+                     source-QASM hash or counted gate. `int(two_q)` used to be applied
+                     on load, so a candidate value of 60.9 was truncated to 60 and
+                     matched a reference 60. And a dict assignment let a later duplicate
+                     row overwrite an earlier contradicting one, so the disagreement was
+                     erased before the comparison it was supposed to fail.
+        incomparable a missing or differing qiskit version, topology, optimisation
+                     level, seed list, Benchpress commit, module hashes, source-QASM
+                     hash or COUNTED GATE; a checkout not known to be clean; or an env
+                     record whose declared seeds contradict its own rows. PRESENT, then
+                     equal: a field deleted from BOTH files compares equal to itself,
+                     and removing `qiskit_version` from both used to pass and report
+                     success "for qiskit None".
         incomplete   anything other than the frozen selection imported below. Two files
                      containing no measurements at all used to print
                      "ALL 0 per-seed gate counts are IDENTICAL".
@@ -102,6 +105,26 @@ def _is_int(x):
     return isinstance(x, int) and not isinstance(x, bool)
 
 
+def identity(v):
+    """`v` normalised to what it IDENTIFIES, or None if it identifies nothing.
+
+    The third occurrence of this file's recurring defect was that MACHINE fields were
+    compared for equality without being validated first, so a difference in
+    REPRESENTATION was read as a difference in HARDWARE. Comparing one machine's record
+    against a copy of itself returned DISTINCT when the copy carried cpu_count as "16"
+    instead of 16, or a processor string that was lowercased, or padded with a trailing
+    space, or replaced by `[]` -- because `[]` is neither None nor "" and so counted as
+    a recorded value (Astra, second audit, 2026-09-09).
+
+    Equality is now asked of this function's output, never of the raw field, and the
+    same function decides whether a field is present at all. A value that identifies
+    nothing is absent, and absent is UNKNOWN, never DISTINCT.
+    """
+    if isinstance(v, bool) or not isinstance(v, (str, int, float)):
+        return None                       # a list or a dict names no machine
+    return " ".join(str(v).split()).casefold() or None
+
+
 def load(path):
     """(counts and QASM hash keyed by circuit+seed, the one env record, refusals).
 
@@ -121,6 +144,12 @@ def load(path):
             except json.JSONDecodeError as exc:
                 bad.append(f"line {n}: not JSON ({exc.msg})")
                 continue
+            if not isinstance(r, dict):
+                # A bare `null` or `[]` line parses fine and then has no .get, so this
+                # used to leave the process on an AttributeError traceback -- exit 1,
+                # which this script's own contract reserves for "the counts differ".
+                bad.append(f"line {n}: JSON {type(r).__name__}, not an object")
+                continue
             if r.get("record") == "env":
                 envs.append(r)
             elif r.get("record") == "run":
@@ -131,6 +160,19 @@ def load(path):
                 if not _is_int(two_q):
                     bad.append(f"line {n}: {circuit} seed {seed}: two_q {two_q!r} is "
                                f"not an integer")
+                    continue
+                if two_q < 0:
+                    # A count of gates has no negative values. Every row set to -1 was
+                    # "72 identical counts" before this line existed.
+                    bad.append(f"line {n}: {circuit} seed {seed}: two_q {two_q} is "
+                               f"negative, and a gate count cannot be")
+                    continue
+                missing = [f for f in RUN_FIELDS if r.get(f) is None]
+                if missing:
+                    # Required, not merely compared: a field absent from BOTH files
+                    # compares equal to itself and used to pass.
+                    bad.append(f"line {n}: {circuit} seed {seed}: no "
+                               f"{', '.join(RUN_FIELDS[f] for f in missing)}")
                     continue
                 if (circuit, seed) in vals:
                     bad.append(f"line {n}: {circuit} seed {seed} measured twice "
@@ -161,14 +203,14 @@ def machine_verdict(ref_env, cand_env):
     """
     absent = {}
     for name, env in (("reference", ref_env), ("candidate", cand_env)):
-        gone = [f for f in MACHINE if env.get(f) in (None, "")]
+        gone = [f for f in MACHINE if identity(env.get(f)) is None]
         if gone:
             absent[name] = gone
     if absent:
-        return "UNKNOWN", "; ".join(f"the {n} file records no {', '.join(f)}"
-                                    for n, f in absent.items())
-    if all(ref_env.get(f) == cand_env.get(f) for f in MACHINE):
-        return "SAME", "both files report the same " + ", ".join(MACHINE)
+        return "UNKNOWN", "; ".join(f"the {n} file records no usable "
+                                    f"{', '.join(f)}" for n, f in absent.items())
+    if all(identity(ref_env.get(f)) == identity(cand_env.get(f)) for f in MACHINE):
+        return "SAME", "both files identify the same " + ", ".join(MACHINE)
     return "DISTINCT", ""
 
 
@@ -219,9 +261,30 @@ def main():
               f"This compares one version across two machines, not two versions.\n")
         sys.exit(3)
 
+    # Present, THEN equal. A field missing from both files compares equal to itself:
+    # deleting `qiskit_version` from both used to pass and report success "for qiskit
+    # None" (Astra, second audit). Absence is not agreement, on either side or both.
+    absent = [f"{n}: no {f}" for n, e in ((args.reference, ref_env),
+                                          (args.candidate, cand_env))
+              for f in PROVENANCE if e.get(f) is None]
     differing = [f for f in PROVENANCE if ref_env.get(f) != cand_env.get(f)]
+    # `is not False`, not falsy: a missing or null value is not a clean checkout.
     dirty = [n for n, e in ((args.reference, ref_env), (args.candidate, cand_env))
-             if e.get("benchpress_dirty")]
+             if e.get("benchpress_dirty") is not False]
+    # The env record declares which seeds were measured, and every row must be covered
+    # by that declaration: setting both files' seed lists to [999] while the rows stayed
+    # at 1000-1011 used to pass, because the two declarations were equal to each other
+    # and neither was ever checked against the data.
+    #
+    # Containment, not equality. A row the env never declared is a file contradicting
+    # itself and is refused here; a declared seed with no row is an unfinished run and
+    # belongs to the INCOMPLETE verdict below, which says so far more usefully.
+    inconsistent = []
+    for n, e, v in ((args.reference, ref_env, ref), (args.candidate, cand_env, cand)):
+        undeclared = sorted({s for _, s in v} - set(e.get("seeds") or ()))
+        if undeclared:
+            inconsistent.append(f"{n}: rows carry seeds {undeclared} that the env "
+                                f"record does not declare ({e.get('seeds')})")
     mixed, run_diff = [], []
     for field, label in RUN_FIELDS.items():
         ref_f, cand_f = per_circuit(ref, field), per_circuit(cand, field)
@@ -231,15 +294,17 @@ def main():
                      f"({sorted(ref_f[c])} vs {sorted(cand_f[c])})"
                      for c in sorted(set(ref_f) & set(cand_f))
                      if ref_f[c] != cand_f[c]]
-    if differing or dirty or mixed or run_diff:
+    if absent or differing or dirty or mixed or run_diff or inconsistent:
         print("\n  ✗ REFUSED — the two runs are not comparable, so equality of their "
               "counts would mean nothing:\n")
+        for a in absent:
+            print(f"    {a}")
         for f in differing:
             print(f"    '{f}' differs: {ref_env.get(f)!r} vs {cand_env.get(f)!r}")
         for n in dirty:
-            print(f"    {n}: benchpress_dirty is true, so the pinned commit does not "
-                  f"describe the code that ran")
-        for m in mixed + run_diff:
+            print(f"    {n}: benchpress_dirty is not false, so the pinned commit does "
+                  f"not describe the code that ran")
+        for m in mixed + run_diff + inconsistent:
             print(f"    {m}")
         print()
         sys.exit(3)

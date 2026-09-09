@@ -259,6 +259,122 @@ def test_D_genuine_single_integer_difference_is_a_finding(tmp_path):
     assert "1 of 72 DIFFER" in out
 
 
+# --- second audit: a difference in REPRESENTATION is not a difference in HARDWARE -----
+
+@pytest.mark.parametrize("field,value,expect", [
+    ("cpu_count", "16", "SAME"),          # the same 16 cores, typed as a string
+    ("processor", " ", "UNKNOWN"),        # whitespace identifies nothing
+    ("processor", [], "UNKNOWN"),         # neither None nor "", so it used to be a value
+    ("processor", {}, "UNKNOWN"),
+    ("processor", True, "UNKNOWN"),       # bool is an int and names no CPU
+    ("platform", "  Windows-10-10.0.26200-SP0  ", "SAME"),
+    ("processor", "amd64 family 26 model 68 stepping 0, authenticamd", "SAME"),
+])
+def test_E_representation_change_is_not_a_second_machine(tmp_path, field, value, expect):
+    """Third occurrence of this file's recurring defect: MACHINE fields were compared
+    for equality without being validated first, so a file against a copy of ITSELF
+    returned DISTINCT when the copy carried cpu_count as "16", a lowercased processor,
+    a padded string, or []."""
+    rs = rows(DESKTOP)
+    rs[0] = dict(rs[0], **{field: value})
+    twin = write(tmp_path, f"repr_{field}.jsonl", rs)
+    code, out = run(DESKTOP, twin, "--require-distinct-machines")
+    assert f"MACHINE VERDICT: {expect}" in out, out
+    assert code == 4                      # never DISTINCT, never exit 0
+
+
+def test_E_identity_normalises_without_erasing_a_real_difference():
+    """Normalisation must not go so far that two genuinely different CPUs collide."""
+    assert C.identity(16) == C.identity("16") == C.identity(" 16 ")
+    assert C.identity("A  B") == C.identity("a b")
+    assert C.identity(None) is C.identity("") is C.identity("   ") is None
+    assert C.identity([]) is C.identity({}) is C.identity(True) is None
+    assert C.identity("AuthenticAMD") != C.identity("GenuineIntel")
+
+
+# --- second audit: absent on BOTH sides is not agreement -------------------------------
+
+@pytest.mark.parametrize("field", C.PROVENANCE)
+def test_F_provenance_missing_from_both_files_is_refused(tmp_path, field):
+    """A field deleted from both files compares equal to itself. Deleting
+    `qiskit_version` from both used to pass and report success 'for qiskit None'."""
+    a = rows(DESKTOP); a[0] = {k: v for k, v in a[0].items() if k != field}
+    b = rows(LAPTOP);  b[0] = {k: v for k, v in b[0].items() if k != field}
+    code, out = run(write(tmp_path, f"na_{field}.jsonl", a),
+                    write(tmp_path, f"nb_{field}.jsonl", b))
+    assert code == 3, out
+    assert "IDENTICAL" not in out
+
+
+@pytest.mark.parametrize("field", sorted(C.RUN_FIELDS))
+def test_F_run_provenance_missing_from_both_files_is_refused(tmp_path, field):
+    """Same hole one level down: strip the source hash or the counted gate from every
+    row of both files and the per-circuit sets are equal because both are {None}."""
+    a = [{k: v for k, v in r.items() if k != field} for r in rows(DESKTOP)]
+    b = [{k: v for k, v in r.items() if k != field} for r in rows(LAPTOP)]
+    code, out = run(write(tmp_path, f"ra_{field}.jsonl", a),
+                    write(tmp_path, f"rb_{field}.jsonl", b))
+    assert code == 3, out
+
+
+def test_F_env_seeds_contradicting_the_rows_is_refused(tmp_path):
+    """The env record declares which seeds were measured. Setting it to [999] on both
+    sides while the rows stayed 1000-1011 used to pass: the two declarations were equal
+    to each other and neither was checked against the data."""
+    a = rows(DESKTOP); a[0] = dict(a[0], seeds=[999])
+    b = rows(LAPTOP);  b[0] = dict(b[0], seeds=[999])
+    code, out = run(write(tmp_path, "sa.jsonl", a), write(tmp_path, "sb.jsonl", b))
+    assert code == 3, out
+    assert "does not declare" in out
+
+
+def test_F_an_unfinished_run_is_incomplete_not_a_contradiction(tmp_path):
+    """The seed check is containment, not equality, so it does not swallow the
+    INCOMPLETE verdict: a declared seed with no row is an unfinished run, and saying
+    'incomplete' is more useful than saying 'contradictory'."""
+    a = [r for r in rows(DESKTOP) if r.get("seed") != 1011]
+    b = [r for r in rows(LAPTOP) if r.get("seed") != 1011]
+    code, out = run(write(tmp_path, "ua.jsonl", a), write(tmp_path, "ub.jsonl", b))
+    assert code == 2, out
+    assert "INCOMPLETE" in out
+
+
+def test_F_dirty_must_be_false_not_merely_falsy(tmp_path):
+    """`if e.get("benchpress_dirty")` treats a missing key as clean. It is not clean;
+    it is unknown, and this script does not conclude from unknowns."""
+    a = rows(DESKTOP); a[0] = dict(a[0], benchpress_dirty=None)
+    b = rows(LAPTOP)
+    code, out = run(write(tmp_path, "da.jsonl", a), write(tmp_path, "db.jsonl", b))
+    assert code == 3, out
+
+
+# --- second audit: two MINOR defects --------------------------------------------------
+
+def test_G_negative_gate_counts_are_refused(tmp_path):
+    """Setting every count to -1 on both sides gave '72 identical counts'. A count of
+    gates has no negative values."""
+    a = [dict(r, two_q=-1) if r.get("record") == "run" else r for r in rows(DESKTOP)]
+    b = [dict(r, two_q=-1) if r.get("record") == "run" else r for r in rows(LAPTOP)]
+    code, out = run(write(tmp_path, "ga.jsonl", a), write(tmp_path, "gb.jsonl", b))
+    assert code == 3, out
+    assert "negative" in out
+
+
+def test_G_non_object_json_record_refuses_rather_than_crashing(tmp_path):
+    """A bare `null` line parses fine and then has no .get, so the process died on an
+    AttributeError -- exit 1, which this script's contract reserves for differing
+    counts. A crash that impersonates a finding is worse than a crash."""
+    p = os.path.join(str(tmp_path), "null.jsonl")
+    with open(p, "w", encoding="utf-8") as fh:
+        for r in rows(LAPTOP):
+            fh.write(json.dumps(r) + "\n")
+        fh.write("null\n")
+    code, out = run(DESKTOP, p)
+    assert code == 3, out
+    assert "not an object" in out
+    assert "Traceback" not in out
+
+
 # --- the frozen selection is imported, not restated -----------------------------------
 
 def test_expected_set_comes_from_the_artifact():
