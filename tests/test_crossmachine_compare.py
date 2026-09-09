@@ -286,6 +286,7 @@ def test_E_representation_change_is_not_a_second_machine(tmp_path, field, value,
 def test_E_identity_normalises_without_erasing_a_real_difference():
     """Normalisation must not go so far that two genuinely different CPUs collide."""
     assert C.identity(16) == C.identity("16") == C.identity(" 16 ")
+    assert C.identity(16) == C.identity(16.0) == C.identity(" 16.0 ")
     assert C.identity("A  B") == C.identity("a b")
     assert C.identity(None) is C.identity("") is C.identity("   ") is None
     assert C.identity([]) is C.identity({}) is C.identity(True) is None

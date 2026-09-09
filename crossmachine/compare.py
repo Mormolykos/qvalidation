@@ -122,7 +122,14 @@ def identity(v):
     """
     if isinstance(v, bool) or not isinstance(v, (str, int, float)):
         return None                       # a list or a dict names no machine
-    return " ".join(str(v).split()).casefold() or None
+    s = " ".join(str(v).split())
+    if not s:
+        return None
+    try:                                  # 16, 16.0, "16" and " 16.0 " are one count
+        f = float(s)
+    except ValueError:
+        return s.casefold()
+    return str(int(f)) if f.is_integer() else repr(f)
 
 
 def load(path):
