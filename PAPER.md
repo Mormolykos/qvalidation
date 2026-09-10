@@ -3,7 +3,7 @@
 **Panagiotis Gkilis** · BedVibe Studios, Oslo, Norway · <bedvibe@bedvibe.studio>
 ORCID 0009-0007-3805-170X
 
-*Draft, 2026-09-04. Not submitted. All data and code:* `qvalidation` *repository.*
+*Version 2, 2026-09-10. Not submitted. All data and code:* `qvalidation` *repository.*
 
 ---
 
