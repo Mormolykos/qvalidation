@@ -139,12 +139,27 @@ def mutate_paper_literal(snap):
     return "PAPER.md results table: risk >= 5% literal 7 -> 9 (data pristine)"
 
 
+# Each mutation declares WHICH layer must catch it. The point of the table is not that
+# everything fails everywhere -- it is to record the division of labour honestly, and to
+# make a silent gap impossible to miss.
+#
+#   science    raw_endpoint.py   -- the manuscript's numbers vs a raw reconstruction
+#   integrity  raw_integrity.py  -- raw bytes vs manifest, and summary vs raw
+#
+# B is the instructive one. Changing a single gate count by 1 genuinely does not move
+# 12/26, so the science layer correctly passes. If integrity did not exist, that edit
+# would be invisible. A layer passing is only acceptable when another layer catches it.
 MUTATIONS = [
-    ("A", "audit T7: whole raw arm -> constant", mutate_raw_constant, "RAW"),
-    ("B", "one raw gate count +1", mutate_raw_single, "RAW"),
-    ("C", "raw scaled, moves eligibility", mutate_eligibility, "RAW"),
-    ("D", "derived summary only", mutate_derived_only, "DERIVED"),
-    ("E", "PAPER.md literal only", mutate_paper_literal, "PAPER"),
+    ("A", "audit T7: whole raw arm -> constant", mutate_raw_constant,
+     "RAW", {"science", "integrity"}),
+    ("B", "one raw gate count +1", mutate_raw_single,
+     "RAW", {"integrity"}),
+    ("C", "raw scaled, moves eligibility", mutate_eligibility,
+     "RAW", {"science", "integrity"}),
+    ("D", "derived summary only", mutate_derived_only,
+     "DERIVED", {"integrity"}),
+    ("E", "PAPER.md literal only", mutate_paper_literal,
+     "PAPER", {"science"}),
 ]
 
 
@@ -170,35 +185,43 @@ def main():
         snap = os.path.join(base, "pristine")
         os.makedirs(snap)
         snapshot(snap)
-        code, out = run(snap, "raw_endpoint.py")
-        ctrl_ok = code == 0
-        print(f"  CONTROL  pristine snapshot -> raw chain "
-              f"{'PASS' if ctrl_ok else 'FAIL'} (exit {code})")
+        sci, _ = run(snap, "raw_endpoint.py")
+        integ, _ = run(snap, "raw_integrity.py")
+        ctrl_ok = sci == 0 and integ == 0
+        print(f"  CONTROL  pristine snapshot -> science "
+              f"{'PASS' if sci == 0 else 'FAIL'}, integrity "
+              f"{'PASS' if integ == 0 else 'FAIL'}")
         if not ctrl_ok:
-            failures.append("control: pristine snapshot did not pass the raw chain")
-            print(out[-1500:])
+            failures.append("control: a pristine snapshot did not pass cleanly")
 
         # --- mutations ----------------------------------------------------------------
-        print(f"\n  {'id':<3}{'layer':<9}{'mutation':<44}{'raw chain':<12}"
-              f"{'old chain':<12}")
-        for mid, label, fn, layer in muts:
+        print(f"\n  {'id':<3}{'layer':<9}{'mutation':<42}{'science':<10}"
+              f"{'integrity':<11}{'old chain':<10}")
+        for mid, label, fn, layer, must in muts:
             snap = os.path.join(base, f"mut{mid}")
             os.makedirs(snap)
             snapshot(snap)
             what = fn(snap)
-            raw_code, raw_out = run(snap, "raw_endpoint.py")
+            sci_code, sci_out = run(snap, "raw_endpoint.py")
+            int_code, _ = run(snap, "raw_integrity.py")
             old_code, _ = run(snap, "paper_check.py")
-            raw_v = "FAIL" if raw_code else "pass"
-            old_v = "FAIL" if old_code else "pass"
-            print(f"  {mid:<3}{layer:<9}{label:<44}{raw_v:<12}{old_v:<12}")
+            caught = {n for n, c in (("science", sci_code), ("integrity", int_code)) if c}
+            v = lambda c: "FAIL" if c else "pass"
+            print(f"  {mid:<3}{layer:<9}{label:<42}{v(sci_code):<10}"
+                  f"{v(int_code):<11}{v(old_code):<10}")
             results.append({"id": mid, "layer": layer, "mutation": what,
-                            "raw_chain": raw_v, "old_chain": old_v})
-            # required: every RAW mutation must be caught by the raw chain
-            if layer == "RAW" and raw_code == 0:
-                failures.append(f"{mid}: raw corruption NOT caught by the raw chain")
-            if layer == "RAW" and raw_code != 0 and "disagree" not in raw_out.lower():
-                failures.append(f"{mid}: raw chain failed, but not for a scientific "
-                                f"reason -- check the message")
+                            "science": v(sci_code), "integrity": v(int_code),
+                            "old_chain": v(old_code),
+                            "required": sorted(must), "caught_by": sorted(caught)})
+            missed = must - caught
+            if missed:
+                failures.append(f"{mid}: NOT caught by {', '.join(sorted(missed))} "
+                                f"-- this corruption would ship")
+            if not caught:
+                failures.append(f"{mid}: caught by NOTHING")
+            if "science" in caught and "disagree" not in sci_out.lower():
+                failures.append(f"{mid}: the science layer failed, but not because the "
+                                f"reconstruction disagreed -- check the message")
         print()
         for r in results:
             print(f"    {r['id']}: {r['mutation']}")
