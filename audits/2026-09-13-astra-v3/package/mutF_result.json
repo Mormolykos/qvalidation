@@ -1,0 +1,35 @@
+{
+  "case": "F",
+  "arm": "results\\raw\\prereg\\multiplier_n45_heavy-hex_q200.jsonl",
+  "before": {
+    "record": "run",
+    "circuit": "multiplier_n45",
+    "topology": "heavy-hex",
+    "seed": 663193,
+    "two_q_gate": "cz",
+    "two_q": 7315,
+    "pid": 6420
+  },
+  "results": [
+    {
+      "stage": "manifest",
+      "returncode": 0,
+      "seconds": 0.2799079418182373
+    },
+    {
+      "stage": "science",
+      "returncode": 0,
+      "seconds": 3.7549057006835938
+    },
+    {
+      "stage": "integrity",
+      "returncode": 0,
+      "seconds": 4.114083766937256
+    },
+    {
+      "stage": "paper",
+      "returncode": 0,
+      "seconds": 51.07260751724243
+    }
+  ]
+}

@@ -1,0 +1,68 @@
+
+=== §3.3 design ===
+  ok    selected circuits                                    39
+  ok    eligible circuits                                    26
+  ok    transpilations (39 x 200 x 2)                        15,600
+
+=== §4.1 mechanism ===
+  ok    deterministic eligible circuits                      13
+  ok    stochastic resolved circuits                         23
+  ok    Spearman distance vs risk                            -0.833
+  ok    Spearman p < 0.001                                   p=8.14e-07
+
+=== §4.2 magnitude ===
+  ok    risk > 0 count                                       12  [in row '| risk > 0 (pre-registered endpoint) |']
+  ok    risk > 0 pct                                         46.2  [in row '| risk > 0 (pre-registered endpoint) |']
+  ok    risk > 0 Wilson lo                                   28.8  [in row '| risk > 0 (pre-registered endpoint) |']
+  ok    risk > 0 Wilson hi                                   64.5  [in row '| risk > 0 (pre-registered endpoint) |']
+  ok    risk >= 5% count                                     7  [in row '| risk ≥ 5% |']
+  ok    risk >= 5% pct                                       26.9  [in row '| risk ≥ 5% |']
+  ok    risk >= 5% Wilson lo                                 13.7  [in row '| risk ≥ 5% |']
+  ok    risk >= 5% Wilson hi                                 46.1  [in row '| risk ≥ 5% |']
+  ok    risk >= 10% count                                    4  [in row '| risk ≥ 10% |']
+  ok    risk >= 10% pct                                      15.4  [in row '| risk ≥ 10% |']
+  ok    risk >= 10% Wilson lo                                6.2  [in row '| risk ≥ 10% |']
+  ok    risk >= 10% Wilson hi                                33.5  [in row '| risk ≥ 10% |']
+  ok    median risk (eligible)                               0
+  ok    p75 risk                                             6.9
+  ok    p90 risk                                             14.2
+  ok    max risk                                             17.3
+
+=== §4.2 top circuits table ===
+  ok    bv_n280 theta                                        +4.89
+  ok    bv_n280 risk                                         17.31
+  ok    knn_n67 theta                                        +6.67
+  ok    knn_n67 risk                                         16.70
+  ok    swap_test_n83 theta                                  +6.76
+  ok    swap_test_n83 risk                                   15.67
+  ok    adder_n118 theta                                     +6.47
+  ok    adder_n118 risk                                      12.67
+  ok    knn_341 theta                                        +6.20
+  ok    knn_341 risk                                         4.68
+
+=== §4.3 cc_n32 ===
+  ok    cc_n32 theta                                         -8.28
+  ok    cc_n32 distance pp                                   18.3
+  ok    cc_n32 risk pct                                      0.37
+  ok    cc_n32 exact risk pct                                0.374089
+  ok    cc_n32 single-run worst case                         +49.5
+  ok    cc_n32 ratio-of-means CI lo                          -9.79
+  ok    cc_n32 ratio-of-means CI hi                          -6.77
+
+=== §3.4 controls ===
+  ok    selection-bias median in                             0.1115
+  ok    selection-bias median out                            0.1260
+  ok    selection-bias Mann-Whitney p                        0.4560
+  ok    selection-bias n selected                            39  [in row '39** selected']
+
+=== §4.4 bv_n140 heavy-hex, pooled 400 seeds ===
+  ok    bv_n140 hh pooled theta                              5.374
+  ok    bv_n140 hh k=1                                       paper 34.58  computed 34.579  (tol 0.05)
+  ok    bv_n140 hh k=3                                       paper 24.38  computed 24.379  (tol 0.05)
+  ok    bv_n140 hh k=5                                       paper 18.56  computed 18.555  (tol 0.05)
+  ok    bv_n140 hh k=8                                       paper 12.94  computed 12.943  (tol 0.05)
+  ok    bv_n140 hh k=10                                      paper 10.36  computed 10.357  (tol 0.05)
+  ok    bv_n140 hh k=20                                      paper 3.74  computed 3.745  (tol 0.05)
+
+============================================================
+  50 checks passed, 0 FAILED

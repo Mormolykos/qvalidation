@@ -1,0 +1,22 @@
+{
+  "case": "C",
+  "arm": "results\\raw\\prereg\\knn_n67_heavy-hex_q200.jsonl",
+  "before": {},
+  "results": [
+    {
+      "stage": "science",
+      "returncode": 1,
+      "seconds": 5.842521905899048
+    },
+    {
+      "stage": "integrity",
+      "returncode": 1,
+      "seconds": 4.800547122955322
+    },
+    {
+      "stage": "paper",
+      "returncode": 0,
+      "seconds": 58.57391810417175
+    }
+  ]
+}

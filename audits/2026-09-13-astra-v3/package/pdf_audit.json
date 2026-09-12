@@ -1,0 +1,91 @@
+{
+  "pdf_bytes": 410851,
+  "pdf_sha256": "687b57d7f34f9bad477a2352235f18245823570b7d9b9127baddb7bb070402f6",
+  "pages": 13,
+  "text_characters": 40664,
+  "phrases": {
+    "largely induced": [
+      1
+    ],
+    "unresolvable": [
+      8
+    ],
+    "41%": [
+      3
+    ],
+    "44.060": [
+      9
+    ],
+    "cannot resolve": [],
+    "monotone": [
+      7
+    ],
+    "0.661": [
+      7
+    ],
+    "before the second machine": [],
+    "one seed_transpiler": [],
+    "0.18.1": [
+      6
+    ],
+    "0 of 24": [
+      5
+    ],
+    "10.9": [
+      1,
+      8,
+      9
+    ],
+    "12 / 26": [
+      7
+    ],
+    "7 / 26": [
+      7
+    ],
+    "4 / 26": [
+      7
+    ],
+    "under a minute": [
+      11,
+      13
+    ]
+  },
+  "metadata": {
+    "format": "PDF 1.4",
+    "title": "PAPER",
+    "author": "",
+    "subject": "",
+    "keywords": "",
+    "creator": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36",
+    "producer": "Skia/PDF m152",
+    "creationDate": "D:20260912131552+00'00'",
+    "modDate": "D:20260912131552+00'00'",
+    "trapped": "",
+    "encryption": null
+  },
+  "rebuilt": {
+    "pages": 13,
+    "whitespace_normalized_text_equal": true,
+    "sha256": "9063d609eabda7233e6dc191565d83ae226624399c1336d92ec0c30b3bea0aed"
+  },
+  "stage_files": {
+    "COMMIT_TIMESTAMPS.txt": "fadd70baeac926f968ff3fa385251adb178cae54bda7b24a8a3425fd5a575a91",
+    "paper.pdf": "687b57d7f34f9bad477a2352235f18245823570b7d9b9127baddb7bb070402f6",
+    "qvalidation-code-and-data.zip": "0aaf9cf2482f4d25cfcf1f229a74d386e331447145094ebf5f0e0cedcfd39f8b"
+  },
+  "archive": {
+    "entries": 1047,
+    "paper_paths": [
+      "qvalidation/PAPER.md",
+      "qvalidation/bundle/PAPER.md"
+    ],
+    "css_paths": [],
+    "paper_matches": {
+      "qvalidation/PAPER.md": true,
+      "qvalidation/bundle/PAPER.md": false
+    },
+    "mismatches": [],
+    "extra_paths": [],
+    "tracked_files": 1034
+  }
+}

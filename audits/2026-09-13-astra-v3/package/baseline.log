@@ -1,0 +1,19 @@
+
+  qvalidation — integrity check
+  python          3.10.10  (C:\Users\User\Desktop\research\qvalidation\envs\bp202\Scripts\python.exe)
+  BENCHPRESS_PATH C:\Users\User\Desktop\benchpress_test
+
+  check                 result     time
+  --------------------------------------
+  1 toolchain pin         PASS     0.2s
+  2 test suite            PASS    85.3s
+  3 inventory             PASS     8.0s
+  4 replication           PASS     0.2s
+  5 tautology proof       PASS     0.4s
+  6 paper claims          PASS    50.3s
+  7 raw -> endpoint       PASS    24.5s
+  8 raw integrity         PASS     3.8s
+  9 mutation test         PASS   361.9s
+
+  All 9 checks passed. The repository is intact.
+

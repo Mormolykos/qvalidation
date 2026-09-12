@@ -1,0 +1,10 @@
+
+  RAW EVIDENCE INTEGRITY AND DERIVED CONSISTENCY
+
+  integrity: 78 raw files checked against the manifest
+  consistency: 39 summary rows regenerated from raw and compared
+
+  ✗ 1 problem(s):
+
+      knn_n67_heavy-hex_q200.jsonl: sha256 2d067e87ff04a5f3... != recorded 00d65ca112324c2f...  RAW EVIDENCE WAS EDITED
+

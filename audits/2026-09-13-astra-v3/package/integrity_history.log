@@ -1,0 +1,21 @@
+{
+  "all_raw_changed_paths": [
+    "results/raw/RAW_MANIFEST.json"
+  ],
+  "jsonl_changed_paths": [],
+  "tracked_pdfs": [],
+  "autocrlf": [
+    {
+      "value": "true",
+      "matches": 78,
+      "total": 78
+    },
+    {
+      "value": "false",
+      "matches": 78,
+      "total": 78
+    }
+  ],
+  "status": ""
+}
+v2/head/manifest/checkout equal: 78

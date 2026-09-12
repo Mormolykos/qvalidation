@@ -1,0 +1,8 @@
+
+  RAW EVIDENCE INTEGRITY AND DERIVED CONSISTENCY
+
+  integrity: 78 raw files checked against the manifest
+  consistency: 39 summary rows regenerated from raw and compared
+
+  ✓ raw evidence unedited, and the derived summary is reproducible from it.
+

@@ -1,0 +1,12 @@
+{
+  "case": "K",
+  "arm": "results\\raw\\prereg\\knn_n67_heavy-hex_q200.jsonl",
+  "before": {},
+  "results": [
+    {
+      "stage": "full",
+      "returncode": 0,
+      "seconds": 503.1563456058502
+    }
+  ]
+}

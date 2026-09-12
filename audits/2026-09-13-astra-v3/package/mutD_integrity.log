@@ -1,0 +1,10 @@
+
+  RAW EVIDENCE INTEGRITY AND DERIVED CONSISTENCY
+
+  integrity: 78 raw files checked against the manifest
+  consistency: 39 summary rows regenerated from raw and compared
+
+  ✗ 1 problem(s):
+
+      bv_n30: summary risk 0.999999 != raw-reconstructed 0.397783
+

@@ -1,0 +1,170 @@
+{
+  "tie": {
+    "theta_exact": "1/10",
+    "theta_float": 0.10000000000000009,
+    "pcall": 1.0,
+    "float_constant_verdict": "REGRESSION",
+    "exact_constant_side": "UNRESOLVED"
+  },
+  "stable_no": {
+    "theta_exact": "9/100",
+    "theta_float": 0.09000000000000008,
+    "pcall": 0.0,
+    "float_constant_verdict": "NO_REGRESSION",
+    "exact_constant_side": "NO_REGRESSION"
+  },
+  "stable_reg": {
+    "theta_exact": "1/5",
+    "theta_float": 0.19999999999999996,
+    "pcall": 1.0,
+    "float_constant_verdict": "REGRESSION",
+    "exact_constant_side": "REGRESSION"
+  },
+  "multimodal": {
+    "theta_exact": "-197/1000",
+    "theta_float": -0.19700000000000006,
+    "pcall": 0.216,
+    "float_constant_verdict": "NO_REGRESSION",
+    "exact_constant_side": "NO_REGRESSION"
+  },
+  "near_zero": {
+    "theta_exact": "0",
+    "theta_float": 0.0,
+    "pcall": 0.0,
+    "float_constant_verdict": "NO_REGRESSION",
+    "exact_constant_side": "NO_REGRESSION"
+  },
+  "zero_baseline": {
+    "excluded": "zero baseline; ratio undefined"
+  },
+  "brute_force": {
+    "cases": 150,
+    "max_error": 0
+  },
+  "floating_probability_probe": {
+    "exact": 1.0,
+    "project": 1.0
+  },
+  "raw_mutations": {
+    "A": [
+      {
+        "theta": 0.06668741194063377,
+        "theta_ci": [
+          0.0583345876584415,
+          0.07510952970748076
+        ],
+        "verdict": "NO_REGRESSION",
+        "boundary": false,
+        "pcall": 0.16700388335692187,
+        "risk": 0.16700388335692187
+      },
+      {
+        "theta": 86.49997839033962,
+        "theta_ci": [
+          0.06078346179489627,
+          260.4250228361426
+        ],
+        "verdict": "UNRESOLVED",
+        "boundary": false,
+        "pcall": 0.17958078594115626,
+        "risk": null
+      }
+    ],
+    "B": [
+      {
+        "theta": 0.06668741194063377,
+        "theta_ci": [
+          0.0583345876584415,
+          0.07510952970748076
+        ],
+        "verdict": "NO_REGRESSION",
+        "boundary": false,
+        "pcall": 0.16700388335692187,
+        "risk": 0.16700388335692187
+      },
+      {
+        "theta": 0.06669605580478688,
+        "theta_ci": [
+          0.05835175123133771,
+          0.07511800144078926
+        ],
+        "verdict": "NO_REGRESSION",
+        "boundary": false,
+        "pcall": 0.167069817009875,
+        "risk": 0.167069817009875
+      }
+    ],
+    "C": [
+      {
+        "theta": 0.06668741194063377,
+        "theta_ci": [
+          0.0583345876584415,
+          0.07510952970748076
+        ],
+        "verdict": "NO_REGRESSION",
+        "boundary": false,
+        "pcall": 0.16700388335692187,
+        "risk": 0.16700388335692187
+      },
+      {
+        "theta": 0.16269481108834882,
+        "theta_ci": [
+          0.15359158355293337,
+          0.17190110150410096
+        ],
+        "verdict": "REGRESSION",
+        "boundary": false,
+        "pcall": 0.958149244710875,
+        "risk": 0.04185075528912496
+      }
+    ],
+    "F": [
+      {
+        "theta": 0.07473276727488987,
+        "theta_ci": [
+          0.07140891924056514,
+          0.0779157457365823
+        ],
+        "verdict": "NO_REGRESSION",
+        "boundary": true,
+        "pcall": 0.028724114619140626,
+        "risk": 0.028724114619140626
+      },
+      {
+        "theta": 0.0747335005745402,
+        "theta_ci": [
+          0.07140963327309865,
+          0.07791648008121116
+        ],
+        "verdict": "NO_REGRESSION",
+        "boundary": true,
+        "pcall": 0.028726752145875,
+        "risk": 0.028726752145875
+      }
+    ],
+    "G": [
+      {
+        "theta": 0.06668741194063377,
+        "theta_ci": [
+          0.0583345876584415,
+          0.07510952970748076
+        ],
+        "verdict": "NO_REGRESSION",
+        "boundary": false,
+        "pcall": 0.16700388335692187,
+        "risk": 0.16700388335692187
+      },
+      {
+        "theta": 0.06669605580478688,
+        "theta_ci": [
+          0.05835175123133771,
+          0.07511800144078926
+        ],
+        "verdict": "NO_REGRESSION",
+        "boundary": false,
+        "pcall": 0.167069817009875,
+        "risk": 0.167069817009875
+      }
+    ]
+  }
+}

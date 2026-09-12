@@ -1,0 +1,22 @@
+
+  RAW RECONSTRUCTION — 39 circuits, heavy-hex, 1.4.3 -> 2.0.0, k=3, threshold +10%
+  source: results/raw/prereg/*.jsonl   (no summary table is read)
+
+  resolved 35 / unresolved 4 | boundary exclusions 10 | ELIGIBLE 25
+  intervals excluding zero : 11/25
+  risk >= 5%               : 6/25
+  risk >= 10%              : 3/25
+
+  PAPER.md literals found: {'excl': 12, 'ge5': 7, 'ge10': 4, '_denominator': 26}
+  written: C:\Users\User\AppData\Local\Temp\astra-v3-839ac80-h1_mhdhj\mutC2_raw.json
+
+  ✗ RAW DATA AND MANUSCRIPT DISAGREE:
+
+      eligible set reconstructed from raw is 25, PAPER.md's table says 26
+      intervals excluding zero: raw data gives 11, PAPER.md says 12
+      risk >= 5%: raw data gives 6, PAPER.md says 7
+      risk >= 10%: raw data gives 3, PAPER.md says 4
+
+  This is the check that the v2 apparatus did not have. Either the raw
+  data changed, or the manuscript states a number the data does not support.
+

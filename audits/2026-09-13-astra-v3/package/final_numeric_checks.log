@@ -1,0 +1,4 @@
+max WR/WOR delta 0.0010648980434131983
+familyCI [0.17391304347826086, 0.8095238095238095]
+{'n': [200, 200], 'support_pct': [np.float64(-17.678100263852247), np.float64(109.1743119266055)], 'issue_percentile': 0.8775733854745156}
+paired [{'circuit': 'knn_n67', 'risk': 0.1751975}, {'circuit': 'bv_n280', 'risk': 0.172809}]

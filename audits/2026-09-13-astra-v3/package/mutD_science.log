@@ -1,0 +1,14 @@
+
+  RAW RECONSTRUCTION — 39 circuits, heavy-hex, 1.4.3 -> 2.0.0, k=3, threshold +10%
+  source: results/raw/prereg/*.jsonl   (no summary table is read)
+
+  resolved 36 / unresolved 3 | boundary exclusions 10 | ELIGIBLE 26
+  intervals excluding zero : 12/26
+  risk >= 5%               : 7/26
+  risk >= 10%              : 4/26
+
+  PAPER.md literals found: {'excl': 12, 'ge5': 7, 'ge10': 4, '_denominator': 26}
+  written: C:\Users\User\AppData\Local\Temp\astra-v3-839ac80-h1_mhdhj\mutD_raw.json
+
+  ✓ the manuscript's primary endpoint is what the raw data produces.
+

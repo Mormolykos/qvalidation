@@ -1,0 +1,30 @@
+{
+  "case": "A",
+  "arm": "results\\raw\\prereg\\knn_n67_heavy-hex_q200.jsonl",
+  "before": {
+    "record": "run",
+    "circuit": "knn_n67",
+    "topology": "heavy-hex",
+    "seed": 663193,
+    "two_q_gate": "cz",
+    "two_q": 619,
+    "pid": 18188
+  },
+  "results": [
+    {
+      "stage": "science",
+      "returncode": 1,
+      "seconds": 5.014728546142578
+    },
+    {
+      "stage": "integrity",
+      "returncode": 1,
+      "seconds": 4.370224237442017
+    },
+    {
+      "stage": "paper",
+      "returncode": 0,
+      "seconds": 55.88418936729431
+    }
+  ]
+}
