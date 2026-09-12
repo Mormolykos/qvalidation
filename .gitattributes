@@ -6,3 +6,9 @@
 # tried to verify them, and the claim that the bytes are preserved would be
 # false for everyone except the author.
 audits/** -text
+
+# Raw primary evidence is hashed in results/raw/RAW_MANIFEST.json. With autocrlf those
+# hashes are computed over CRLF bytes on Windows and LF bytes everywhere else, so the
+# manifest would fail for every person on Linux or macOS who tried to verify it -- the
+# integrity claim would be true only for its author. Same defect as audits/** above.
+results/raw/** -text
