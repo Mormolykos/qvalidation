@@ -19,14 +19,24 @@ WHAT `--check` ACTUALLY PROVES, STATED EXACTLY (corrected 2026-09-04, finding F5
     Proved by falsifying every band in results/summary/band_heavy-hex.csv (x3, +40 pp):
     the tool still reported "41/41 live numbers reproduce".
 
-    Two provenance tiers, and the difference is disclosed rather than glossed:
-      RAW      29 rows re-derived from results/raw/*.jsonl per-seed measurements.
-      DERIVED  12 rows (the sec 43 k-sweep) re-read results/summary/ksweep_*.csv.
+    Provenance tiers, disclosed rather than glossed (vocabulary tightened in v3 after a
+    hostile audit observed that "DERIVED" did not say whether a row was RECOMPUTED or
+    merely READ BACK -- and it is the latter):
+      RAW-RECOMPUTED  rows re-derived from results/raw/*.jsonl per-seed measurements.
+      DERIVED-READ    the sec 43 k-sweep rows, re-read from results/summary/ksweep_*.csv.
                Re-deriving those means enumerating 12**5 mean tuples per bisection
                step, about half an hour per topology -- not affordable inside a check
                that has to run in under a minute. The frozen literal still catches a
                changed or corrupted CSV; it just cannot catch a CSV that was wrong when
                it was written. Rebuild them with `python ksweep.py --out ...`.
+      NARRATIVE-N-A   withdrawn or prose-only rows carrying no live figure.
+
+    ⚠ v3, audit F01. NO CENTRAL CLAIM MAY REST ON A DERIVED-READ ROW. The primary
+    endpoint is now carried here as RAW-RECOMPUTED rows that call raw_endpoint.py, which
+    rebuilds 12/26, 7/26 and 4/26 from the per-seed observations and reads no summary
+    table. Before v3 the endpoint was not in this inventory at all: its 41 rows concerned
+    earlier research-log results, so corrupting the primary raw data changed the science
+    while every row here still reproduced.
 
     So: "every published figure is re-derived from raw data" would be FALSE and is not
     claimed anywhere. What is claimed is what this paragraph says.
@@ -215,14 +225,47 @@ def within_version_spread(topo, ver, min_seeds=2):
     return float(np.median(s)), len(s)
 
 
+
+@functools.lru_cache(maxsize=1)
+def _primary():
+    """(eligible, excludes_zero, >=5%, >=10%) rebuilt FROM RAW. Cached: one pass costs
+    about twenty seconds and all three rows share it."""
+    import raw_endpoint as re_
+    circuits = [c.strip() for c in open(os.path.join(ROOT, "_selected.txt"))
+                if c.strip()]
+    elig, excl, ge5, ge10 = re_.endpoint(re_.reconstruct(circuits))
+    return len(elig), len(excl), len(ge5), len(ge10)
+
+
 # --------------------------------------------------------------------- the registry
 
 def entries():
     E = []
 
     def add(**kw):
-        kw.setdefault("tier", "RAW" if kw.get("status") == "LIVE" else "n/a")
+        kw.setdefault("tier",
+                      "RAW-RECOMPUTED" if kw.get("status") == "LIVE" else "NARRATIVE-N-A")
         E.append(kw)
+
+    # ---- THE PRIMARY ENDPOINT, rebuilt from raw. Audit F01: this was absent before v3.
+    #
+    # These three rows are the reason the inventory exists. They call raw_endpoint.py,
+    # which starts at the per-seed observations and reads no summary table, so corrupting
+    # the raw data moves them. Every other row in this file could reproduce perfectly
+    # while the headline result was wrong; that is exactly what the audit demonstrated.
+    for _id, _idx, _claim in (
+            ("s4.endpoint.excludes_zero", 1,
+             "eligible circuits whose risk interval excludes zero (pre-registered "
+             "primary endpoint)"),
+            ("s4.endpoint.ge5", 2, "eligible circuits with point risk >= 5%"),
+            ("s4.endpoint.ge10", 3, "eligible circuits with point risk >= 10%")):
+        add(id=_id, status="LIVE", section="4.2", tier="RAW-RECOMPUTED",
+            claim=_claim, value=(12, 7, 4)[_idx - 1], numerator=(12, 7, 4)[_idx - 1],
+            denominator=26, sampling_unit="eligible circuit (resolved, non-boundary)",
+            ci_lo="", ci_hi="",
+            ci_method="count; Wilson intervals reported in PAPER.md sec 4.2",
+            source="results/raw/prereg/*.jsonl via raw_endpoint.py",
+            recompute=lambda i=_idx: _primary()[i])
 
     # ---- sec 41: the direction table. Both directions, because the point IS the pair.
     S41 = {("linear", "fwd"): (1, 51), ("linear", "rev"): (2, 51),
@@ -277,7 +320,7 @@ def entries():
     for topo in ("linear", "square", "heavy-hex"):
         by_k, n_het = S43[topo]
         for k in (1, 2, 3, 5):
-            add(id=f"s43.k{k}.{topo}", status="LIVE", section="43", tier="DERIVED",
+            add(id=f"s43.k{k}.{topo}", status="LIVE", section="43", tier="DERIVED-READ",
                 claim=f"median unpaired band at k={k}, {topo}",
                 value=by_k[k], numerator="", denominator=n_het,
                 sampling_unit="circuit with a non-zero measured per-seed change",
@@ -390,7 +433,7 @@ def cmd_check(E):
     fail loudly whichever tier it belongs to."""
     bad = 0
     live = [e for e in E if e["status"] == "LIVE"]
-    n_raw = sum(1 for e in live if e["tier"] == "RAW")
+    n_raw = sum(1 for e in live if e["tier"] == "RAW-RECOMPUTED")
     print(f"\n  {len(live)} recorded numbers, recomputed and compared to the literal "
           f"in this file")
     print(f"  RAW     {n_raw:>2d} re-derived from results/raw/*.jsonl per-seed "
@@ -405,7 +448,7 @@ def cmd_check(E):
         ok = abs(got - float(e["value"])) <= TOL
         bad += (not ok)
         mark = "ok  " if ok else "FAIL"
-        print(f"  {mark}  {e['tier']:<7s} {e['id']:<40s} {float(e['value']):>9.4f}"
+        print(f"  {mark}  {e['tier']:<15s} {e['id']:<40s} {float(e['value']):>9.4f}"
               + ("" if ok else f"   recomputed {got:.4f}"))
     n_w = len([e for e in E if e["status"] == "WITHDRAWN"])
     print(f"\n  {len(live) - bad}/{len(live)} recorded numbers match a fresh "
