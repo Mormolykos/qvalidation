@@ -21,6 +21,23 @@ WHAT IT CHECKS
     5 tautology proof the withdrawn paired column is still provably data-independent
     6 paper claims    paper_check.py -- every quantitative claim in PAPER.md recomputed
 
+    7 raw endpoint   the primary result rebuilt FROM RAW and bound to PAPER.md
+    8 raw integrity  raw evidence bytes vs manifest; derived summary vs raw
+    9 mutation test  proof this verifier turns RED when the science is corrupted
+
+WHY 7-9 EXIST — the failure that produced them (2026-09-12)
+    A hostile audit corrupted one raw primary arm file, changing the true endpoint from
+    12/26 to 11/26 and the >=5% / >=10% counts from 7/26 and 4/26 to 6/26 and 3/26.
+    Checks 1-6 reported 6/6 PASS.
+
+    Not a slip: check 6 read `results/summary/prereg_heavy-hex.csv` as the AUTHORITY for
+    the primary numbers, and a derived summary cannot notice that the raw data beneath it
+    changed. The whole chain sat downstream of a file the attack never touched.
+
+    A verifier that always agrees with its authors is worthless. Check 9 is the evidence
+    that this one does not: it corrupts data in throwaway snapshots and REQUIRES the
+    relevant stage to fail. If check 9 ever passes trivially, it has stopped being a test.
+
 WHAT CHECK 6 DOES NOT PROVE (added 2026-09-08, and stated here so nobody assumes more)
     paper_check.py recomputes each figure and then asserts the formatted value APPEARS
     in PAPER.md. Presence is not placement: a number can be found in an unrelated
@@ -88,6 +105,13 @@ def main():
                               "--new", "replication/out_q202.jsonl"]),
         run("5 tautology proof", [PY, "paired.py", "--prove"]),
         run("6 paper claims", [PY, "paper_check.py"]),
+        # 7-9 exist because 1-6 all passed on a snapshot whose raw data had been
+        # corrupted badly enough to change the headline result (audit F01). They are
+        # ordered so the science is checked first and the byte-level checks support it,
+        # never the other way round.
+        run("7 raw -> endpoint", [PY, "raw_endpoint.py", "--cross-check"]),
+        run("8 raw integrity", [PY, "raw_integrity.py"]),
+        run("9 mutation test", [PY, "mutation_test.py"]),
     ]
 
     print(f"\n  {'check':<20s} {'result':>7s} {'time':>8s}")
