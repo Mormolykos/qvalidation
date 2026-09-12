@@ -1,0 +1,8 @@
+# Preserved audit evidence must survive a checkout byte-for-byte.
+#
+# core.autocrlf is true on the authoring machine, so without this rule a fresh
+# clone would rewrite these files LF -> CRLF in the working tree. The SHA-256
+# hashes recorded in audits/*/MANIFEST.md would then fail for every person who
+# tried to verify them, and the claim that the bytes are preserved would be
+# false for everyone except the author.
+audits/** -text
