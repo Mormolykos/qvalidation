@@ -25,8 +25,9 @@ full-range sample (§3.4) — across ten operating-system processes, we find tha
 whose compilation is
 deterministic carry zero risk by construction, while among the 23 resolved circuits whose
 compilation is stochastic the risk falls with distance from the decision boundary — an
-association that is largely induced by the decision rule itself and which we therefore do
-not claim as a mechanism (§4.1). Seven of 26 eligible circuits
+association we report descriptively and do not attribute — thresholding can induce a
+relationship of this kind, but the quantitative claim that it *largely* does was withdrawn
+in v3 with the synthetic null that supported it, and is not reinstated (§4.1). Seven of 26 eligible circuits
 carry a risk of at least 5% and four carry at least 10% under a +10% threshold. The
 median circuit admits an **ambiguity band of 10.9 percentage points** — the total width
 of the interval over which the three-run rule's call probability runs from 5% to 95%.
@@ -146,9 +147,13 @@ itself offers no such parameter.
 
 For circuit *c*, topology *T* and compiler versions *A* (baseline) and *B* (candidate),
 let *X<sub>A</sub>(s)*, *X<sub>B</sub>(s)* be the 2-qubit gate counts produced with
-`seed_transpiler = s`. These are deterministic functions of *s*; we verify this across
-processes, across an independently reconstructed environment, and across two machines
-with different CPU vendors (§3.4). Define the **reference change**
+`seed_transpiler = s`. ⚠ v4 correction: v1–v3 called these "deterministic functions of
+*s*". Not all relevant randomness is controlled — `FlexibleBackend` draws backend error
+rates unseeded on every construction — so the defensible statement is that **repeating a
+fixed seed reproduced the same count in every control we ran**: across processes with
+differing `PYTHONHASHSEED`, across an independently reconstructed environment, and across
+two machines with different CPU vendors (§3.4). Backend randomness was probed in a
+0-of-24 control, which is a limited negative result and not proof that it never matters. Define the **reference change**
 
 > θ = E<sub>s</sub>[X<sub>B</sub>(s)] / E<sub>s</sub>[X<sub>A</sub>(s)] − 1
 
@@ -262,8 +267,9 @@ The signature is visible in the data and is not subtle: **6 of the 200 realised 
 above the midpoint of the nominal range, where roughly 100 would be expected** under the
 claimed uniform draw, and their mean sits at **0.2462** of the range rather than 0.5.
 
-What this does and does not affect. Every gate count remains a deterministic function of
-the seed that produced it, and every reported per-seed measurement stands: the arms are
+What this does and does not affect. Every reported per-seed measurement stands — each
+count was reproduced from its seed in the controls described above, subject to the backend
+randomness noted there: the arms are
 correctly paired, the seeds are distinct, and the risk calculations are exact functions of
 the recorded values. What is **not** supported is any claim that the empirical
 distributions represent the seed space a user would encounter, or that they estimate the
@@ -310,11 +316,14 @@ Controls, each of which could have invalidated the study:
   The differing Python patch version was not controlled and cuts in the same direction:
   more uncontrolled variation, still identical integers.
 
-  ⚠ **What this does not establish.** Both machines ran **rustworkx 0.18.1**. The routing
-  pass's graph library is the component most likely to make layout architecture-dependent,
-  so this result cannot separate *"the CPU does not matter"* from *"the graph library was
-  identical, so the CPU never had the opportunity to matter"*. The stronger claim needs a
-  second rustworkx build, which is not tested here. The primary 200-seed study itself was
+  ⚠ **What this does not establish.** ⚠ v4 correction: the cross-machine measurement
+  records do **not** contain a rustworkx version or build — that field was added to the
+  recorder only afterwards. The statement that both machines ran **rustworkx 0.18.1** is a
+  retrospective author assertion, not contemporaneous evidence, and is labelled as such
+  here. Either way the limitation stands and is the stronger reading: because the graph
+  library was not independently recorded, this result cannot separate *"the CPU does not
+  matter"* from *"the graph library was identical, so the CPU never had the opportunity to
+  matter"*. Settling it needs a run that records the build and varies it. The primary 200-seed study itself was
   executed on **one machine**; only this six-circuit determinism control is cross-machine.
 - **Selection bias.** ⚠ v3 correction. The published comparison used 40 circuits against
   12, wrongly including the excluded `bv_n140`, and gave p = 0.7676. The correct groups —
@@ -427,10 +436,15 @@ the headline, but the parameter is not identically θ and earlier versions impli
 > **Among the 23 stochastic circuits, the median ambiguity band is 10.9 percentage
 > points** (p75 = 14.8, max = 25.2).
 
-For the median stochastic circuit in this sample, a true change anywhere in an
-11-point-wide window around the threshold is unresolvable by a three-run comparison, in
-either direction. We claim this for the circuits, topology, SDK and version pair measured
-here; extending it to other version pairs requires measuring their residuals.
+Under the stated empirical residual model, this version pair, k = 3 and the +10%
+threshold, the median 5%-to-95% transition width across the 23 resolved stochastic
+circuits is approximately **10.9 percentage points**. ⚠ v4 correction: earlier versions
+called such a window "unresolvable". It is not an impossibility — it is the width over
+which this detector's call probability runs from 5% to 95%, so verdicts inside it are
+substantially decided by the draw rather than by the change. The endpoints need not be
+symmetric about the threshold. We claim this for the circuits, topology, SDK and version
+pair measured here; extending it to other version pairs requires measuring their
+residuals.
 
 This also disposes of the objection that the effect is mere threshold proximity.
 `cc_n32` has θ = −8.28%, **18.3 percentage points below** the +10% threshold, and is

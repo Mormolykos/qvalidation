@@ -67,6 +67,61 @@ PINNED_MODULES = [
 ]
 
 
+def canonical_bytes(raw):
+    """Line endings normalised to LF -- the form git stores and every platform agrees on.
+
+    Astra A14: benchpress_pin() hashes the WORKING TREE, which is CRLF on a Windows
+    checkout with core.autocrlf and LF everywhere else. The five recorded module hashes
+    therefore bound to one machine's checkout representation, and verify stage 1 would
+    fail for every replicator on Linux or macOS -- the pin was portable in intent and
+    local in fact. Same defect class as the evidence manifest, one directory over.
+    """
+    return raw.replace(b"\r\n", b"\n")
+
+
+def benchpress_canonical_pin(commit=None):
+    """Per-module hashes over CANONICAL bytes, preferring git's own objects.
+
+    Two sources, in order:
+      1. `git cat-file blob <commit>:<path>` -- git's stored bytes, which are canonical by
+         construction and independent of how anyone checked the tree out.
+      2. the working tree, normalised to LF -- for environments with no git history.
+    The result records which source it used, because a hash whose provenance is unstated
+    is a hash nobody can check.
+    """
+    import subprocess
+    out = {"benchpress_commit": commit, "source": None,
+           "benchpress_module_canonical_sha256": {}}
+    if commit is None:
+        try:
+            commit = subprocess.run(["git", "-C", BENCHPRESS, "rev-parse", "HEAD"],
+                                    capture_output=True, text=True,
+                                    timeout=30).stdout.strip() or None
+            out["benchpress_commit"] = commit
+        except Exception:
+            commit = None
+    for rel in PINNED_MODULES:
+        blob = None
+        if commit:
+            try:
+                r = subprocess.run(["git", "-C", BENCHPRESS, "cat-file", "blob",
+                                    f"{commit}:{rel}"], capture_output=True, timeout=30)
+                if r.returncode == 0:
+                    blob, out["source"] = r.stdout, out["source"] or "git object"
+            except Exception:
+                blob = None
+        if blob is None:
+            try:
+                with open(os.path.join(BENCHPRESS, rel), "rb") as fh:
+                    blob = canonical_bytes(fh.read())
+                out["source"] = out["source"] or "working tree, LF-normalised"
+            except OSError as exc:
+                out["benchpress_module_canonical_sha256"][rel] = f"ERROR: {exc}"
+                continue
+        out["benchpress_module_canonical_sha256"][rel] =             hashlib.sha256(canonical_bytes(blob)).hexdigest()
+    return out
+
+
 def benchpress_pin():
     """Commit SHA, dirty flag and per-module hashes for the benchpress checkout."""
     import subprocess

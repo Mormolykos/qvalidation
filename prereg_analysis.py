@@ -54,6 +54,10 @@ BOOT_TRUTH = 4000
 BOOT_ERR = 400
 BOOT_ERR_MC = 400_000
 BOUNDARY_PP = 3.0
+# An endpoint this close to the cut IS the cut. See analyse(): the threshold is
+# inclusive and an exact tie is UNRESOLVED, which float arithmetic does not give for
+# free -- 110/100 - 1 is 0.10000000000000009, not 0.1.
+TIE_EPS = 1e-9
 EXACT_MAX_N = 200          # exact enumeration is affordable at n=200 for k<=3
 
 
@@ -138,8 +142,19 @@ def analyse(circuit, t, k, rng):
         ch[i] = n[j].mean() / o[j].mean() - 1
     c_lo, c_hi = np.percentile(ch, [2.5, 97.5])
 
-    verdict = ("REGRESSION" if c_lo > t else
-               "NO_REGRESSION" if c_hi < t else "UNRESOLVED")
+    # §5.2 declares the threshold INCLUSIVE and an exact tie UNRESOLVED. A naive float
+    # comparison breaks that: with A = 100 and B = 110 the change is mathematically
+    # exactly +10%, but 110/100 - 1 evaluates to 0.10000000000000009, which is > 0.10, so
+    # an exact tie was classified REGRESSION (Astra A12). The guard below treats an
+    # endpoint within TIE_EPS of the cut as sitting ON it, so it is not strictly above or
+    # below and the circuit is UNRESOLVED.
+    #
+    # This cannot change any recorded verdict: the closest CI endpoint to the threshold
+    # anywhere in the 39 circuits is 2.3e-3, over two million times TIE_EPS away.
+    above = (c_lo - t) > TIE_EPS
+    below = (t - c_hi) > TIE_EPS
+    verdict = ("REGRESSION" if above else
+               "NO_REGRESSION" if below else "UNRESOLVED")
     boundary = abs(change - t) * 100 <= BOUNDARY_PP
 
     row = {"circuit": circuit, "status": "OK", "n_seeds": int(m),

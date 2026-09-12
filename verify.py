@@ -15,8 +15,9 @@ FOR A DELEGATED AGENT (Antigravity IDE, a CI job, a reviewer)
 
 WHAT IT CHECKS
     1 toolchain pin   Benchpress commit SHA, tracked-file cleanliness, 5 module hashes
+                      over CANONICAL bytes -- see A14 below
     2 test suite      pytest, including the D-2.1 tautology and seed-integrity regressions
-    3 inventory       41 recorded numbers vs a fresh recomputation (29 raw, 12 derived)
+    3 inventory       44 recorded numbers vs a fresh recomputation (32 raw, 12 derived-read)
     4 replication     6 circuits x 12 seeds x 2 Qiskit versions against the reference
     5 tautology proof the withdrawn paired column is still provably data-independent
     6 paper claims    paper_check.py -- every quantitative claim in PAPER.md recomputed
@@ -24,6 +25,22 @@ WHAT IT CHECKS
     7 raw endpoint   the primary result rebuilt FROM RAW and bound to PAPER.md
     8 raw integrity  raw evidence bytes vs manifest; derived summary vs raw
     9 mutation test  proof this verifier turns RED when the science is corrupted
+   10 v2 anchor      raw evidence byte-identical to v2's git objects, not to a local file
+   11 derived binding every saved primary field vs a replay of its own analysis
+   12 rendered       the table a READER sees vs a reconstruction from raw
+
+WHY 10-12 EXIST — the second failure (2026-09-13)
+    Checks 7-9 were built to prove this verifier could turn red, and they did, for the
+    three attacks their author imagined. A hostile auditor then found three more, each
+    returning a full 9/9 PASS:
+
+      all 36 saved risk intervals replaced with [0.900000, 0.999999]  -> check 11
+      visible results table set to 0/26, correct rows hidden in a comment -> check 12
+      one raw observation edited and the local manifest regenerated   -> check 10
+
+    Stage 1 was also bound to CRLF working-tree bytes and would have failed for every
+    replicator on an LF checkout: 0 of 5 module hashes match across line-ending policies.
+    It now compares canonical bytes from git objects.
 
 WHY 7-9 EXIST — the failure that produced them (2026-09-12)
     A hostile audit corrupted one raw primary arm file, changing the true endpoint from
@@ -87,17 +104,7 @@ def main():
         sys.exit(1)
 
     checks = [
-        run("1 toolchain pin", [PY, "-c",
-            "import json,sys;from sweep_bp import benchpress_pin,PINNED_MODULES;"
-            "want=json.load(open('results/raw/benchpress_pin.json'));"
-            "got=benchpress_pin();"
-            "bad=[m for m in PINNED_MODULES if got['benchpress_module_sha256'].get(m)"
-            "!=want['benchpress_module_sha256'].get(m)];"
-            "assert got['benchpress_commit']==want['benchpress_commit'],"
-            "f\"commit {got['benchpress_commit']} != {want['benchpress_commit']}\";"
-            "assert not got['benchpress_dirty'],'tracked files modified';"
-            "assert not bad,f'module hash mismatch: {bad}';"
-            "print('commit',got['benchpress_commit'][:12],'| 5 modules matched')"]),
+        run("1 toolchain pin", [PY, "pin_check.py"]),
         run("2 test suite", [PY, "-m", "pytest", "tests/", "-q"]),
         run("3 inventory", [PY, "inventory.py", "--check"]),
         run("4 replication", [PY, "replication/replicate.py", "--stage", "verify",
@@ -112,6 +119,12 @@ def main():
         run("7 raw -> endpoint", [PY, "raw_endpoint.py", "--cross-check"]),
         run("8 raw integrity", [PY, "raw_integrity.py"]),
         run("9 mutation test", [PY, "mutation_test.py"]),
+        # 10-12 exist because 7-9 all passed while Astra corrupted the saved intervals,
+        # falsified the visible table, and edited raw evidence with a regenerated
+        # manifest (audits/2026-09-13-astra-v3/).
+        run("10 v2 evidence anchor", [PY, "v2_anchor.py"]),
+        run("11 derived binding", [PY, "derived_binding.py"]),
+        run("12 rendered manuscript", [PY, "manuscript_binding.py"]),
     ]
 
     print(f"\n  {'check':<20s} {'result':>7s} {'time':>8s}")

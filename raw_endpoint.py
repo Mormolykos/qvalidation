@@ -34,14 +34,14 @@ WHAT THIS DOES INSTEAD
     data changes, every number here changes with it.
 
 INDEPENDENT ESTIMATOR
-    The risk is computed by exact integer convolution of the k-fold sum distributions,
-    NOT by the repository's `exact_rate_int`. Both are exact, so they must agree to the
-    last digit; they are written differently on purpose, so that a defect in one does not
-    silently certify itself. `--cross-check` asserts the agreement.
-
-    The decision rule is applied in exact integers: with threshold t = p/q,
-    a call is (S_B - S_A)/S_A >= p/q, i.e. q*S_B >= (q+p)*S_A. No floats on the decision
-    path.
+    The risk is computed by convolving the k-fold sum distributions and applying the
+    decision rule as an EXACT INTEGER comparison -- q*S_B >= (q+p)*S_A, no floats on the
+    decision path. The probability weights themselves are float64, so this is exact in the
+    CUTOFF and floating in the ARITHMETIC; v3's docstring called it "exact integer
+    convolution", which overstates it (Astra A12). It is written independently of the
+    repository's `exact_rate_int`; both share the exact cutoff, so they must agree to the
+    last digit, and they are written differently on purpose so a defect in one cannot
+    silently certify itself. `--cross-check` asserts the agreement on every circuit.
 
 WHAT IT DOES NOT DO
     It does not establish that the bootstrap intervals have calibrated coverage for any
@@ -67,7 +67,7 @@ import numpy as np
 ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, ROOT)
 
-from prereg_analysis import load_seeded, BOUNDARY_PP  # raw I/O + the frozen 3pp rule
+from prereg_analysis import load_seeded, BOUNDARY_PP, TIE_EPS  # raw I/O + the frozen 3pp rule
 
 PAPER = os.path.join(ROOT, "PAPER.md")
 SELECTED = os.path.join(ROOT, "_selected.txt")
@@ -149,8 +149,9 @@ def reconstruct(circuits, cross_check=False):
         c_lo, c_hi = (float(x) for x in np.percentile(ch, [2.5, 97.5]))
 
         t = float(THRESHOLD)
-        verdict = ("REGRESSION" if c_lo > t else
-                   "NO_REGRESSION" if c_hi < t else "UNRESOLVED")
+        # same inclusive-threshold tie policy as prereg_analysis (Astra A12)
+        verdict = ("REGRESSION" if (c_lo - t) > TIE_EPS else
+                   "NO_REGRESSION" if (t - c_hi) > TIE_EPS else "UNRESOLVED")
         boundary = abs(theta - t) * 100 <= BOUNDARY_PP
 
         row = {"circuit": c, "status": "OK", "n_seeds": m,
