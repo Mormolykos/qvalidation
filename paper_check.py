@@ -159,13 +159,23 @@ def main():
     check("cc_n32 theta", th * 100, "{:.2f}")
     check("cc_n32 distance pp", abs(th - T) * 100, "{:.1f}")
     check("cc_n32 risk pct", p * 100, "{:.2f}")
-    check("cc_n32 triples of 1728", round(p * 1728), "{:d}")
+    # v3 (audit F17): the "6 of 1728 triples" check is REMOVED, not repaired. There was
+    # no 1728-triple sample; 0.00374089 * 1728 = 6.4643, and rounding that to 6 is what
+    # manufactured the sentence. The exact probability is checked instead.
+    check("cc_n32 exact risk pct", p * 100, "{:.6f}")
     hi = float(np.max(n)) / float(np.min(o)) - 1
     check("cc_n32 single-run worst case", hi * 100, "{:+.1f}")
-    r_ = n / o - 1
-    ti = stats.t.interval(0.95, o.size - 1, loc=r_.mean(), scale=stats.sem(r_))
-    check("cc_n32 t-CI lo", ti[0] * 100, "{:.2f}")
-    check("cc_n32 t-CI hi", ti[1] * 100, "{:.2f}")
+    # v3 (audit F17): the published interval was a t-interval for mean(B/A - 1), a
+    # DIFFERENT estimand from the ratio of arm means the paper reports. Bootstrap the
+    # declared estimand instead.
+    rb = np.random.default_rng(20260904)
+    bs = np.empty(4000)
+    for i in range(4000):
+        j = rb.integers(0, o.size, o.size)
+        bs[i] = n[j].mean() / o[j].mean() - 1
+    lo_, hi_ = np.percentile(bs, [2.5, 97.5])
+    check("cc_n32 ratio-of-means CI lo", lo_ * 100, "{:.2f}")
+    check("cc_n32 ratio-of-means CI hi", hi_ * 100, "{:.2f}")
 
     print("\n=== §3.4 controls ===")
     cen = {}
@@ -173,7 +183,11 @@ def main():
         r = json.loads(line)
         if r.get("record") == "run":
             cen.setdefault(r["circuit"], []).append(r["two_q"])
-    sel = set(c.strip() for c in open("_selected.txt") if c.strip()) | {"bv_n140"}
+    # v3 (audit F08): the published test put bv_n140 in the SELECTED group, although it
+    # was excluded from the primary analysis -- 40 vs 12, p = 0.7676. The correct groups
+    # are the 39 selected against the 13 complete-census circuits, p = 0.4560. Six further
+    # census circuits lack the 12-run data this test needs and enter neither group.
+    sel = set(c.strip() for c in open("_selected.txt") if c.strip())
     ins = [(max(v) - min(v)) / min(v) for c, v in cen.items()
            if len(v) >= 12 and min(v) > 0 and c in sel]
     outs = [(max(v) - min(v)) / min(v) for c, v in cen.items()
@@ -181,7 +195,8 @@ def main():
     u = stats.mannwhitneyu(ins, outs)
     check("selection-bias median in", float(np.median(ins)), "{:.4f}")
     check("selection-bias median out", float(np.median(outs)), "{:.4f}")
-    check("selection-bias Mann-Whitney p", u.pvalue, "{:.3f}")
+    check("selection-bias Mann-Whitney p", u.pvalue, "{:.4f}")
+    check("selection-bias n selected", len(ins), "{:d}", near="39** selected")
 
     print("\n=== §4.4 bv_n140 heavy-hex, pooled 400 seeds ===")
     def loadraw(p):
