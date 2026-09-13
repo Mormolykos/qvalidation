@@ -51,6 +51,11 @@ import sys
 ROOT = os.path.dirname(os.path.abspath(__file__))
 V2 = "17e08f3e92533ff8266b1b586e35f20da2923da8"
 ANCHOR = os.path.join(ROOT, "results", "raw", "V2_EVIDENCE_ANCHOR.json")
+# Everything under here is anchored. NOTE the composition, because calling all of it
+# "primary measurements" would overstate it: 78 merged arm files ARE the primary
+# measurements the reconstruction opens (39 circuits x 2 arms), and 780 are the
+# per-process fragments those 78 were merged from (x 10 processes) -- the same
+# observations before merge, not additional ones.
 PRIMARY = "results/raw/prereg"
 
 
@@ -110,7 +115,9 @@ def write_anchor():
     }
     json.dump(doc, open(ANCHOR, "w", encoding="utf-8"), indent=1, sort_keys=True)
     print(f"  wrote {os.path.relpath(ANCHOR, ROOT)}")
-    print(f"  {len(files)} primary files, hashed from git objects at {V2[:12]}")
+    n_arm = sum(1 for k in files if "_scatter_parts" not in k)
+    print(f"  {len(files)} anchored files ({n_arm} primary measurement arms + "
+          f"{len(files) - n_arm} fragments), hashed from git objects at {V2[:12]}")
 
 
 def verify():
@@ -133,8 +140,9 @@ def verify():
 
     fails = []
     # recursive: results/raw/prereg/_scatter_parts holds the per-process fragments the
-    # merged arms were built from, and they are primary evidence too -- 858 files in all,
-    # not the 78 merged arms alone.
+    # merged arms were built from. Both are anchored, but they are NOT the same thing:
+    # 78 merged arms are the primary measurements the reconstruction opens; the 780
+    # fragments are those same observations before merge, not additional ones.
     here = []
     for root, _, files in os.walk(os.path.join(ROOT, PRIMARY)):
         for f in files:
@@ -158,7 +166,11 @@ def verify():
                 f"now {got[:16]}…, v2 {want[p][:16]}…. This is not a manifest mismatch: "
                 f"the primary evidence itself is not the evidence the published result "
                 f"was computed from.")
-    print(f"  {len(here)} primary files compared against v2")
+    n_arm = sum(1 for x in here if "_scatter_parts" not in x)
+    n_frag = len(here) - n_arm
+    print(f"  {len(here)} anchored evidence files compared against v2")
+    print(f"    = {n_arm} primary measurement arms (39 circuits x 2) "
+          f"+ {n_frag} per-process fragments they were merged from")
     return fails
 
 
