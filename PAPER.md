@@ -74,7 +74,9 @@ decision rule.
 
 Our contribution is threefold. First, a source-level finding: **at the pinned revision,
 the Qiskit gym of IBM's Benchpress suite compiles without passing `seed_transpiler`**,
-and the suite performs no aggregation over runs, so a reported figure is one sample and
+and the inspected QASMBench gate-count path does not aggregate repeated transpilation
+counts before returning the measured circuit count (§2.1), so a reported figure is one
+sample and
 the choice of estimator is left entirely to the reader. This is a claim about one gym at
 one revision and not about the suite as a whole: the sibling BQSKit gym does seed its
 compiler, and the remaining six gyms are not assessed here (§2.1). Second, a definition
@@ -113,6 +115,11 @@ Two properties matter here, both established by reading the source at commit
    `generate_preset_pass_manager` are **Qiskit-specific APIs**; the other six gyms cannot
    call them and use their own interfaces — TKET, for instance, calls
    `backend.default_compilation_pass(optimisation_level=...)`. More importantly, the
+   ⚠ v4 correction (Astra A11), two scope limits on this paragraph. The unseeded
+   finding is about the **ordinary preset-pass-manager path**; the separate
+   qiskit-transpiler-service gym calls `TranspilerService` and is a different compilation
+   path, not covered by it. And the BQSKit statement below is about the **inspected
+   files**, not about every BQSKit path in the suite. The
    **BQSKit gym explicitly seeds its compiler**:
    `bqskit_gym/device_transpile/test_summit.py:179` calls
    `compile(circuit, model=BACKEND, optimization_level=..., compiler=compiler, seed=0)`.
@@ -136,7 +143,10 @@ between Qiskit 1.4.3 and 2.0, writing: *"This was verified by running Benchpress
 times for each version to get statistics. E.g. over the full test suite the values
 returned for 3 runs was:"*. Per-test figures are described as *"the avg. percent increase
 in 2Q gate counts"*; the basis of that average is not stated. The largest reported cases
-are `bv_n140-linear` +46%, `bv_n280-linear` +44% and `knn_341-linear` +41%.
+are `bv_n140-linear` **+46.142%**, `bv_n280-linear` **+44.245%** and `knn_341-linear`
+**+44.060%**. ⚠ v4 correction: v1–v3 rounded the third of these to +41%, which is not
+what the issue reports; the error propagated into §4.4's comparison table and reversed
+the sign of one difference.
 
 We take *k* = 3 from this report. It is an external choice, not ours, and Benchpress
 itself offers no such parameter.
@@ -204,7 +214,12 @@ follow-up design after exploration** — the circuit list and the `bv_n140` excl
 fixed before the primary data was added and did not change afterwards — not blindness to
 earlier outcomes. Git records the order in which files were committed locally; it does not
 record when their outputs were first looked at, and local timestamps are not independent
-evidence of that. Commit order is verifiable
+evidence of that. ⚠ v4 correction (Astra A09): git establishes the order in which files
+were COMMITTED and nothing more. It does not establish when an output was first seen, nor
+that no uncommitted data existed, nor that local clock times are truthful. The defensible
+statement is that the analysis code and circuit list were **committed before the first
+tracked commit of the primary raw data**, and that per the author's process records the
+analysis was intended to be blind. Commit order is verifiable
 (`git log --diff-filter=A -- prereg_analysis.py results/raw/prereg`):
 
 | commit | timestamp | content |

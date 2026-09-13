@@ -8,7 +8,8 @@ THE QUESTION, AND WHY THE EARLIER WORK COULD NOT ANSWER IT
 
     The real incident is NOT 2.0.0 -> 2.0.2. Issue #14402 compares **Qiskit 1.4.3
     against 2.0**, and reports bv_n140-linear +46%, bv_n280-linear +44%,
-    knn_341-linear +41%. That is the version pair, the topology and the circuits where
+    knn_341-linear +44.060% (v1-v3 said +41%, a misquotation of the issue; see PAPER.md
+    section 4.4). That is the version pair, the topology and the circuits where
     a wrong decision could actually have been made, and it had never been run.
 
 DIRECTION IS FIXED BEFORE LOOKING

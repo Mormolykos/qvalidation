@@ -1,3 +1,12 @@
+> # ⛔ SUPERSEDED — THIS IS THE v1 MANUSCRIPT, 2026-09-04
+>
+> **This document is historical evidence, not current scientific support.** It contains
+> claims that have since been withdrawn on the record — among them a monotonicity
+> statement later shown to be **false**, a synthetic-null experiment for which no
+> generator exists, and a misquoted external figure. See `../README.md` for the full list.
+>
+> **The current manuscript is `PAPER.md` at the repository root.**
+
 # Finite-sample decision risk in unseeded quantum compiler benchmarking
 
 **Panagiotis Gkilis** · BedVibe Studios, Oslo, Norway · <bedvibe@bedvibe.studio>

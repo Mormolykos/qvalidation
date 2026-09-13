@@ -32,7 +32,7 @@
       "attack": "The <=10s runtime selection rule biases the sample toward high-relative-variance circuits.",
       "raised_by": "Reviewer B, round 3",
       "command": "python audit.py  (check A7)",
-      "result": "REFUTED. Selected median seed spread 0.1126 vs excluded 0.1234, Mann-Whitney p=0.768. If anything the EXCLUDED circuits are more variable. NOTE: this is 'no detected difference', not proof of independence.",
+      "result": "*** v3/v4 CORRECTION: the figures this entry recorded used the WRONG GROUPS. *** The published test put the EXCLUDED circuit bv_n140 into the selected group -- 40 vs 12, medians 0.112606/0.123435, p=0.767602. The correct 39 selected against the 13 complete-census circuits gives medians 0.111467/0.126032 and p=0.455991 (independently recomputed 2026-09-12). Six further census circuits lack the 12-run data the test needs and enter neither group. The CONCLUSION is unchanged and was always the weaker one: neither test detects a difference, and failing to reject a null is not evidence for it. Do not quote p=0.768 from this entry.",
       "keywords": ["selection bias", "10s", "runtime selection", "convenience sample", "Mann-Whitney", "representativeness"]
     },
     {
@@ -88,7 +88,7 @@
       "attack": "The rho = -0.833 correlation is presented as a discovered mechanism.",
       "raised_by": "the author, self-attack during the 16-phase red team",
       "command": "simulate circuits with theta and spread drawn INDEPENDENTLY, no compiler involved",
-      "result": "The claim was WITHDRAWN. Synthetic data containing no compiler reproduces the statistic at mean -0.661 over 30 trials of 23 circuits, with 5 of 30 reaching -0.833 or stronger. The association is induced by the decision rule. Already corrected in the paper at commit 52f24dd.",
+      "result": "The MECHANISM CLAIM WAS WITHDRAWN and stays withdrawn -- the paper identifies no compiler mechanism. *** v4 CORRECTION, Astra A04: the EVIDENCE this entry originally offered has itself been withdrawn. *** It cited a synthetic null at mean -0.661 over 30 trials with 5 of 30 reaching -0.833 or stronger. A hostile audit searched the pinned tree and found no generator, parameters, RNG state or trial record for it, and git grep over the v3 tree returns zero .py files containing the figure; the numbers were withdrawn from the paper in v3 and NOT replaced, because regenerating a null now and presenting it as the original evidence would be worse than having none. This entry therefore records a question that remains closed -- we make no mechanism claim -- resting on the absence of that claim, NOT on the quantitative null it used to cite. Do not quote -0.661 or 5/30 from this entry as support for anything.",
       "keywords": ["rho", "-0.833", "Spearman", "mechanism", "correlation", "tautology", "mechanistic"]
     },
     {

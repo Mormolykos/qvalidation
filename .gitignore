@@ -8,3 +8,11 @@ __pycache__/
 results/raw/_parts/
 # Downloaded third-party artifacts
 hbr_paper.*
+
+# PDF build OUTPUTS. The INPUTS -- publish/paper_style.css and publish/build_paper.sh --
+# are tracked, because before v4 the published PDF depended on a stylesheet that lived on
+# the author's desktop and no reader could reach (Astra A13). The outputs are rebuilt by
+# that script; Chromium stamps a creation time into them so they are never byte-identical
+# between builds and tracking them would only record noise.
+publish/paper.pdf
+publish/paper.html
