@@ -28,6 +28,7 @@ WHAT IT CHECKS
    10 v2 anchor      raw evidence byte-identical to v2's git objects, not to a local file
    11 derived binding every saved primary field vs a replay of its own analysis
    12 rendered       the table a READER sees vs a reconstruction from raw
+   13 published pdf  the rendered artifact carries the manuscript's active claims
 
 WHY 10-12 EXIST — the second failure (2026-09-13)
     Checks 7-9 were built to prove this verifier could turn red, and they did, for the
@@ -125,6 +126,7 @@ def main():
         run("10 v2 evidence anchor", [PY, "v2_anchor.py"]),
         run("11 derived binding", [PY, "derived_binding.py"]),
         run("12 rendered manuscript", [PY, "manuscript_binding.py"]),
+        run("13 published pdf", [PY, "pdf_binding.py"]),
     ]
 
     print(f"\n  {'check':<20s} {'result':>7s} {'time':>8s}")

@@ -3,7 +3,7 @@
 **Panagiotis Gkilis** · BedVibe Studios, Oslo, Norway · <bedvibe@bedvibe.studio>
 ORCID 0009-0007-3805-170X
 
-*Version 3, 2026-09-12. Not submitted. All data and code:* `qvalidation` *repository.*
+*Version 4, 2026-09-13. Not submitted. All data and code:* `qvalidation` *repository.*
 
 ---
 
@@ -608,10 +608,12 @@ A later independent audit of the *code* rather than the claims found six impleme
 defects, none of which changed a reported number; they are recorded in `SETTLED.json` as
 S17–S22.
 
-`inventory.py --check` compares all **41** recorded figures against a fresh
-recomputation: **29 are re-derived from the raw per-seed measurements, and 12 — the
-sec 43 k-sweep — are re-read from a derived summary table**, each row labelled with which
-tier it belongs to. Re-deriving the k-sweep from raw means enumerating 12⁵ mean tuples
+`inventory.py --check` compares all **44** recorded figures against a fresh
+recomputation: **32 are re-derived from the raw per-seed measurements (`RAW-RECOMPUTED`),
+and 12 — the sec 43 k-sweep — are re-read from a derived summary table
+(`DERIVED-READ`)**, each row labelled with which tier it belongs to. ⚠ v4 correction:
+v1–v3 said 41/29/12, which was stale once the primary endpoint was registered here in
+v3. Re-deriving the k-sweep from raw means enumerating 12⁵ mean tuples
 per bisection step, roughly half an hour per topology, which is not affordable inside a
 check that has to run in under a minute. **We therefore do not claim that every reported
 number is re-derived from raw data**, and the tool says so in its own documentation. The
@@ -701,9 +703,9 @@ within families. That is an experiment, not an analysis, and we do not pre-empt 
 All raw per-seed measurements, analysis code, the pre-registration, the defect record and
 the complete research log are in the `qvalidation` repository. `verify.py` re-runs the
 toolchain pin check, test suite, numeric inventory, replication artifact and a proof of a
-withdrawn analytical claim in under a minute. `inventory.py --check` compares all 41
-recorded numbers against a fresh recomputation, 29 of them re-derived from the raw
-per-seed files and 12 re-read from a summary table, each row labelled with which.
+withdrawn analytical claim. `inventory.py --check` compares all 44 recorded numbers
+against a fresh recomputation, 32 of them re-derived from the raw per-seed files and 12
+re-read from a summary table, each row labelled with which.
 
 ## References
 
