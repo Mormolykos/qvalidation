@@ -1,7 +1,8 @@
 {
  "_authority": "The v2 git objects are the authority. This file is a transcript for environments without git history (a zip archive). If the two ever disagree, git wins and this file is wrong.",
+ "_not_authenticated_by_itself": "Checking evidence against this file establishes agreement with THIS FILE, not historical authenticity. A transcript shipped beside the data it describes cannot authenticate it; that needs the v2 objects, or an externally published hash of this transcript.",
  "_rule": "Regenerating this from current files instead of from v2 would destroy the only property it has. --write-anchor reads v2 objects and refuses to run without them.",
- "_what": "SHA-256 of every primary raw file AS PUBLISHED IN v2, read from git objects at the commit below \u2014 never from the working tree.",
+ "_what": "SHA-256 of every anchored raw evidence file AS PUBLISHED IN v2, read from git objects at the commit below \u2014 never from the working tree. 78 of these are primary measurement arms (39 circuits x 2) and 780 are the per-process fragments those were merged from: the same observations before merge, NOT additional measurements.",
  "count": 858,
  "files": {
   "results/raw/prereg/32_heavy-hex_q143.jsonl": {

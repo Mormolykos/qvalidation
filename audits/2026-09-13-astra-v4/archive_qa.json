@@ -1,0 +1,10 @@
+{
+  "anchor": 0,
+  "anchor_write": 1,
+  "integrity": 0,
+  "stage9": 1,
+  "anchor_files": 858,
+  "anchor_matches_actual_v2_objects": true,
+  "anchor_mismatches": [],
+  "anchor_sha256": "cc31e9b2f43d9a4ca6332e0e300e7f0c391c59c17dfe32804269800446ab9827"
+}

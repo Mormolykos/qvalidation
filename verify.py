@@ -13,22 +13,66 @@ FOR A DELEGATED AGENT (Antigravity IDE, a CI job, a reviewer)
     ⛔ DO NOT "fix" a failure. A failing check here is a finding, and findings are the
        product. Report the exact output and stop.
 
-WHAT IT CHECKS
-    1 toolchain pin   Benchpress commit SHA, tracked-file cleanliness, 5 module hashes
-                      over CANONICAL bytes -- see A14 below
-    2 test suite      pytest, including the D-2.1 tautology and seed-integrity regressions
-    3 inventory       44 recorded numbers vs a fresh recomputation (32 raw, 12 derived-read)
-    4 replication     6 circuits x 12 seeds x 2 Qiskit versions against the reference
-    5 tautology proof the withdrawn paired column is still provably data-independent
-    6 paper claims    paper_check.py -- every quantitative claim in PAPER.md recomputed
+WHAT IT CHECKS — and what each stage does NOT establish (Astra V4, 2026-09-13)
+    Thirteen stages are not thirteen independent replications. Several share the same raw
+    loader, selection list and classification constants, so one defect can travel through
+    more than one of them. The scope below is deliberately narrower than v4's first
+    wording, which an audit showed was false for four stages.
 
-    7 raw endpoint   the primary result rebuilt FROM RAW and bound to PAPER.md
-    8 raw integrity  raw evidence bytes vs manifest; derived summary vs raw
-    9 mutation test  proof this verifier turns RED when the science is corrupted
-   10 v2 anchor      raw evidence byte-identical to v2's git objects, not to a local file
-   11 derived binding every saved primary field vs a replay of its own analysis
-   12 rendered       the table a READER sees vs a reconstruction from raw
-   13 published pdf  the rendered artifact carries the manuscript's active claims
+    1 toolchain pin   Benchpress commit SHA, tracked-file cleanliness, 5 module hashes
+                      over CANONICAL bytes. REQUIRES a git checkout: hashes alone cannot
+                      say which revision the files came from. Not: dependency behaviour.
+    2 test suite      pytest. A test suite, not a certificate for untested artifacts.
+    3 inventory       44 recorded numbers vs a fresh recomputation -- 32 recomputed from
+                      raw, 12 RE-READ from derived k-sweep CSVs. Not every figure, not
+                      every interval, not prose.
+    4 replication     144 recorded values (6 circuits x 12 seeds x 2 versions) compared
+                      against the reference. An artifact comparison; it does not
+                      transpile anything in this invocation.
+    5 tautology proof the withdrawn paired column is still provably data-independent.
+                      Says nothing about any other estimator.
+    6 paper claims    paper_check.py -- 50 selected numeric values recomputed and located
+                      in the source text. PRESENCE, not placement: it cannot prove a
+                      number is quoted in the right claim. Not "every quantitative claim".
+
+    7 raw endpoint   the primary result rebuilt FROM RAW by a separately implemented risk
+                     estimator, bound to PAPER.md. Shares load_seeded, BOUNDARY_PP and
+                     TIE_EPS with the producer, so its independence is partial.
+    8 raw integrity  the 78 merged arms vs the CURRENT manifest, plus selected summary
+                     fields vs a raw reconstruction. Self-consistency: an attacker who
+                     updates the manifest too is caught by stage 10, not here.
+    9 mutation test  18 corruptions, each REJECTED -- not merely exited on -- by a named
+                     stage for a named reason. Evidence this verifier turns red; not a
+                     proof that no other corruption passes.
+   10 v2 anchor      canonical content of the raw evidence vs v2's GIT OBJECTS. Without
+                     that history it falls back to a supplied transcript and says so:
+                     that mode is agreement, not authenticity.
+   11 derived binding every saved field against its declared domain, the row's internal
+                     coherence, and a replay of the original analysis. Same analysis code
+                     and MC budget as the producer -- a binding, not an independent
+                     recomputation.
+   12 rendered       the canonical table a reader sees, vs a reconstruction from raw, for
+                     a manuscript inside the declared raw-HTML domain. Outside that
+                     domain it refuses rather than guessing at visibility.
+   13 published pdf  the PDF's numeric content vs the manuscript's, both directions, plus
+                     canonical rows in place and the version line. NOT semantic
+                     equivalence: a human reading of the built PDF is still required.
+
+WHY THE WORDING CHANGED — the third failure (2026-09-13, Astra v4)
+    Stages 1-13 all passed on two separately controlled corrupt states:
+
+      all 36 saved risk intervals replaced with NaN          -> stage 11 now rejects
+      a PDF printing 99.9 where the manuscript says 10.9      -> stage 13 now rejects
+
+    Both were accepted because a comparison was being made against a value outside the
+    domain it was declared over, and because token presence was being read as semantic
+    agreement. Two further stage-12 states passed: the canonical table inside a hidden
+    <div>, and a true numerator attached to the wrong endpoint in the abstract.
+
+    The stages were repaired, and so was this header. Several lines here claimed coverage
+    the code did not have -- "every quantitative claim", "every saved primary field", "the
+    table a READER sees" -- and an inaccurate description of what a verifier enforces is
+    itself a defect, because it is what a reader relies on when the verifier says PASS.
 
 WHY 10-12 EXIST — the second failure (2026-09-13)
     Checks 7-9 were built to prove this verifier could turn red, and they did, for the

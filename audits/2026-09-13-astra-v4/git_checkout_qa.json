@@ -1,0 +1,14 @@
+[
+  {
+    "ending": "LF",
+    "stage1_exit": 0,
+    "tracked_status": "",
+    "crlf_files": 0
+  },
+  {
+    "ending": "CRLF",
+    "stage1_exit": 0,
+    "tracked_status": "",
+    "crlf_files": 5
+  }
+]

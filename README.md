@@ -24,26 +24,43 @@ Two disjoint 200-seed samples agree: contiguous seeds in one process give 26.3%,
 scattered seeds spanning 5.9 million to 1.08 billion across ten fresh processes give
 22.6%, and each point falls inside the other's interval.
 
-**Running more does not fix it.** Twenty runs per version, about 40 hours of compute at
-the issue's own "about 2 hours each", still leaves a **3.7%** false-positive rate. One
-`seed_transpiler` argument removes it at one run.
+**Running more does not fix it.** Twenty runs per version — 20 × 2 versions × ~2 h per
+suite run at the issue's own figure, so on the order of **80 compute hours** — still
+leaves a **3.7%** false-positive rate. One `seed_transpiler` argument removes the
+seed-attributable variance at one run.
 
 The same circuit on `linear` changes **+31.0%** and is *missed* 2.98% of the time — a
 false negative, which eight runs per version does remove.
 
-And the issue's own reported figure for that circuit, **+46.1%**, is a single draw from a
-distribution running from **−10.5% to +100.0%**. Its 95% range reaches **below the +10%
-threshold**: the same real regression could have been reported as no regression at all.
+And the issue's own reported figure for that circuit, **+46.14%**, is a single draw from
+a distribution whose exact support runs from **−17.68% to +109.17%**. Its 95% range
+reaches **below the +10% threshold**: the same real regression could have been reported
+as no regression at all.
 
 The two circuits in that issue with near-zero seed spread reproduce here to within
-**0.5 pp** and **2.4 pp**. Only the noisy one disagrees — which is what makes this seed
-variance rather than version drift.
+**+0.29 pp** and **−0.63 pp**. Only the noisy one disagrees — which is what makes this
+seed variance rather than version drift. The issue's Benchpress revision and aggregation
+rule are not supplied, so these are numerical comparisons at our configuration, not a
+reproduction of its protocol.
 
+> ⚠ **This README is a summary. [`PAPER.md`](PAPER.md) is the authority**, and where the
+> two disagree the manuscript is right. Claims corrected in v3 and v4 are listed in
+> [`V3_CORRECTION_LEDGER.md`](V3_CORRECTION_LEDGER.md) and
+> [`V4_ASTRA_CORRECTION_LEDGER.md`](V4_ASTRA_CORRECTION_LEDGER.md).
+>
 > ⚠ **An earlier headline here claimed a 27% false-positive rate on `qft_n320`. It is
 > WITHDRAWN** — its 95% interval was [1.7%, 63.1%] at n=12, and the corpus statistic
 > built on it turned out to depend on an undisclosed choice of which version was the
 > baseline. See §38 and §41. Nothing was ever published. Every number below is
 > direction-free and re-derives from raw data via `python inventory.py --check`.
+>
+> ⚠ **v4 corrections to this page (Astra V4-04).** It carried four claims the manuscript
+> had already corrected and this page had not: the issue differences as +0.5 pp and
+> +2.4 pp (the `knn_341` figure was misquoted and its difference has the wrong sign),
+> 40 rather than 80 compute hours, "14 of 39 circuits are perfectly deterministic" when
+> the raw data gives **13**, and a verifier described as five checks in 45 seconds when
+> it is thirteen stages taking tens of minutes. A dated correction elsewhere does not
+> neutralise a wrong number on the page a reader lands on.
 
 ---
 
@@ -51,18 +68,18 @@ variance rather than version drift.
 
 | result | value | where |
 |---|---|---|
-| **mechanism**: deterministic compilation ⇒ zero risk | 13/13 — but this is **arithmetic, not evidence** (§56) | §55, §56 |
-| ⭐ **mechanism**: risk vs distance from θ to the cut | Spearman **−0.833** among stochastic circuits | §55 |
-| ⭐ median ambiguity band, 23 stochastic circuits | **10.9 pp** (max 25.2 pp) — θ-free and direction-free | §55 |
+| deterministic compilation ⇒ zero risk | 13/13 — but this is **arithmetic, not evidence** (§56) | §55, §56 |
+| ⭐ risk vs distance from θ to the cut | Spearman **−0.833** among stochastic circuits — a **descriptive association**, not an identified mechanism | §55 |
+| ⭐ median ambiguity band, 23 stochastic circuits | **10.9 pp** (max 25.2 pp) — θ-free and direction-free, but **constructed from this version pair's residuals and not independent of it** | §55 |
 | circuits carrying risk ≥10% under this version pair | **4 of 26** (7 of 26 at ≥5%) | §55 |
 | ⛔ suite-level failure rate | **withdrawn** — underpowered, effective n = 11 families | §55 |
 | holds at every threshold 5%–20%; doubles under best-of-3 | min-of-3 raises `bv_n280` from 17.3% to 28.4% | §54 |
 | all three circuits named in issue #14402 show an error rate | `bv_n140` 24.4%, `bv_n280` 17.3%, `knn_341` 4.7% | §52 |
-| ⚠ but 14 of 39 circuits are perfectly deterministic | median eligible error rate **0.0000** | §52 |
+| ⚠ but **13 of 39** circuits are perfectly deterministic | median eligible error rate **0.0000** — all 13 are eligible, so 13 of the 26 | §52 |
 | **`bv_n140` real regression MISSED by the 3-run protocol** | **2.98%** of the time, 95% CI [1.72%, 4.99%] | §48 |
 | `bv_n140` true change, 1.4.3 → 2.0.0, 200 seeds/arm | **+31.0%**, 95% CI [+28.4%, +33.8%] | §48 |
 | what a single 3-run comparison of it can return | **−10.5% to +100.0%** | §48 |
-| #14402 reproduced, low-seed-spread circuits | `bv_n280` +0.5 pp, `knn_341` +2.4 pp | §48 |
+| #14402 compared, low-seed-spread circuits | `bv_n280` **+0.29 pp**, `knn_341` **−0.63 pp** — numerical comparison at our configuration, not a protocol reproduction | §48 |
 | decision instability, real change, forward direction | **5 of 51** circuits, Wilson [4.3%, 21.0%] | §48 |
 | the error is not a threshold artifact | nonzero at **every** cut from +2% to +25% | §49 |
 | ⚠ but it IS underpowering: error vs runs/version | k=1 16.1% → k=3 2.98% → **k=8 0.09%** | §49 |
@@ -184,8 +201,20 @@ python model_check.py --topology heavy-hex --pair 200:202 --band-compare
 BENCHPRESS_PATH=<repo> envs/bp202/Scripts/python.exe verify.py
 ```
 
-Five read-only checks — toolchain pin, test suite, inventory, replication, tautology
-proof — in about 45 seconds. Exit 0 means the repository is intact.
+**Thirteen read-only stages, tens of minutes** — toolchain pin, test suite, inventory,
+replication, tautology proof, paper claims, raw→endpoint, raw integrity, mutation test,
+v2 evidence anchor, derived binding, rendered manuscript, published PDF. Exit 0 means
+every stage passed. ⚠ v4 correction (Astra V4-04): this said "five read-only checks … in
+about 45 seconds", which was true of v2 and describes neither the coverage nor the cost
+of the current verifier — stage 9 alone rebuilds the repository eighteen times and stage
+11 replays a 400 × 400,000 bootstrap.
+
+**What exit 0 does and does not mean.** Each stage's scope is stated in its own file
+header, and they are overlapping checks, not thirteen independent replications: several
+share the same raw loader, selection list and classification constants, so one defect can
+pass through more than one of them. `python mutation_test.py` is the evidence that they
+turn red — eighteen corruptions, each required to be rejected by a named stage for a
+named reason. Three of those corruptions defeated v3 and six defeated v4.
 
 ### 4. Tests
 

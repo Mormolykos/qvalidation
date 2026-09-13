@@ -1,5 +1,19 @@
 # Attack packet — the pre-registered 46.2% result, stated completely enough to destroy
 
+> ## ⛔ SUPERSEDED — this packet was written on 2026-09-04, for v1
+>
+> It is preserved as the record of what was handed to reviewers at that time. **Do not
+> quote a number from it as current.** Three hostile audits have since forced corrections
+> that this file predates, and several of its statements are now false, including the
+> Status line below: the work **was** published, as
+> [DOI 10.5281/zenodo.22689920](https://doi.org/10.5281/zenodo.22689920), and a
+> repository exists.
+>
+> The current authority is [`PAPER.md`](PAPER.md) (Version 4). Every correction is
+> itemised in [`V3_CORRECTION_LEDGER.md`](V3_CORRECTION_LEDGER.md) and
+> [`V4_ASTRA_CORRECTION_LEDGER.md`](V4_ASTRA_CORRECTION_LEDGER.md).
+> *(Astra V4-04: an old file's date does not neutralise a present-tense claim inside it.)*
+
 **Purpose:** hand this to an adversarial reviewer. It is deliberately complete, including
 every exclusion, every count, and every limitation known to the authors. Nothing is
 omitted to make the result look better. If a number here is wrong, the study is wrong.

@@ -1,4 +1,12 @@
-# v4 correction ledger — every Astra finding against v3
+# v4 correction ledger — every Astra finding against v3, then against v4
+
+> **Part 2 (V4-01 … V4-10), the audit of the corrected v4 tree, is at the bottom of this
+> file.** Part 1 below is the v3 audit (A01–A14) and is unchanged. Read them in order:
+> part 2 is the record of what part 1's repairs still got wrong.
+
+---
+
+# Part 1 — every Astra finding against v3
 
 Audit: `audits/2026-09-13-astra-v3/` (`ASTRA_FINAL_HOSTILE_AUDIT.md`, SHA-256
 `b21fce40d95b1322…`), against v3 at `839ac80cd36ac44c7bab12e3b5a19c9dceb95c76`.
@@ -121,3 +129,135 @@ cross-machine gate counts · the pinned Qiskit path omits `seed_transpiler`.
 8. **A verifier only tests the attacks someone thought of.** Three rounds have each ended
    with a green verifier that a hostile auditor then broke. This ledger records what has
    been tried, not that nothing remains.
+
+---
+---
+
+# Part 2 — every Astra finding against v4
+
+Audit: `audits/2026-09-13-astra-v4/` (`V4_FINAL_REPRODUCIBILITY_REVIEW.md`, SHA-256
+`e19c245d7773f9ea…`), against v4 at `4531d97d754c9f116db567e1908cbb59d6016eb2`.
+
+**Verdict as delivered: CORE SURVIVES MAJOR CORRECTIONS.** V4-01–V4-10; six of them
+release-blocking; **no fatal counterexample to the empirical endpoint**.
+
+**No raw measurement changed. No reported scientific number changed** except one that was
+demonstrated wrong by recomputation from raw (V4-04: 14 → 13 deterministic circuits).
+
+---
+
+## The two that passed all thirteen stages
+
+Part 1 closed with a verifier that had been shown to turn red for the attacks its author
+had by then imagined. Astra found two states that were false and green end-to-end, and
+two more that defeated the manuscript stage specifically.
+
+| | attack | v4 | now caught by | mutation |
+|---|---|---|---|---|
+| **V4-01** | all 36 saved risk intervals → `NaN` | **13/13 PASS** | `derived_binding.check_schema` | **R** |
+| **V4-02** | published PDF prints 99.9 where the source says 10.9 | **13/13 PASS** | `pdf_binding.check` | **U** |
+| **V4-03a** | canonical table inside `<div style="display:none">` | stage 12 = 0 | `manuscript_binding.html_domain_violations` | **P** |
+| **V4-03b** | 7/26 attributed to interval exclusion in the abstract | stage 12 = 0 | claim-identity binding | **Q** |
+
+None of them touches the science. The endpoint reconstructs to 12/26, 7/26, 4/26
+throughout, and Astra's own independent replay confirms all 36 original intervals to
+≤ 5e-7.
+
+---
+
+## Findings
+
+| ID | Sev | Defect | Accepted? | Correction | New test | Endpoint moves? | Status |
+|---|---|---|---|---|---|---|---|
+| **V4-01** | MAJOR | nonfinite values, fractional integers and duplicate rows all evaded saved-result validation | **ACCEPTED** — reproduced, 13/13 PASS | Parsing is now a **contract**, not a coercion. Every field declares the SET of values it admits (`prob`, `count`, `real`, `bool`, `str`) and a cell outside it is rejected by name **before** any comparison — because `abs(NaN − want) > tol` is False, so an out-of-domain value is not weakly checked, it is unchecked. Rows are read as a **list**: duplicate ids, embedded header rows and unknown columns fail. A third contract, SELF, was added: interval order, point inside its own interval, `error_excludes_zero` **recomputed** from the saved bound, `boundary` recomputed from the saved distance — all on the saved row alone, no replay | mutations **R**, **S**, **T**, **D**, **H**; 17 cases in `tests/test_v4_astra_regressions.py` | No | **CLOSED** |
+| **V4-02** | MAJOR | PDF semantic agreement was token presence | **ACCEPTED** — reproduced, 13/13 PASS with a visibly false abstract | The binding is now over the **whole numeric content in both directions**: the set of distinct numeric tokens in the PDF must equal the set in `PAPER.md`. 272 distinct on each side; a number the PDF shows and the source lacks is an invention, one the source states and no page carries is a drop. Canonical rows are additionally checked **in place** — label, fraction, proportion and interval contiguous and in order — so correct numbers cannot be attached to wrong rows. Extraction switched to `pdftotext -layout`, without which the table extracts column-wise and no row can be checked as a row. **The claim is also narrowed**: equal numeric content is not semantic equivalence, and the output says so and states that a documented human reading of the built PDF remains a release requirement | mutation **U** (rebuilt through the real pandoc + Chromium path); 5 cases in `tests/test_v4_astra_regressions.py` | No | **CLOSED** |
+| **V4-03** | MAJOR | Markdown source recognition described as reader-visible validation; a true numerator accepted for a false claim | **ACCEPTED** — both reproduced | Two repairs. (a) The **domain is declared**: `PAPER.md` is Markdown whose only raw HTML is a bare inline tag from a closed list. Anything else is REFUSED with the reason, because no amount of source reading decides whether a reader sees what arbitrary HTML governs — enumerating `display:none`, `hidden`, `visibility`, `font-size:0`, `aria-hidden` is the losing side of that game. Fenced code blocks are blanked before parsing. (b) **Claim identity**: every prose quantity over the eligible denominator is bound to the endpoint its own *sentence* names, by nearest claim phrase, so 7/26 is true of "risk ≥ 5%" and false of "excludes zero". The counterfactual exemption moved from paragraph to sentence scope — the abstract is one paragraph containing the word "withdrawn", which is exactly where Astra put the false attribution | mutations **P**, **Q**; 10 cases in `tests/test_v4_astra_regressions.py` | No | **CLOSED** |
+| **V4-04** | MAJOR | active reader-facing summaries retained withdrawn and false claims | **ACCEPTED** | `README.md`: issue differences corrected to **+0.29 pp / −0.63 pp**, compute **40 → 80 hours**, support **−17.68% to +109.17%**, mechanism language demoted to descriptive association, band marked as not independent of this version pair, and the verifier described as **13 stages taking tens of minutes** instead of "five read-only checks in about 45 seconds". `RESEARCH_LANDSCAPE.md` LIVE table: four rows relabelled CORRECTED/NARROWED with what changed, plus a banner naming `PAPER.md` as the authority. `ATTACK_PACKET.md` banner: it still said "nothing published. No DOI, no repository, no paper" | — | **YES, one** — see below | **CLOSED** |
+| **V4-05** | MAJOR | active manuscript assurances contradicted their own limitations | **ACCEPTED** | Seven sentences narrowed to the formulations the corrections beside them already used: "a distribution its own protocol produces" → the three-run distribution **at our configuration** (twice); "before the primary raw data existed" → **before the first tracked commit** of it (§3.3 and the cross-machine check); "each count was reproduced from its seed" → the **144** and **216** counts those finite controls actually compared; "removes the sampling variance" → the **seed-attributable** variance, with the unseeded backend and the 0-of-24 probe stated; "every published figure carries … a function that recomputes it" → the inventory's actual **44 values, 32 raw-recomputed and 12 re-read from derived CSVs** | — | No | **CLOSED** |
+| **V4-06** | MAJOR | offline consistency reported as authenticated historical identity | **ACCEPTED** | The two modes now say different things, because they check different things. With v2 history: "HISTORICAL IDENTITY … establishing this falsely would require rewriting history at `17e08f3e`". Without it: "matches the supplied transcript. **HISTORICAL AUTHENTICITY IS NOT ESTABLISHED HERE** — anyone who changed both would pass this check." The transcript's own metadata carries `_not_authenticated_by_itself`, and the header records that Astra's externally published SHA-256 of it is the binding the offline mode lacks — deliberately **not** stored in the checker, since a reference beside what it authenticates has the same defect. "byte-identical" → "canonical content", which is what LF normalisation actually gives | mutations **F**, **N** (both exercise the fallback, as archives have no history) | No | **CLOSED** |
+| **V4-07** | MINOR | negative-test acceptance could not distinguish rejection from crash | **ACCEPTED** | Three outcomes, not two: a layer that **REJECTS** prints `✗` and exits nonzero; a layer that **ERRORS** exits nonzero and prints no `✗`; only a rejection counts. On top of that every mutation declares, **per layer**, the reason it must be rejected for, quoted from the message that layer actually prints — so a layer that starts failing elsewhere stops counting as coverage. A fixture that errors a layer it does not target is itself a failure. Skipped fixtures are named in the output, never silent | mutation-table reasons; 2 cases in `tests/test_v4_astra_regressions.py`. Found immediately: the first scratch fixture written for V4-01 exited 1 on a missing import and would have scored as a catch | No | **CLOSED** |
+| **V4-08** | MINOR | the documented build did not load its tracked stylesheet | **ACCEPTED** — measured: the href resolved to `publish/publish/paper_style.css`, which does not exist | `--css=paper_style.css`, since the HTML is emitted into `publish/`. A **smoke check** in the build script resolves every local stylesheet href and fails the build rather than producing a readable unstyled page. The PDF was rebuilt: **14 pages, 428,549 bytes**, correctly styled. Layout claims removed from `build_paper.sh` and `pdf_binding.py` — extracted text is compared, page geometry is not | the rebuild is the test; `pdf_binding.py` passes on the restyled artifact | No | **CLOSED** |
+| **V4-09** | MINOR | the tie guard was a tolerance policy described as exact ordering | **ACCEPTED** | `prereg_analysis.py`'s header no longer says "IMPLEMENTS, WITHOUT DEVIATION". It states the rule as **"inclusive threshold with a 1e-9 tie band"**, gives the reason (`110/100 − 1` is `0.10000000000000009`), and states the cost Astra demonstrated: an endpoint strictly above or below but within 1e-9 of the cut is UNRESOLVED. Behaviour unchanged — the closest recorded endpoint is 2.3e-3, and `tests/test_threshold_ties.py` asserts that margin, so a future data set narrowing it fails rather than passing silently | 1 case in `tests/test_v4_astra_regressions.py` + the 8 existing tie tests | **No** | **CLOSED** |
+| **V4-10** | MINOR | helper-level no-history hashing read as a stage-1 fallback | **ACCEPTED** | `pin_check.py` states the prerequisite: stage 1 requires a Benchpress **git checkout** at the pinned commit, not a copy of the files. Five matching hashes say the files have the expected content, not which revision they came from. A `None` commit now fails with that sentence rather than a bare mismatch. **No archive mode was added** — one that reported PASS on unattributable source would be the same conflation repaired in `v2_anchor.py` | the explicit `None` branch | No | **CLOSED** |
+
+**10 of 10 accepted. None independently rejected.** Three were re-derived here rather than
+taken on the auditor's word — V4-04's deterministic count (recomputed from raw: **13**,
+not 14), V4-08's stylesheet path (resolved, and the rebuild moved the document from 12
+pages to 14), and V4-07's crash-versus-rejection distinction, which the very first scratch
+fixture written for V4-01 demonstrated by exiting 1 on a missing import.
+
+---
+
+## The one number that moved, and why
+
+`README.md` and `RESEARCH_LANDSCAPE.md` said **"14 of 39 circuits are perfectly
+deterministic"**. Recomputing from raw — both arms constant across all 200 seeds — gives
+**13**, and all 13 are eligible, so 13 of the 26. The manuscript already said 13. The
+summaries were wrong and are corrected; nothing downstream depended on 14.
+
+No other reported number changed. The endpoint is 12/26, 7/26, 4/26, as it has been
+through three audits and four independent reconstructions.
+
+---
+
+## The verifier, in layers — after v4
+
+| # | layer | question it answers | what it does NOT answer |
+|---|---|---|---|
+| 10 | `v2_anchor.py` | is this the evidence v2 published? | without v2's git objects: nothing about authenticity |
+| 8 | `raw_integrity.py` | do current bytes agree with the current manifest? | anything, if the manifest changed too — that is stage 10 |
+| 7 | `raw_endpoint.py` | does raw data produce the headline, by a separate estimator? | it shares `load_seeded`, `BOUNDARY_PP` and `TIE_EPS`, so its independence is partial |
+| 11 | `derived_binding.py` | is every saved field in its domain, coherent, and equal to a replay? | it replays the producer; it is a binding, not an independent recomputation |
+| 12 | `manuscript_binding.py` | does the table a reader sees state that, and does each prose claim carry its own number? | anything, for a manuscript outside the declared HTML domain — it refuses instead of guessing |
+| 13 | `pdf_binding.py` | does the PDF carry the same numbers, and the canonical rows in place? | semantic equivalence, placement of every number, layout |
+| 9 | `mutation_test.py` | can each of the above actually turn red, for the right reason? | whether an attack nobody has thought of would pass |
+
+**Mutation results — 18 corruptions, each REJECTED by the layer that must catch it, for a
+declared reason.** Pristine passes all six layers. New in this round: **P**, **Q**, **R**,
+**S**, **T**, **U** (the six that defeated v4) and **V**.
+
+**V** exists because R, D and H are now stopped by the schema and self-consistency
+contracts before the replay runs — stricter, but it would have left the replay itself
+unexercised. V widens one saved bound by 0.01: finite, inside [0, 1], above the point
+estimate, every flag still correct. Nothing about the row is self-contradictory. It is
+simply not what 400 × 400,000 resamples give, and only the replay can say so.
+
+---
+
+## Preserved science — unchanged, reconfirmed a fourth time
+
+15,600 observations · 36 resolved / 3 unresolved · 26 eligible · **12/26, 7/26, 4/26** ·
+all 36 original bootstrap intervals (Astra's independent replay, ≤ 5e-7) ·
+ρ = −0.8329214038556598 descriptively · ~10.9 pp modelled transition width, scoped to this
+version pair · k=20 `bv_n140` risk 3.741473676562272% · selection comparison 39 vs 13,
+p = 0.455991 · 216/216 cross-machine gate counts · 858 anchored evidence files = 78
+primary measurement arms + 780 fragments of the same observations.
+
+---
+
+## Open limitations — labelled, not closed
+
+Carried forward from part 1: the seed law is described and not repaired; bootstrap
+coverage is not established; the synthetic null is withdrawn and not replaced; the sweep
+axis is disclosed and not renormalised; backend randomness was probed at 0/24 only; the
+rustworkx build is an author assertion; byte-identical PDF reproduction is not promised.
+
+Added by this round:
+
+1. **Numeric-set equality is not semantic equivalence.** Stage 13 would not catch a
+   substitution that reuses a value already present elsewhere in the document with
+   identical spelling. A human reading of the built PDF is a release requirement.
+2. **The offline anchor cannot authenticate itself.** Distributing the evidence together
+   with its own transcript gives agreement, not identity. Only the v2 objects, or an
+   externally published hash of the transcript, close that.
+3. **Stage 9 needs `git archive HEAD`.** The 13-stage workflow is not archive-only
+   runnable, and mutation fixtures therefore test the committed tree, not the working
+   tree.
+4. **Mutation U needs pandoc and Chromium.** Where they are absent it is named as
+   skipped, and the coverage claim excludes it.
+5. **Thirteen stages are not thirteen independent replications.** Several share a raw
+   loader, a selection list and classification constants, so one defect can travel through
+   more than one of them. Their individual scopes are stated in `verify.py`'s header.
+6. **A verifier only tests the attacks someone thought of.** Four rounds have now each
+   ended with a green verifier that a hostile auditor then broke. This ledger records what
+   has been tried, not that nothing remains.

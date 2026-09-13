@@ -11,18 +11,40 @@ WHY (Astra A02)
     the claim. Presence is not placement -- a weakness this project has now been bitten by
     three times, and patched twice; this file replaces the approach instead.
 
+WHAT THIS FILE CAN AND CANNOT SEE (Astra V4-03)
+    Astra put the correct table inside a `<div style="display:none">`, printed a false
+    0-of-26 statement beside it, and this stage returned 0. It also added an abstract
+    sentence attributing 7/26 to interval exclusion — a numerator that is correct for a
+    DIFFERENT endpoint — and the prose scan exempted it.
+
+    The first defect is not "CSS was not handled". It is that this file reads Markdown
+    source and described its result as what a reader sees, and no amount of source
+    reading decides the visibility of arbitrary HTML. Enumerating `display:none`,
+    `visibility:hidden`, `font-size:0`, `hidden`, `aria-hidden`, white-on-white … is the
+    losing side of that game. So the DOMAIN is declared instead (`METHODOLOGY.md` R19):
+
+        PAPER.md is Markdown whose only raw HTML is an inline formatting tag drawn from a
+        closed list, carrying no attributes. Anything else is REJECTED, not interpreted.
+
+    A document outside that domain is not judged unsafe; it is judged unvalidatable by
+    this file, which says so and exits nonzero. That is a claim this file can keep.
+
+    The second defect is that a fraction was checked against the SET of true numerators
+    instead of against the endpoint its own sentence names. 7/26 is true of "risk ≥ 5%"
+    and false of "excludes zero", and only the sentence says which one is meant.
+
 WHAT THIS DOES
-    1. Deletes HTML comments FIRST. Anything a reader cannot see cannot satisfy a check.
-    2. Parses GitHub-flavoured Markdown tables structurally -- header, alignment row, body
+    1. Blanks fenced code blocks, then deletes HTML comments. Neither is a rendered claim.
+    2. Requires every remaining raw HTML tag to be in the declared closed list.
+    3. Parses GitHub-flavoured Markdown tables structurally -- header, alignment row, body
        -- rather than matching text.
-    3. Requires EXACTLY ONE table carrying the primary endpoint rows. Two tables is an
+    4. Requires EXACTLY ONE table carrying the primary endpoint rows. Two tables is an
        ambiguity, not a convenience: a second one lets an attacker leave a correct table
        somewhere while the read table lies. Zero is a missing claim.
-    4. Parses "12 / 26" into numerator AND denominator and checks both.
-    5. Compares them to a reconstruction from RAW, not to a stored expectation.
-
-    It also scans the visible text for endpoint-shaped fractions outside that table which
-    contradict it, so a false claim cannot be smuggled into prose.
+    5. Parses "12 / 26" into numerator AND denominator and checks both.
+    6. Compares them to a reconstruction from RAW, not to a stored expectation.
+    7. Binds every prose quantity over the eligible denominator to the endpoint its own
+       sentence names, so a true numerator cannot be attached to a false claim.
 
 USAGE
     python manuscript_binding.py
@@ -43,13 +65,67 @@ SELECTED = os.path.join(ROOT, "_selected.txt")
 # the three canonical rows, by the label a reader reads
 ROWS = {"risk > 0": "excl", "risk ≥ 5%": "ge5", "risk ≥ 10%": "ge10"}
 
+# Phrases that NAME an endpoint in prose. A quantity is bound to the nearest one of these.
+# They are the words the manuscript actually uses for each claim; a sentence using none of
+# them is not making one of these three claims and is not checked against them.
+CLAIM_PHRASES = {
+    "excl": ("excludes zero", "exclude zero", "excluding zero", "excluded zero",
+             "risk > 0", "pre-registered endpoint", "pre-registered 12"),
+    "ge5":  ("at least 5%", "≥ 5%", "≥5%", ">= 5%", "of at least 5", "5% or more"),
+    "ge10": ("at least 10%", "≥ 10%", "≥10%", ">= 10%", "of at least 10", "10% or more"),
+}
+CLAIM_WINDOW = 160        # characters; a claim named further away than this is not "near"
+
 COMMENT = re.compile(r"<!--.*?-->", re.S)
+FENCE = re.compile(r"^[ \t]*(```+|~~~+).*?^[ \t]*\1[ \t]*$", re.S | re.M)
 FRACTION = re.compile(r"(\d+)\s*/\s*(\d+)")
+
+# --- the declared raw-HTML domain -------------------------------------------------
+# `<` immediately followed by a letter (optionally `/` or `!` first), no `<` or `>` inside.
+# The immediacy matters: prose writes "p < 0.001, n = 23)" and the naive `<[^>]+>` reads
+# everything up to the next `>` anywhere in the document as a tag.
+TAG = re.compile(r"<[!/]?[A-Za-z][^<>]{0,400}>")
+ALLOWED_TAGS = {"sub", "/sub", "sup", "/sup"}
+AUTOLINK = re.compile(r"\A<(?:[^\s<>@]+@[^\s<>@]+|https?://[^\s<>]+)>\Z")
+
+# Words the manuscript spells out for small counts, so "Seven of 26" is a quantity.
+WORD_NUM = {"zero": 0, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
+            "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11, "twelve": 12,
+            "thirteen": 13, "fourteen": 14, "fifteen": 15, "sixteen": 16,
+            "seventeen": 17, "eighteen": 18, "nineteen": 19, "twenty": 20}
+QUANTITY = re.compile(r"\b(\d+|" + "|".join(WORD_NUM) + r")\s*(?:/|of)\s*(\d+)\b",
+                      re.I)
+
+
+def strip_fences(raw):
+    """Fenced code blocks, blanked but line-preserving: code is displayed, not parsed."""
+    return FENCE.sub(lambda m: "\n" * m.group(0).count("\n"), raw)
 
 
 def visible_text(raw):
-    """The manuscript with everything invisible removed."""
-    return COMMENT.sub("", raw)
+    """The manuscript with everything a reader cannot see removed.
+
+    Only valid for a document inside the declared domain -- see `html_domain_violations`,
+    which callers must run first. Outside it, this function has no defensible meaning.
+    """
+    return COMMENT.sub("", strip_fences(raw))
+
+
+def html_domain_violations(text):
+    """Raw HTML outside the closed list. Run on comment-stripped, fence-stripped text."""
+    out = []
+    for m in TAG.finditer(text):
+        s = m.group(0)
+        if AUTOLINK.match(s):
+            continue
+        if s[1:-1].strip().lower() in ALLOWED_TAGS and s[1:-1] == s[1:-1].strip():
+            continue
+        line = text.count("\n", 0, m.start()) + 1
+        out.append(f"line {line}: raw HTML {s[:60]!r} is outside the declared domain "
+                   f"(bare {sorted(ALLOWED_TAGS)} only). Whether a reader sees the "
+                   f"content it governs cannot be decided from the source, so this "
+                   f"manuscript cannot be validated as what a reader sees.")
+    return out
 
 
 def parse_tables(text):
@@ -90,9 +166,24 @@ def main():
     raw = open(PAPER, encoding="utf-8").read()
     vis = visible_text(raw)
     hidden = len(COMMENT.findall(raw))
+    fenced = len(FENCE.findall(raw))
 
     print(f"\n  RENDERED MANUSCRIPT BOUND TO RAW DATA")
-    print(f"  {len(raw):,} bytes, {hidden} HTML comment block(s) removed before parsing\n")
+    print(f"  {len(raw):,} bytes, {hidden} HTML comment block(s) and {fenced} fenced "
+          f"code block(s)\n  removed before parsing")
+
+    # The domain, before anything is parsed. A document outside it is not judged false;
+    # it is judged beyond what reading the source can establish, and that is the finding.
+    outside = html_domain_violations(vis)
+    print(f"  raw HTML: {len(TAG.findall(vis))} tag(s), "
+          f"{'ALL inside' if not outside else f'{len(outside)} OUTSIDE'} the declared "
+          f"domain\n")
+    if outside:
+        print("  ✗ THIS MANUSCRIPT CANNOT BE VALIDATED AS WHAT A READER SEES:\n")
+        for o in outside[:10]:
+            print(f"      {o}")
+        print()
+        sys.exit(1)
 
     fails = []
     cand = find_endpoint_tables(parse_tables(vis))
@@ -176,8 +267,52 @@ def main():
         ctx = vis[max(0, m.start() - 60):m.end() + 20].replace("\n", " ")
         fails.append(f"visible prose asserts {num}/{den}, which no endpoint supports "
                      f"— …{ctx.strip()[-90:]}")
+
+    # CLAIM IDENTITY. The scan above asks whether a numerator is true of SOMETHING. That
+    # is not the question a reader asks. 7 of 26 is true of "risk >= 5%" and false of
+    # "excludes zero", so every quantity over the eligible denominator is bound to the
+    # endpoint its own sentence names -- the nearest claim phrase within CLAIM_WINDOW.
+    # A sentence naming no endpoint is not making one of these claims and is not checked
+    # against them: "13 of 26 eligible circuits have no spread at all" is a different
+    # true statement about the same 26 circuits.
+    #
+    # The counterfactual exemption is taken at SENTENCE level here, not paragraph level.
+    # The abstract is a single paragraph that legitimately contains the word "withdrawn",
+    # so a paragraph-level exemption hands an attacker the whole abstract -- which is
+    # precisely where Astra put the false attribution.
+    low = vis.lower()
+    marks = [(mm.start(), key) for key, phrases in CLAIM_PHRASES.items()
+             for p in phrases for mm in re.finditer(re.escape(p), low)]
+    ends = [mm.end() for mm in re.finditer(r"(?<=[.!?:])\s+|\n\n", vis)]
+
+    def sentence_at(pos):
+        lo = max([e for e in ends if e <= pos], default=0)
+        hi = min([e for e in ends if e > pos], default=len(vis))
+        return vis[lo:hi].lower()
+
+    bound = 0
+    for m in QUANTITY.finditer(vis):
+        tok, den = m.group(1), int(m.group(2))
+        if den != n_elig or m.group(0) in tbl_span:
+            continue
+        num = int(tok) if tok.isdigit() else WORD_NUM[tok.lower()]
+        if any(w in sentence_at(m.start()) for w in COUNTERFACTUAL):
+            continue
+        near = [(abs(pos - m.start()), key) for pos, key in marks
+                if abs(pos - m.start()) <= CLAIM_WINDOW]
+        if not near:
+            continue
+        key = min(near)[1]
+        bound += 1
+        if num != truth[key]:
+            ctx = vis[max(0, m.start() - 40):m.end() + 120].replace("\n", " ")
+            label = next(k for k, v in ROWS.items() if v == key)
+            fails.append(f"visible prose attributes {num} of {den} to the "
+                         f"'{label}' endpoint, which the raw data puts at "
+                         f"{truth[key]} of {den} — …{ctx.strip()[:150]}")
     print(f"  prose scan: {exempt} endpoint-shaped fraction(s) exempted as explicitly "
-          f"counterfactual")
+          f"counterfactual;\n              {bound} prose quantit(ies) bound to the "
+          f"endpoint their own sentence names")
 
     if fails:
         print(f"  ✗ THE VISIBLE MANUSCRIPT DOES NOT MATCH THE RAW DATA — "

@@ -37,10 +37,11 @@ independent of it.
 Two of the three circuits named in Qiskit issue #14402 are affected. On a matched
 `linear` topology we reproduce that issue's two low-variance figures to within 0.63 and
 0.29 percentage points, and show that its remaining figure (+46.14% on `bv_n140`) sits at
-the 87.8th percentile of a distribution its own protocol produces, whose exact support
-runs from −17.68% to +109.17%. The issue's historical Benchpress revision and aggregation
-rule are not supplied, so these are numerical comparisons at our configuration, not a
-reproduction of its protocol.
+the 87.8th percentile of the distribution a three-run comparison produces **at our
+configuration**, whose exact support runs from −17.68% to +109.17%. The issue's
+historical Benchpress revision and aggregation rule are not supplied, so these are
+numerical comparisons at our configuration, not a reproduction of its protocol, and the
+distribution above is ours rather than the one its protocol would have produced.
 
 We do not claim a suite-level failure rate; our sample is underpowered for one. We claim
 that finite-sample decision risk is measurable and reproducible on a benchmark suite used
@@ -203,7 +204,10 @@ is never exercised.
 ### 3.3 Pre-registration
 
 The circuit list, protocol, analysis code and falsification criteria were committed
-before **the primary 39-circuit raw data** existed.
+before **the first tracked commit of the primary 39-circuit raw data**. ⚠ v4 correction
+(Astra V4-05): earlier versions of this sentence said "before the primary raw data
+existed", which asserts more than a commit log can support — see the correction below,
+which this sentence now matches instead of contradicting.
 
 ⚠ v3 correction. Earlier versions said "before any measurement existed" and called the
 absence of cherry-picking "a checkable fact". Both overstate the record. A census and
@@ -282,11 +286,15 @@ The signature is visible in the data and is not subtle: **6 of the 200 realised 
 above the midpoint of the nominal range, where roughly 100 would be expected** under the
 claimed uniform draw, and their mean sits at **0.2462** of the range rather than 0.5.
 
-What this does and does not affect. Every reported per-seed measurement stands — each
-count was reproduced from its seed in the controls described above, subject to the backend
-randomness noted there: the arms are
-correctly paired, the seeds are distinct, and the risk calculations are exact functions of
-the recorded values. What is **not** supported is any claim that the empirical
+What this does and does not affect. Every reported per-seed measurement stands: the arms
+are correctly paired, the seeds are distinct, and the risk calculations are exact
+functions of the recorded values. ⚠ v4 correction (Astra V4-05): earlier versions added
+"each count was reproduced from its seed in the controls described above", which reads as
+a claim about all 15,600 observations. The controls are finite and are listed below —
+**144** counts (6 circuits × 12 seeds × 2 versions) reproduced from clean, and **216**
+per-seed gate counts matched across two machines. Every count *those controls compared*
+was reproduced exactly; the remaining observations were not re-measured, and the backend
+randomness noted there applies throughout. What is **not** supported is any claim that the empirical
 distributions represent the seed space a user would encounter, or that they estimate the
 behaviour of unseeded operation over the full range. Restoring that would require a rerun
 under a correctly specified sampling law, which we have not done. The results in §4 are
@@ -316,10 +324,10 @@ Controls, each of which could have invalidated the study:
   established is agreement on every compared integer, not identity of the compiled
   circuits.
 
-  The cross-machine check was pre-registered before the second machine existed
-  (`crossmachine/PREREGISTRATION.md`; the commit order is checkable) and inherits the
-  frozen six-circuit, twelve-seed selection wholesale, so it introduces no selection
-  freedom. It covers **all three Qiskit versions**, including the 1.4.3 → 2.0.0 pair the
+  The cross-machine check's protocol was committed before the first tracked commit of
+  any second-machine result (`crossmachine/PREREGISTRATION.md`; the commit order is
+  checkable, and establishes commit order only — §3.3) and inherits the frozen
+  six-circuit, twelve-seed selection wholesale, so it introduces no selection freedom. It covers **all three Qiskit versions**, including the 1.4.3 → 2.0.0 pair the
   primary study uses. **All 216 per-seed gate counts are identical**:
 
   | | machine 1 | machine 2 |
@@ -511,7 +519,9 @@ those above; the `knn_341` value was misquoted and its difference has the wrong 
 corrected differences are +0.29, −0.63 and −10.94 pp.
 
 On `linear`, `bv_n140`'s reference change is +31.0% [+28.4, +33.8] at 200 seeds per arm.
-A single three-run comparison of that circuit — the issue's own protocol — has exact
+A single three-run comparison of that circuit — three runs per version, the aggregation
+the issue reports, simulated **at our configuration** rather than under its own
+unavailable revision and aggregation rule — has exact
 support running from **−17.68% to +109.17%**, with a 95% range of [+9.28%, +57.31%]. The
 issue's +46.14% sits at the **87.8th** percentile of that distribution, and the same range
 extends below the +10% threshold. ⚠ v3 correction: earlier versions reported −10.5% to
@@ -545,8 +555,12 @@ significant and should not be quoted alone.
 80 compute hours — still leaves 3.74%.** ⚠ v3 correction: earlier versions said 40 hours,
 which halves the arithmetic; 40 hours would be wall-clock on two machines running
 concurrently, not the compute total. The ~2 h per-run figure is the issue's, and we could
-not independently confirm it. By contrast, one `seed_transpiler` argument removes the sampling variance at
-*k* = 1.
+not independently confirm it. By contrast, one `seed_transpiler` argument removes the
+**seed-attributable** sampling variance at *k* = 1. ⚠ v4 correction (Astra V4-05):
+earlier versions said it removes the sampling variance, unqualified. The backend is
+constructed without a seed on the same path, and we probed that at 24 cases and found no
+effect on the observable — a limited negative result, not a demonstration that no other
+source of variance remains.
 
 **Aggregation.** Under minimum-of-3 rather than mean-of-3, all eight tested circuits still
 err and every rate roughly doubles (`bv_n280` 17.3% → 28.4%). Best-of-*k* practice does
@@ -665,9 +679,13 @@ are reusable:
    auditable. ⚠ v3 correction: it does not convert "we did not cherry-pick" into a fact.
    It records that the design was fixed before *this* data arrived, not that no earlier
    exploration informed it — and here it did (§3.3).
-3. **A numeric inventory, and a verifier that has been shown to reject us.** Every
-   published figure carries its numerator, denominator, sampling unit, interval, method,
-   and a function that recomputes it.
+3. **A numeric inventory, and a verifier that has been shown to reject us.** The
+   inventory carries **44** recorded values with their numerator, denominator, sampling
+   unit, interval, method, and a function that recomputes each — **32** recomputed from
+   raw data and **12** re-read from derived k-sweep CSVs. ⚠ v4 correction (Astra V4-05):
+   earlier versions said "every published figure". They do not cover every figure, every
+   interval, or any prose, and the distinction between a raw recomputation and a re-read
+   of a derived file matters; `python inventory.py --check` prints the 44/32/12 split.
 
    ⚠ v3 correction, and the most important one in this paper. v1 and v2 claimed that
    "a single command re-checks the whole paper" and that "a stale or altered source fails

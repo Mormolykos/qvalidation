@@ -5,7 +5,7 @@
    the analysis could not have been tuned to the result, and anyone can check the order
    with `git log --diff-filter=A -- prereg_analysis.py results/raw/prereg`.
 
-IMPLEMENTS, WITHOUT DEVIATION
+IMPLEMENTS THE PRE-REGISTERED RULES, WITH ONE DECLARED NUMERICAL TOLERANCE
     §5.1 estimated long-run change = ratio of arm means; 95% percentile bootstrap over
          seeds, resampled JOINTLY across the paired arms, B = 4000. Never called ground
          truth.
@@ -13,6 +13,23 @@ IMPLEMENTS, WITHOUT DEVIATION
          NO_REGRESSION if entirely below, else UNRESOLVED. Unresolved circuits are
          EXCLUDED from the error-rate analysis and reported as unresolved. Never
          reclassified.
+
+         ⚠ THE COMPARISON IS NOT LITERAL STRICT ORDERING (Astra A12, restated V4-09).
+         "Entirely above" is implemented as `(c_lo - t) > TIE_EPS` with TIE_EPS = 1e-9,
+         not as `c_lo > t`. §5.2 declares the threshold inclusive and an exact tie
+         UNRESOLVED, and float arithmetic does not give that for free: with A = 100 and
+         B = 110 the change is mathematically exactly +10%, but `110/100 - 1` evaluates
+         to 0.10000000000000009, which a literal comparison calls REGRESSION.
+
+         The tolerance is a POLICY, and it has a cost that is stated rather than hidden:
+         an endpoint strictly above or below the cut but within 1e-9 of it is classified
+         UNRESOLVED, so the rule is "inclusive threshold with a 1e-9 tie band", not
+         "strictly above". Astra demonstrated this at A = 1e10, B = 1.1e10 ± 1.
+
+         It moves no recorded result. The closest CI endpoint to the threshold anywhere
+         in the 39 circuits is 2.3e-3 — 2.3 million times the band — and
+         `tests/test_threshold_ties.py` asserts that margin, so a future data set that
+         narrowed it would fail rather than pass silently.
     §5.3 error rate: false negative 1 - P(call) for REGRESSION, false positive P(call)
          for NO_REGRESSION. 95% seed bootstrap, B = 400.
     §5.4 BOUNDARY flag when the estimated change is within 3 pp of the threshold;

@@ -1,0 +1,69 @@
+[
+  {
+    "case": "comments",
+    "stage12": 1,
+    "build": 0,
+    "stage13": 0,
+    "pdf_pages": 12,
+    "text_has_false_summary": false,
+    "text_has_false_percentage": false,
+    "text_has_zero_words": false
+  },
+  {
+    "case": "duplicate_tables",
+    "stage12": 1,
+    "stage13": 1,
+    "pdf_pages": 12,
+    "text_has_false_summary": false,
+    "text_has_false_percentage": false,
+    "text_has_zero_words": false
+  },
+  {
+    "case": "false_abstract",
+    "stage12": 0,
+    "build": 0,
+    "stage13": 0,
+    "pdf_pages": 12,
+    "text_has_false_summary": true,
+    "text_has_false_percentage": false,
+    "text_has_zero_words": false
+  },
+  {
+    "case": "false_percentage",
+    "stage12": 0,
+    "build": 0,
+    "stage13": 0,
+    "pdf_pages": 12,
+    "text_has_false_summary": false,
+    "text_has_false_percentage": true,
+    "text_has_zero_words": false
+  },
+  {
+    "case": "hidden_div",
+    "stage12": 0,
+    "build": 0,
+    "stage13": 0,
+    "pdf_pages": 12,
+    "text_has_false_summary": false,
+    "text_has_false_percentage": false,
+    "text_has_zero_words": true
+  },
+  {
+    "case": "stale_pdf",
+    "stage12": 0,
+    "stage13": 1,
+    "pdf_pages": 12,
+    "text_has_false_summary": false,
+    "text_has_false_percentage": false,
+    "text_has_zero_words": false
+  },
+  {
+    "case": "bundled_old",
+    "stage12": 0,
+    "stage13": 0,
+    "pdf_pages": 12,
+    "text_has_false_summary": false,
+    "text_has_false_percentage": false,
+    "text_has_zero_words": false
+  }
+]

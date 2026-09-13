@@ -29,12 +29,38 @@ CANONICAL BYTES
     check gives the same answer under core.autocrlf true or false. v3's manifest hashed
     working-tree bytes and would have failed for every verifier on Linux or macOS.
 
-OFFLINE DISTRIBUTION
+OFFLINE DISTRIBUTION — AND WHAT IT DOES *NOT* ESTABLISH (Astra V4-06)
     A zip archive has no git objects. `--write-anchor` therefore emits
     `results/raw/V2_EVIDENCE_ANCHOR.json` **read out of the v2 commit**, never out of the
     working tree, so the anchor cannot be refreshed to match tampered files by anyone who
     does not also hold the v2 history. The checker prefers git and falls back to the
     anchor, saying which authority it used.
+
+    That fallback is a WEAKER contract, and this file used to report it in the same words
+    as the strong one. It is not:
+
+      WITH v2 HISTORY   the evidence is compared to objects an edit to the working tree
+                        cannot reach. Changing the data means rewriting history at
+                        17e08f3e, which changes the commit id printed in every published
+                        artifact. This IS historical identity.
+      WITHOUT IT        the evidence is compared to a JSON file shipped beside it, whose
+                        only claim to authority is a commit id it writes about itself.
+                        Someone who changes both is not detected, and CANNOT be: a
+                        transcript travelling with the data it describes authenticates
+                        nothing. This is agreement with a supplied transcript, and the
+                        success message now says exactly that.
+
+    Astra confirmed the current transcript is correct against the real v2 objects and
+    recorded its SHA-256 as cc31e9b2f43d9a4ca6332e0e300e7f0c391c59c17dfe32804269800446ab9827
+    in `audits/2026-09-13-astra-v4/`. That hash is an EXTERNAL binding, published by a
+    third party, and it is the kind of thing the offline mode would need. This file does
+    not contain it, because a reference stored next to the transcript it authenticates
+    would have precisely the defect described above.
+
+CANONICAL CONTENT, NOT BYTES
+    The comparison is on LF-normalised content, so it is portable across checkout
+    policies. That means it establishes canonical-content identity, not byte identity of
+    an arbitrary checkout, and the success message says "canonical content".
 
 USAGE
     python v2_anchor.py                 # verify current evidence against v2
@@ -100,12 +126,22 @@ def write_anchor():
         if blob is None:
             raise SystemExit(f"cannot read {p} from {V2[:8]}")
         files[p] = {"sha256": hashlib.sha256(blob).hexdigest(), "bytes": len(blob)}
+    n_arm_w = sum(1 for k in files if "_scatter_parts" not in k)
     doc = {
-        "_what": "SHA-256 of every primary raw file AS PUBLISHED IN v2, read from git "
-                 "objects at the commit below — never from the working tree.",
+        "_what": f"SHA-256 of every anchored raw evidence file AS PUBLISHED IN v2, read "
+                 f"from git objects at the commit below — never from the working tree. "
+                 f"{n_arm_w} of these are primary measurement arms (39 circuits x 2) and "
+                 f"{len(files) - n_arm_w} are the per-process fragments those were merged "
+                 f"from: the same observations before merge, NOT additional measurements.",
         "_authority": "The v2 git objects are the authority. This file is a transcript "
                       "for environments without git history (a zip archive). If the two "
                       "ever disagree, git wins and this file is wrong.",
+        "_not_authenticated_by_itself": "Checking evidence against this file establishes "
+                                        "agreement with THIS FILE, not historical "
+                                        "authenticity. A transcript shipped beside the "
+                                        "data it describes cannot authenticate it; that "
+                                        "needs the v2 objects, or an externally "
+                                        "published hash of this transcript.",
         "_rule": "Regenerating this from current files instead of from v2 would destroy "
                  "the only property it has. --write-anchor reads v2 objects and refuses "
                  "to run without them.",
@@ -129,13 +165,16 @@ def verify():
         authority = f"git objects at {V2[:12]}"
     else:
         if not os.path.isfile(ANCHOR):
-            return [f"no git history for {V2[:12]} and no {os.path.basename(ANCHOR)}; "
-                    f"historical identity cannot be established"]
+            return ([f"no git history for {V2[:12]} and no {os.path.basename(ANCHOR)}; "
+                     f"historical identity cannot be established"], False)
         doc = json.load(open(ANCHOR, encoding="utf-8"))
         if doc.get("v2_commit") != V2:
-            return [f"anchor names commit {doc.get('v2_commit')}, expected {V2}"]
+            return ([f"anchor names commit {doc.get('v2_commit')}, expected {V2}"], False)
         want = {p: e["sha256"] for p, e in doc["files"].items()}
-        authority = f"offline anchor bound to {V2[:12]} (no git history available)"
+        authority = (f"the SUPPLIED TRANSCRIPT {os.path.basename(ANCHOR)}, which names "
+                     f"commit {V2[:12]} — no git history is available here, so this "
+                     f"run establishes agreement with that transcript and NOT the "
+                     f"historical authenticity of the evidence")
     print(f"  authority: {authority}")
 
     fails = []
@@ -171,7 +210,7 @@ def verify():
     print(f"  {len(here)} anchored evidence files compared against v2")
     print(f"    = {n_arm} primary measurement arms (39 circuits x 2) "
           f"+ {n_frag} per-process fragments they were merged from")
-    return fails
+    return fails, use_git
 
 
 def main():
@@ -182,7 +221,7 @@ def main():
     if args.write_anchor:
         write_anchor()
         return
-    fails = verify()
+    fails, use_git = verify()
     if fails:
         print(f"\n  ✗ {len(fails)} violation(s):\n")
         for f in fails[:30]:
@@ -191,7 +230,20 @@ def main():
             print(f"      … and {len(fails) - 30} more")
         print()
         sys.exit(1)
-    print("\n  ✓ primary evidence is byte-identical to v2 as published.\n")
+    # Two different statements, because two different things were checked (Astra V4-06).
+    if use_git:
+        print("\n  ✓ HISTORICAL IDENTITY: the canonical content of the primary evidence "
+              "is\n    identical to the objects committed at v2. Establishing this "
+              "falsely would\n    require rewriting history at "
+              f"{V2[:12]}, which changes the commit id.\n")
+    else:
+        print("\n  ✓ the primary evidence matches the supplied transcript "
+              f"{os.path.basename(ANCHOR)}.\n"
+              "    HISTORICAL AUTHENTICITY IS NOT ESTABLISHED HERE. A transcript "
+              "distributed\n    beside the data it describes cannot authenticate it: "
+              "anyone who changed\n    both would pass this check. To establish "
+              "identity, run this where the v2\n    git objects are reachable, or "
+              "compare the transcript against an externally\n    published hash of it.\n")
 
 
 if __name__ == "__main__":

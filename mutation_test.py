@@ -17,6 +17,27 @@ HISTORY, BECAUSE IT IS THE POINT
     attacks its author imagined, and the author is the worst-placed person to imagine
     them. This file is the record of what has actually been tried, not a proof of safety.
 
+    v4 was then defeated twice more by the next audit, and P-U below are those cases:
+
+      R  all 36 saved risk intervals -> NaN        13/13 PASS   -> derived (V4-01)
+      U  the PDF a reader opens says 99.9 where    13/13 PASS   -> pdf     (V4-02)
+         the manuscript says 10.9
+      P  correct table inside a hidden <div>       stage 12 = 0 -> rendered (V4-03)
+      Q  7/26 attributed to the wrong endpoint     stage 12 = 0 -> rendered (V4-03)
+      S  n_seeds = 200.9, k = 3.9                  accepted     -> derived (V4-01)
+      T  a duplicated circuit row                  accepted     -> derived (V4-01)
+
+A NONZERO EXIT IS NOT A CATCH (Astra V4-07)
+    This file used to accept any nonzero return code as proof that a layer caught a
+    mutation. It does not distinguish "the checker rejected the artifact" from "the
+    checker crashed", so a fixture that broke an import would have been scored as
+    successful regression coverage. Every layer prints `✗` when it REJECTS and prints no
+    `✗` when it dies, so the two are separated here and only a rejection counts.
+
+    On top of that, every mutation declares the REASON it must be rejected for, and the
+    catching layer's output must contain it. A layer that fails for an unrelated reason
+    is reported as MISSED, because that is what it is.
+
 SAFETY
     Every mutation runs in a throwaway `git archive` snapshot in the system temp
     directory. Nothing here writes to the repository, and it refuses to run if the
@@ -49,12 +70,18 @@ LAYERS = {                      # name -> script
     "anchor":    "v2_anchor.py",
     "derived":   "derived_binding.py",
     "rendered":  "manuscript_binding.py",
+    "pdf":       "pdf_binding.py",
 }
 # `derived` replays the original 400x400,000 Monte-Carlo bootstrap and costs about four
-# minutes. Running it for all eleven mutations would take three quarters of an hour to
-# learn nothing new, so it runs where it is REQUIRED to catch the attack, and where it is
-# skipped the table says so rather than printing a pass it did not earn.
-SLOW = {"derived"}
+# minutes. Running it for all mutations would take an hour to learn nothing new, so it
+# runs where it is REQUIRED to catch the attack, and where it is skipped the table says
+# so rather than printing a pass it did not earn. `pdf` is skipped for the same reason:
+# it needs the built artifact, which only the PDF mutations disturb.
+SLOW = {"derived", "pdf"}
+# publish/paper.pdf is the artifact stage 13 validates and is not tracked in git, so a
+# `git archive` snapshot does not contain it. Copy it in, or the pdf layer exits nonzero
+# because the file is missing -- which is an infrastructure error, not a detection.
+UNTRACKED_ARTIFACTS = ["publish/paper.pdf", "publish/paper.html"]
 
 
 def snapshot(dst):
@@ -64,6 +91,12 @@ def snapshot(dst):
     p = subprocess.run(["tar", "-x", "-C", dst], input=tar.stdout, capture_output=True)
     if p.returncode:
         raise SystemExit("tar failed: " + p.stderr.decode()[:300])
+    for rel in UNTRACKED_ARTIFACTS:
+        src = os.path.join(ROOT, rel.replace("/", os.sep))
+        if os.path.isfile(src):
+            dstf = os.path.join(dst, rel.replace("/", os.sep))
+            os.makedirs(os.path.dirname(dstf), exist_ok=True)
+            shutil.copy2(src, dstf)
 
 
 def run(snap, script):
@@ -74,6 +107,18 @@ def run(snap, script):
     p = subprocess.run([PY, *parts], cwd=snap, capture_output=True, text=True,
                        env=env, timeout=3600)
     return p.returncode, (p.stdout or "") + (p.stderr or "")
+
+
+# REJECTED / PASSED / ERROR -- the distinction Astra V4-07 asked for. A layer that
+# rejects prints `✗` and exits nonzero. A layer that dies exits nonzero and prints no
+# `✗`, and that is not evidence of anything except a broken fixture.
+REJECTED, PASSED, ERROR = "REJECTED", "PASSED", "ERROR"
+
+
+def classify(code, out):
+    if code == 0:
+        return PASSED
+    return REJECTED if "✗" in out else ERROR
 
 
 # ---------------------------------------------------------------- the mutations
@@ -231,20 +276,189 @@ def mut_N(snap):
     return "one raw count +1, and the manifest regenerated to match"
 
 
+def _csv_rows(snap):
+    p = os.path.join(snap, SUMMARY)
+    rows = list(csv.DictReader(open(p, encoding="utf-8")))
+    return p, rows, list(rows[0].keys())
+
+
+def _csv_write(p, rows, cols):
+    with open(p, "w", encoding="utf-8", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=cols)
+        w.writeheader()
+        w.writerows(rows)
+
+
+def mut_R(snap):
+    """ASTRA V4-01: every saved risk interval bound -> NaN. 13/13 PASS against v4."""
+    p, rows, cols = _csv_rows(snap)
+    n = 0
+    for r in rows:
+        if r.get("error_ci_lo") not in ("", None):
+            r["error_ci_lo"], r["error_ci_hi"] = "NaN", "NaN"
+            n += 1
+    _csv_write(p, rows, cols)
+    return f"all {n} saved risk intervals -> NaN"
+
+
+def mut_S(snap):
+    """ASTRA V4-01: fractional integer metadata, truncated by int(float(...))."""
+    p, rows, cols = _csv_rows(snap)
+    for r in rows:
+        r["n_seeds"], r["k"] = "200.9", "3.9"
+    _csv_write(p, rows, cols)
+    return "n_seeds -> 200.9 and k -> 3.9 on every row"
+
+
+def mut_T(snap):
+    """ASTRA V4-01: a duplicated circuit row, collapsed by a dict before counting."""
+    p, rows, cols = _csv_rows(snap)
+    rows.append(dict(rows[0]))
+    _csv_write(p, rows, cols)
+    return f"circuit {rows[0]['circuit']} duplicated as a 40th row"
+
+
+def mut_P(snap):
+    """ASTRA V4-03: canonical table inside a hidden div, false statement left visible."""
+    p = os.path.join(snap, "PAPER.md")
+    t = open(p, encoding="utf-8").read()
+    real = ("| risk > 0 (pre-registered endpoint) | 12 / 26 | 46.2% | [28.8, 64.5] |\n"
+            "| risk ≥ 5% | 7 / 26 | 26.9% | [13.7, 46.1] |\n"
+            "| risk ≥ 10% | 4 / 26 | 15.4% | [6.2, 33.5] |")
+    if real not in t:
+        raise SystemExit("P: canonical table not found verbatim")
+    fake = ("| risk > 0 (pre-registered endpoint) | 0 / 26 | 0.0% | [0.0, 0.0] |\n"
+            "| risk ≥ 5% | 0 / 26 | 0.0% | [0.0, 0.0] |\n"
+            "| risk ≥ 10% | 0 / 26 | 0.0% | [0.0, 0.0] |")
+    t = t.replace(real, fake + '\n\n<div style="display:none">\n\n' + real +
+                  "\n\n</div>\n", 1)
+    open(p, "w", encoding="utf-8").write(t)
+    return "correct table moved into a display:none div, 0/26 left visible"
+
+
+def mut_Q(snap):
+    """ASTRA V4-03: a true numerator attributed to the wrong endpoint in the abstract."""
+    p = os.path.join(snap, "PAPER.md")
+    t = open(p, encoding="utf-8").read()
+    old = "Seven of 26 eligible circuits\ncarry a risk of at least 5%"
+    if old not in t:
+        raise SystemExit("Q: abstract sentence not found verbatim")
+    new = ("Seven of 26 eligible circuits have a risk interval that excludes zero. "
+           "Seven of 26 eligible circuits\ncarry a risk of at least 5%")
+    open(p, "w", encoding="utf-8").write(t.replace(old, new, 1))
+    return "abstract attributes 7/26 to interval exclusion (true of >=5%, not of this)"
+
+
+class Skip(Exception):
+    """This fixture cannot be BUILT here. Not a pass, not a failure — an absence."""
+
+
+CHROME = [r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+          r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"]
+
+
+def mut_U(snap):
+    """ASTRA V4-02: the PDF a reader opens says 99.9 where the manuscript says 10.9.
+
+    The substitution has to happen in the rendered HTML and then go through Chromium,
+    because the text in the PDF is stored as hex glyph codes -- there is no literal
+    "10.9" in the byte stream to patch. That is why this fixture rebuilds rather than
+    edits, and why it needs the same two tools publish/build_paper.sh needs.
+    """
+    pandoc = shutil.which("pandoc")
+    chrome = next((c for c in CHROME if os.path.isfile(c)), None)
+    if not pandoc or not chrome:
+        raise Skip("needs pandoc and Chrome — the PDF stores text as glyph codes, so "
+                   "the false value can only be introduced by rebuilding")
+    html = os.path.join(snap, "publish", "paper.html")
+    pdf = os.path.join(snap, "publish", "paper.pdf")
+    os.makedirs(os.path.dirname(html), exist_ok=True)
+    r = subprocess.run([pandoc, "PAPER.md", "--from=markdown+pipe_tables+raw_html",
+                        "--to=html5", "--standalone", "--css=paper_style.css",
+                        "--output=publish/paper.html"],
+                       cwd=snap, capture_output=True, text=True)
+    if r.returncode:
+        raise Skip("pandoc failed: " + (r.stderr or "")[:150])
+    t = open(html, encoding="utf-8").read()
+    n = t.count("10.9")
+    if not n:
+        raise SystemExit("U: no 10.9 in the rendered HTML to substitute")
+    open(html, "w", encoding="utf-8").write(t.replace("10.9", "99.9"))
+    url = "file:///" + html.replace("\\", "/")
+    r = subprocess.run([chrome, "--headless=new", "--disable-gpu", "--no-sandbox",
+                        f"--user-data-dir={os.path.join(snap, '_chrome')}",
+                        f"--print-to-pdf={pdf}", "--print-to-pdf-no-header",
+                        "--no-pdf-header-footer", "--virtual-time-budget=15000", url],
+                       cwd=snap, capture_output=True, text=True, timeout=300)
+    if not os.path.isfile(pdf) or os.path.getsize(pdf) < 10000:
+        raise Skip("Chromium produced no PDF: " + (r.stderr or "")[:150])
+    return (f"{n} occurrence(s) of 10.9 -> 99.9 in the rendered HTML, then rebuilt "
+            f"through publish/build_paper.sh's own pandoc + Chromium path. PAPER.md "
+            f"and the raw data are untouched")
+
+
+def mut_V(snap):
+    """An interval that is INTERNALLY VALID but not the one the analysis produces.
+
+    D, H and R are all now stopped by the schema and self-consistency contracts before
+    the replay runs, which is stricter but leaves the replay itself unexercised. This
+    mutation is the one that only the replay can catch: the bound stays finite, stays in
+    [0, 1], stays above the point estimate and leaves every flag correct, so nothing about
+    the row is self-contradictory. It is simply not what 400 x 400,000 resamples give.
+    """
+    p, rows, cols = _csv_rows(snap)
+    for r in rows:
+        if r.get("error_ci_hi") not in ("", None) and float(r["error_ci_hi"]) < 0.98:
+            r["error_ci_hi"] = f"{float(r['error_ci_hi']) + 0.01:.6f}"
+            target = r["circuit"]
+            break
+    else:
+        raise SystemExit("V: no row with headroom to widen")
+    _csv_write(p, rows, cols)
+    return f"{target} error_ci_hi widened by 0.01 — valid interval, wrong interval"
+
+
 MUTATIONS = [
-    ("A", "whole raw arm -> constant", mut_A, {"science", "integrity", "anchor"}),
-    ("B", "one raw count +1", mut_B, {"integrity", "anchor"}),
-    ("C", "raw x1.09, verdict moves", mut_C, {"science", "integrity", "anchor"}),
-    ("D", "derived summary point risk", mut_D, {"derived"}),
-    ("E", "visible literal 7 -> 9", mut_E, {"science", "rendered"}),
-    ("F", "ASTRA: raw + manifest regenerated", mut_F, {"anchor"}),
-    ("H", "ASTRA: all saved intervals faked", mut_H, {"derived"}),
-    ("K", "ASTRA: false visible table, correct rows hidden", mut_K, {"rendered"}),
-    ("L", "second contradicting visible table", mut_L, {"rendered"}),
-    ("M", "wrong denominator only", mut_M, {"rendered"}),
-    ("N", "raw + manifest regenerated together", mut_N, {"anchor"}),
+    # id  label                                fn      layer -> the reason it must reject for.
+    # The reason is asserted, not just the exit code (Astra V4-07). It is quoted from the
+    # message the layer actually prints, so a layer that starts failing somewhere else
+    # stops counting as coverage of this mutation.
+    ("A", "whole raw arm -> constant", mut_A,
+     {"science": "RAW DATA AND MANUSCRIPT DISAGREE",
+      "integrity": "RAW EVIDENCE WAS EDITED", "anchor": "ANCHOR VIOLATED"}),
+    ("B", "one raw count +1", mut_B,
+     {"integrity": "RAW EVIDENCE WAS EDITED", "anchor": "ANCHOR VIOLATED"}),
+    ("C", "raw x1.09, verdict moves", mut_C,
+     {"science": "RAW DATA AND MANUSCRIPT DISAGREE",
+      "integrity": "RAW EVIDENCE WAS EDITED", "anchor": "ANCHOR VIOLATED"}),
+    ("D", "derived summary point risk", mut_D,
+     {"derived": "lies outside its own interval"}),
+    ("E", "visible literal 7 -> 9", mut_E,
+     {"science": "RAW DATA AND MANUSCRIPT DISAGREE", "rendered": "numerator 9"}),
+    ("F", "ASTRA: raw + manifest regenerated", mut_F, {"anchor": "ANCHOR VIOLATED"}),
+    ("H", "ASTRA: all saved intervals faked", mut_H,
+     {"derived": "lies outside its own interval"}),
+    ("K", "ASTRA: false visible table, correct rows hidden", mut_K,
+     {"rendered": "numerator 0"}),
+    ("L", "second contradicting visible table", mut_L,
+     {"rendered": "visible tables carry the primary endpoint rows"}),
+    ("M", "wrong denominator only", mut_M, {"rendered": "denominator 39"}),
+    ("N", "raw + manifest regenerated together", mut_N, {"anchor": "ANCHOR VIOLATED"}),
+    ("P", "ASTRA: canonical table inside a hidden div", mut_P,
+     {"rendered": "outside the declared domain"}),
+    ("Q", "ASTRA: 7/26 attributed to the wrong endpoint", mut_Q,
+     {"rendered": "attributes 7 of 26"}),
+    ("R", "ASTRA: all saved intervals -> NaN", mut_R, {"derived": "is not finite"}),
+    ("S", "ASTRA: fractional n_seeds and k", mut_S,
+     {"derived": "not an integer literal"}),
+    ("T", "ASTRA: a duplicated circuit row", mut_T, {"derived": "already appears"}),
+    ("U", "ASTRA: PDF says 99.9 where the source says 10.9", mut_U,
+     {"pdf": "appears NOWHERE in PAPER.md"}),
+    ("V", "a valid interval that the replay does not produce", mut_V,
+     {"derived": "error_ci_hi"}),
 ]
 DEFEATED_V3 = {"F", "H", "K"}
+DEFEATED_V4 = {"P", "Q", "R", "S", "T", "U"}
 
 
 def main():
@@ -264,8 +478,8 @@ def main():
     if os.path.realpath(base).startswith(os.path.realpath(ROOT)):
         raise SystemExit("refusing: temp path is inside the repository")
 
-    results, failures = [], []
-    order = ["science", "integrity", "anchor", "derived", "rendered"]
+    results, failures, skipped = [], [], []
+    order = ["science", "integrity", "anchor", "derived", "rendered", "pdf"]
     try:
         print(f"\n  scratch: {base}")
         print("  the repository is never written to by this script\n")
@@ -273,51 +487,84 @@ def main():
         snap = os.path.join(base, "pristine")
         os.makedirs(snap)
         snapshot(snap)
-        ctrl = {n: run(snap, LAYERS[n])[0] for n in order}
-        print("  CONTROL  " + "  ".join(
-            f"{n}={'PASS' if c == 0 else 'FAIL'}" for n, c in ctrl.items()))
-        if any(ctrl.values()):
-            failures.append("control: a pristine snapshot did not pass every layer")
+        ctrl = {n: classify(*run(snap, LAYERS[n])) for n in order}
+        print("  CONTROL  " + "  ".join(f"{n}={s}" for n, s in ctrl.items()))
+        for n, s in ctrl.items():
+            if s != PASSED:
+                failures.append(f"control: a pristine snapshot did not pass {n} ({s})")
 
-        hdr = f"\n  {'id':<4}{'mutation':<44}" + "".join(f"{n:<11}" for n in order)
-        print(hdr)
-        for mid, label, fn, must in muts:
+        print(f"\n  {'id':<4}{'mutation':<44}" + "".join(f"{n:<11}" for n in order))
+        for mid, label, fn, reasons in muts:
+            must = set(reasons)
             snap = os.path.join(base, f"m{mid}")
             os.makedirs(snap)
             snapshot(snap)
-            what = fn(snap)
-            codes = {}
+            try:
+                what = fn(snap)
+            except Skip as exc:
+                skipped.append(f"{mid} ({label}): {exc}")
+                print(f"  {mid:<4}{(label + ' — SKIPPED')[:42]:<44}"
+                      f"fixture could not be built here")
+                continue
+            state, outs = {}, {}
             for n in order:
                 if n in SLOW and n not in must:
-                    codes[n] = None          # not run; see SLOW
+                    state[n] = None          # not run; see SLOW
                 else:
-                    codes[n] = run(snap, LAYERS[n])[0]
-            caught = {n for n, c in codes.items() if c}
-            star = " *" if mid in DEFEATED_V3 else ""
-            cell = lambda c: "—" if c is None else ("FAIL" if c else "pass")
+                    code, out = run(snap, LAYERS[n])
+                    state[n], outs[n] = classify(code, out), out
+            caught = {n for n, s in state.items() if s == REJECTED}
+            errored = {n for n, s in state.items() if s == ERROR}
+            star = " *" if mid in DEFEATED_V3 else (" †" if mid in DEFEATED_V4 else "")
+            cell = {None: "—", PASSED: "pass", REJECTED: "REJECT", ERROR: "error"}
             print(f"  {mid:<4}{(label + star)[:42]:<44}" +
-                  "".join(f"{cell(codes[n]):<11}" for n in order))
+                  "".join(f"{cell[state[n]]:<11}" for n in order))
+
+            # the reason, not just the exit code (V4-07)
+            why = {n: (reasons[n] in outs.get(n, "")) for n in must & caught}
             results.append({"id": mid, "mutation": what, "required": sorted(must),
-                            "caught_by": sorted(caught)})
-            missed = must - caught
-            if missed:
-                failures.append(f"{mid}: NOT caught by {', '.join(sorted(missed))}")
+                            "caught_by": sorted(caught), "reasons": reasons,
+                            "reason_seen": sorted(n for n, ok in why.items() if ok)})
+            for n in sorted(must - caught):
+                failures.append(
+                    f"{mid}: {n} did not REJECT it — "
+                    f"{'it errored out, which is not a detection' if n in errored else 'it passed'}")
+            for n in sorted(must & caught):
+                if not why[n]:
+                    failures.append(f"{mid}: {n} rejected it, but not for the expected "
+                                    f"reason — {reasons[n]!r} is absent from its output")
+            if errored - must:
+                failures.append(f"{mid}: {', '.join(sorted(errored - must))} errored; a "
+                                f"fixture must not break a layer it does not target")
             if not caught:
                 failures.append(f"{mid}: caught by NOTHING — this corruption would ship")
-        print("\n  * defeated v3 with a full 9/9 PASS\n")
+        print("\n  * defeated v3 with a full 9/9 PASS    † defeated v4 (Astra, "
+              "2026-09-13)\n")
         for r in results:
             print(f"    {r['id']}: {r['mutation']}")
+            for n in sorted(r["reasons"]):
+                mark = "✓" if n in r["reason_seen"] else "✗"
+                print(f"        {mark} {n}: rejected for {r['reasons'][n]!r}")
     finally:
         shutil.rmtree(base, ignore_errors=True)
 
     print()
+    if skipped:
+        # Named, never silent. A mutation that did not run is a hole in the coverage this
+        # file claims, and a reader of the output is entitled to see which one.
+        print(f"  ⚠ {len(skipped)} mutation(s) NOT EXERCISED on this machine — the "
+              f"coverage below\n    excludes them:")
+        for s in skipped:
+            print(f"      {s}")
+        print()
     if failures:
         print("  ✗ MUTATION TEST FAILED:")
         for f in failures:
             print(f"      {f}")
         sys.exit(1)
-    print("  ✓ every mutation is caught by the layer that must catch it, and the")
-    print("    pristine snapshot stays green.\n")
+    print(f"  ✓ {len(results)} of {len(muts)} mutations REJECTED — not merely exited "
+          f"on — by the\n    layer that must catch each, for the reason it declares, "
+          f"and the pristine\n    snapshot stays green.\n")
 
 
 if __name__ == "__main__":

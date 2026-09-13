@@ -1,0 +1,13 @@
+{
+  "target": "4531d97d754c9f116db567e1908cbb59d6016eb2",
+  "detached_head": "4531d97d754c9f116db567e1908cbb59d6016eb2",
+  "symbolic_head_returncode": 1,
+  "tracked_status": "",
+  "origin": "https://github.com/Mormolykos/qvalidation.git",
+  "fetched_master": "4531d97d754c9f116db567e1908cbb59d6016eb2",
+  "python": "3.10.10 | packaged by Anaconda, Inc. | (main, Mar 21 2023, 18:39:17) [MSC v.1916 64 bit (AMD64)]",
+  "executable": "C:\\Users\\User\\Desktop\\research\\qvalidation\\envs\\bp202\\Scripts\\python.exe",
+  "numpy": "2.2.6",
+  "scipy": "1.15.3",
+  "publication_artifacts": "not yet supplied"
+}

@@ -14,13 +14,21 @@ to support any argument.
 still read as live findings and several of them are not. Do not quote a number from this
 file without checking it here first.
 
+**⚠ [`PAPER.md`](PAPER.md) IS THE AUTHORITY, not this file and not the table below.**
+This is the research log: it records what was tried, including what was wrong. Where it
+and the manuscript disagree, the manuscript is right. The rows below were audited against
+the manuscript on 2026-09-13 (Astra V4-04) and four were found to be advertising
+superseded values as current — they are marked CORRECTED or NARROWED with what changed.
+Sections further down have **not** been audited that way and are historical record;
+`V3_CORRECTION_LEDGER.md` and `V4_ASTRA_CORRECTION_LEDGER.md` list every correction.
+
 | status | claim | where |
 |---|---|---|
 | ✅ **LIVE** | Benchpress passes no `seed_transpiler` in any of its 8 SDK gyms | §33, source-verified |
 | ✅ **LIVE** | The transpiler seed is the dominant entropy source | §28, cross-process control |
-| ✅ **LIVE** | A fixed seed reproduces bit-identically; different seeds do not | §44, re-run from clean |
-| ⭐⭐ **LIVE** | **MECHANISM: risk is predicted by two measurable properties — is routing stochastic (Spearman +0.876) and how far θ sits from the cut (−0.833). All 13 deterministic circuits carry EXACTLY zero risk.** | §55 |
-| ⭐⭐ **LIVE** | **Among the 23 stochastic circuits, median ambiguity band 10.9 pp** (max 25.2) — θ-free, direction-free, version-pair-free | §55 |
+| ⚠ **NARROWED v4** | A fixed seed reproduces the **same integer gate counts** in every control we ran; different seeds do not. **"Bit-identically" is WITHDRAWN** — the recorded hashes identify the *input* circuit, so what is established is agreement on every compared integer, not identity of the compiled circuits | §44, re-run from clean |
+| ⚠ **NARROWED v4** | Risk is **associated with** two measurable properties — is routing stochastic (Spearman +0.876) and how far θ sits from the cut (−0.833). All 13 deterministic circuits carry exactly zero risk, which is arithmetic rather than evidence. **"MECHANISM" is WITHDRAWN**: the quantitative attribution died with the synthetic null in v3 and is not reinstated | §55 |
+| ⚠ **NARROWED v4** | **Among the 23 stochastic circuits, median ambiguity band 10.9 pp** (max 25.2) — θ-free and direction-free. **"Version-pair-free" is WITHDRAWN**: the band is constructed from the measured residuals of *this* version pair and is not independent of it | §55 |
 | ⭐ **LIVE** | `cc_n32` is miscalled with θ **18 points clear** of the threshold — not a proximity artifact | §55 |
 | ✅ **LIVE** | Operational levels: **4 of 26 circuits carry risk ≥10%**; 7 of 26 ≥5% | §55 |
 | ⛔ **WITHDRAWN as a headline** | any suite-level failure rate. 46.2% [17.4, 81.0] is underpowered (effective n = 11 families) and is now a descriptive count only | §55 R4 |
@@ -28,13 +36,13 @@ file without checking it here first.
 | ⛔ **CORRECTED** | §52's Wilson interval [28.8, 64.5] **assumed independence and was too narrow** — families are perfectly separated (all-hit or all-miss) | §54 F8 |
 | ✅ **LIVE** | Holds at **every threshold 5%–20%**, and **roughly doubles** under best-of-3 aggregation instead of mean | §54 |
 | ⭐ **LIVE** | **All three circuits named in issue #14402 show a measurable error rate**: `bv_n140` 24.4%, `bv_n280` 17.3% [11.6, 23.7], `knn_341` 4.7% [2.7, 7.7] — the latter two selected blind | §52 |
-| ⚠ **LIVE** | But **14 of 39 circuits are perfectly deterministic** (zero change, zero error) and the median eligible rate is **0.0000** — the phenomenon is concentrated, not universal | §52 |
+| ⚠ **CORRECTED v4** | But **13 of 39 circuits are perfectly deterministic** (zero spread in both arms, zero error) and the median eligible rate is **0.0000** — the phenomenon is concentrated, not universal. All 13 are eligible, so 13 of the 26. **"14 of 39" was wrong**: recomputing from raw gives 13 (Astra V4-04) | §52 |
 | ⭐ **LIVE** | **`bv_n140` on heavy-hex has a long-run change of +5.37% [+4.27, +6.50] and is FALSELY CALLED a ≥+10% regression 24.4% of the time [19.5, 31.1]** — 400 seeds across 21 processes | §50, §51 |
 | ✅ **LIVE** | That result **reproduces on a disjoint scattered seed set across 10 fresh processes** (22.6% vs 26.3%, CIs overlap) — the PRNG/process-state confound is removed | §51 |
-| ⭐ **LIVE** | **That false positive is NOT fixed by running more: pooled k=20 (~40 h compute) still leaves 3.74%** | §50, §51 |
+| ⭐ **LIVE** | **That false positive is NOT fixed by running more: pooled k=20 (~80 compute hours) still leaves 3.74%** — ⚠ v3 corrected ~40 h, which was wall-clock on two concurrent machines, not the compute total | §50, §51 |
 | ✅ **LIVE** | `bv_n140` on linear (+31.0% real regression) is MISSED 2.98% [1.59, 4.91] — but k=8 removes this one | §48, §49 |
 | ⭐ **LIVE** | #14402's own **+46.1%** for `bv_n140` is one draw from a range spanning **−10.5% to +100%**; the truth is **+31.0%** | §48 |
-| ✅ **LIVE** | #14402's numbers **reproduce independently** — within 0.5 pp and 2.4 pp on the two low-variance circuits | §48 |
+| ⚠ **CORRECTED v3/v4** | #14402's two low-variance circuits **compare closely** — `bv_n280` **+0.29 pp**, `knn_341` **−0.63 pp**. **"0.5 pp and 2.4 pp" was wrong**: the `knn_341` figure was misquoted and its difference has the wrong sign. And this is a numerical comparison at our configuration, not a reproduction — the issue's Benchpress revision and aggregation rule are not supplied | §48 |
 | ✅ **LIVE** | Unseeded 3-run comparison cannot resolve a change inside an **11.5–14.0 pp** window on heavy-hex (range across modelling choices) | §42, §47 |
 | ✅ **LIVE** | Topology ordering linear < square < heavy-hex | §42, direction-free |
 | ✅ **LIVE** | k=3 is external (quoted from #14402); no conclusion depends on it | §43 |

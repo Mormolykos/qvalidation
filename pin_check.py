@@ -19,6 +19,27 @@ CONTRACT
     stays as evidence of what was actually pinned at the time; this file supersedes the
     contract without editing the record.
 
+PREREQUISITE: BENCHPRESS_PATH MUST BE A GIT CHECKOUT (Astra V4-10)
+    This stage does two different things, and only one of them survives without history:
+
+      the five module hashes      computed over canonical (LF) bytes. `sweep_bp.py`'s
+                                  helper reproduces all five from the source files alone,
+                                  with or without `.git`. Astra confirmed this.
+      the identity of the source  requires git: the live commit, and whether tracked files
+                                  have been modified. Without `.git` the commit reads as
+                                  None and this stage FAILS — correctly, because five
+                                  matching hashes do not say which revision they came
+                                  from, only that five files have the expected content.
+
+    So: stage 1 requires a Benchpress *git checkout* at the pinned commit, not a copy of
+    the files. The no-history hashing is a helper capability, not a weaker mode of this
+    stage, and there is deliberately no flag to make it one — an archive mode that
+    reported PASS on unattributable source would be the same conflation this repository
+    has already had to repair in `v2_anchor.py`.
+
+    Astra measured both: clean pinned sparse checkouts pass under LF *and* CRLF; the
+    historyless copies reproduce 5/5 hashes and still exit 1 here.
+
 USAGE
     python pin_check.py
     python pin_check.py --write   # regenerate the canonical reference from git objects
@@ -66,7 +87,13 @@ def main():
     live = benchpress_pin()
 
     fails = []
-    if live["benchpress_commit"] != want_commit:
+    if live["benchpress_commit"] is None:
+        fails.append(
+            "BENCHPRESS_PATH has no git history, so the revision of this source cannot "
+            "be established. The five canonical hashes may still match — that says the "
+            "FILES have the expected content, not which commit they came from. Stage 1 "
+            "requires a git checkout at " + want_commit[:12] + "; see this file's header.")
+    elif live["benchpress_commit"] != want_commit:
         fails.append(f"commit {live['benchpress_commit']} != pinned {want_commit}")
     if live["benchpress_dirty"]:
         fails.append("the Benchpress checkout has modified tracked files")

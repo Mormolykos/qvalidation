@@ -1,0 +1,84 @@
+historical\README.md:20: | "independent of the version pair" (ambiguity band) | withdrawn v2 — the band inherits this pair's residuals |
+historical\README.md:23: | `knn_341` issue figure "+41.0%" | corrected v4 — the issue reports **+44.060%** |
+README.md:12: > each review was independent of the author and of the others, and that **every attack is
+README.md:29: `seed_transpiler` argument removes it at one run.
+README.md:39: **0.5 pp** and **2.4 pp**. Only the noisy one disagrees — which is what makes this seed
+README.md:61: | ⚠ but 14 of 39 circuits are perfectly deterministic | median eligible error rate **0.0000** | §52 |
+README.md:65: | #14402 reproduced, low-seed-spread circuits | `bv_n280` +0.5 pp, `knn_341` +2.4 pp | §48 |
+README.md:187: Five read-only checks — toolchain pin, test suite, inventory, replication, tautology
+README.md:188: proof — in about 45 seconds. Exit 0 means the repository is intact.
+historical\2026-09-04-v1-bundle\PAPER.md:39: change the three-run protocol cannot resolve in either direction, independent of the
+historical\2026-09-04-v1-bundle\PAPER.md:45: distribution its own protocol produces spanning −10.5% to +100.0%.
+historical\2026-09-04-v1-bundle\PAPER.md:67: the pre-registration mechanism, the numeric inventory that re-derives every published
+historical\2026-09-04-v1-bundle\PAPER.md:131: are `bv_n140-linear` +46%, `bv_n280-linear` +44% and `knn_341-linear` +41%.
+historical\2026-09-04-v1-bundle\PAPER.md:183: before any measurement existed. Commit order is verifiable
+historical\2026-09-04-v1-bundle\PAPER.md:193: heavy-hex runtime in a pre-existing census was ≤ 10 s. Runtime is independent of both θ
+historical\2026-09-04-v1-bundle\PAPER.md:305: 11-point-wide window around the threshold is unresolvable by a three-run comparison, in
+historical\2026-09-04-v1-bundle\PAPER.md:330: | `knn_341` | +41.0% | +43.4% | +2.4 pp | 1.0% |
+historical\2026-09-04-v1-bundle\PAPER.md:334: A single three-run comparison of that circuit — the issue's own protocol — returns
+historical\2026-09-04-v1-bundle\PAPER.md:401: hostile reviewers, and by a first-principles audit that re-derived every reported number
+historical\2026-09-04-v1-bundle\PAPER.md:434:    list and the analysis code before the data exists converts "we did not cherry-pick"
+historical\2026-09-04-v1-bundle\PAPER.md:436: 3. **A numeric inventory.** Every published figure carries its numerator, denominator,
+V4_ASTRA_CORRECTION_LEDGER.md:25: Each defeats a different layer, and none of them touches the science: the endpoint
+V4_ASTRA_CORRECTION_LEDGER.md:36: | **A03** | MAJOR | a manifest beside the evidence cannot detect a change to both | **ACCEPTED** — reproduced | `v2_anchor.py` anchors to **v2's git objects** at `17e08f3`, on canonical LF bytes, over all **858** anchored evidence files — **78 primary measurement arms** (39 circuits x 2) plus the 780 per-process fragments they were merged from, which are the same observations before merge and not additional measurements. Offline transcript written *from* v2 objects, refusing to run without them. Self-consistency and historical identity are now separate contracts and the failure message says which was violated | mutations **F**, **N** → FAIL | No | **CLOSED** |
+V4_ASTRA_CORRECTION_LEDGER.md:37: | **A04** | MAJOR | withdrawn claims still active in the staged archive | **ACCEPTED** | `bundle/` → `historical/2026-09-04-v1-bundle/` with a SUPERSEDED banner and a README listing all seven withdrawn claims. `SETTLED.json` S11 and S04 no longer offer withdrawn evidence as support and say so explicitly. Stale `+41%` removed from `decision_error.py` | — | No | **CLOSED** |
+V4_ASTRA_CORRECTION_LEDGER.md:38: | **A05** | MAJOR | categorical "unresolvable" language survived its own correction | **ACCEPTED** | §4.3 restated as the 5%–95% transition width under the stated model, pair, k and threshold; asymmetry noted | — | No | **CLOSED** |
+V4_ASTRA_CORRECTION_LEDGER.md:40: | **A07** | MAJOR | issue comparison asserted an unavailable protocol; `+41%` survived in prose | **ACCEPTED** — v3 fixed the table and not the background | `PAPER.md` §2.2 and `decision_error.py` now carry **+44.060%**; protocol-reproduction wording removed | — | **No** — a corrected transcription | **CLOSED** |
+V4_ASTRA_CORRECTION_LEDGER.md:49: **14 of 14 accepted. None independently rejected.** Four were re-derived here rather than
+RESEARCH_LANDSCAPE.md:31: | ⚠ **LIVE** | But **14 of 39 circuits are perfectly deterministic** (zero change, zero error) and the median eligible rate is **0.0000** — the phenomenon is concentrated, not universal | §52 |
+RESEARCH_LANDSCAPE.md:37: | ✅ **LIVE** | #14402's numbers **reproduce independently** — within 0.5 pp and 2.4 pp on the two low-variance circuits | §48 |
+RESEARCH_LANDSCAPE.md:185: **WHY IT MATTERS.** Every published NISQ result passes through a transpiler. If
+RESEARCH_LANDSCAPE.md:938: > independent of the version pair. Four of 26 eligible circuits carry a risk of 10% or
+RESEARCH_LANDSCAPE.md:978: Reviewer B: *"By padding the denominator with 14 deterministic circuits you answer the wrong
+RESEARCH_LANDSCAPE.md:1044: The exclusion costs us ~15 points. **It stays.** The rule was fixed before the data.
+RESEARCH_LANDSCAPE.md:1079: ### The design was fixed and committed before the data existed
+RESEARCH_LANDSCAPE.md:1090: under 2.0.2 was ≤10 s — which is independent of both the between-version change and the
+RESEARCH_LANDSCAPE.md:1180: adversarial reviewer: whether 12/26 is the right denominator when 14 of the 26 are
+RESEARCH_LANDSCAPE.md:1196: `scatter.py`. 200 seeds drawn from **7 … 2³¹** by a generator independent of the study,
+RESEARCH_LANDSCAPE.md:1430: 2.0**, reporting `bv_n140-linear +46%`, `bv_n280-linear +44%`, `knn_341-linear +41%`.
+RESEARCH_LANDSCAPE.md:1487: | `knn_341` | +41.0% | +43.4% | **+2.4 pp** | 1.0% | 0.4% |
+RESEARCH_LANDSCAPE.md:1629: size would be unresolvable — not an observed error. Nobody has been shown to have made a
+RESEARCH_LANDSCAPE.md:2566: ### Design, pre-registered before the two-version data existed
+RESEARCH_LANDSCAPE.md:3174: | `knn_341` | 341 | 1532 | 1547 | 1537.6 | **+1.0%** | 0.48% | +41% |
+RESEARCH_LANDSCAPE.md:3886:   `bv_n280-linear` +44%, `knn_341-linear` +41%.
+RESEARCH_LANDSCAPE.md:3928:    including the 46%, 44% and 41% headline regressions — rest on n=3 draws per version
+historical\2026-09-04-v1-bundle\README.md:19: `seed_transpiler` argument removes it at one run.
+historical\2026-09-04-v1-bundle\README.md:29: **0.5 pp** and **2.4 pp**. Only the noisy one disagrees — which is what makes this seed
+historical\2026-09-04-v1-bundle\README.md:51: | ⚠ but 14 of 39 circuits are perfectly deterministic | median eligible error rate **0.0000** | §52 |
+historical\2026-09-04-v1-bundle\README.md:55: | #14402 reproduced, low-seed-spread circuits | `bv_n280` +0.5 pp, `knn_341` +2.4 pp | §48 |
+historical\2026-09-04-v1-bundle\README.md:159: Five read-only checks — toolchain pin, test suite, inventory, replication, tautology
+historical\2026-09-04-v1-bundle\README.md:160: proof — in about 45 seconds. Exit 0 means the repository is intact.
+EXTERNAL_CODE_AUDIT_PROMPT.md:29: - A first-principles audit re-deriving every reported number from raw data (`audit.py`).
+V3_CORRECTION_LEDGER.md:35: | **F01** | MAJOR | "a single command re-checks the whole paper"; "a stale or altered source fails the check" | **ACCEPTED** | Reproduced: mutation A turns raw arm to constant 100, old chain passes all six stages. `paper_check.py:101` read the derived CSV as authority | Verification rebuilt from raw; claim narrowed and now itself tested | `raw_endpoint.py`, `raw_integrity.py`, `mutation_test.py`, `verify.py`, `PAPER.md` §6.1 | No | `mutation_test.py` A/C/E | **CLOSED** |
+V3_CORRECTION_LEDGER.md:38: | **F04** | MAJOR | ambiguity band "independent of the version pair" | **ACCEPTED** | Abstract contradicted the body, which had already withdrawn it | Removed from the abstract; band stated as inheriting this pair's residuals | `PAPER.md` abstract, §4.3 | No | — | **CLOSED** |
+V3_CORRECTION_LEDGER.md:41: | **F07** | MAJOR | all choices committed "before any measurement existed"; non-cherry-picking "a checkable fact" | **ACCEPTED** | Census and exploration preceded pre-registration; `c426338` already identifies heavy-hex as worst case | Narrowed to a frozen follow-up design after exploration; commit order no longer described as proof of non-access | `PAPER.md` §3.3, §6.1 | No | — | **CLOSED** |
+V3_CORRECTION_LEDGER.md:42: | **F08** | MAJOR | "runtime is independent of both θ and the risk"; p = 0.768 | **ACCEPTED** | **Recomputed here, matching the audit exactly**: published test wrongly included excluded `bv_n140` — 40 vs 12, p = 0.767602. Correct 39 vs 13 gives 0.111467 / 0.126032, **p = 0.455991** | Groups corrected in code and paper; independence inference withdrawn | `PAPER.md` §3.2 §3.4 §5.2, `paper_check.py` | **Yes — a corrected statistic, not a measurement** | `paper_check.py` selection-bias rows | **CLOSED** |
+V3_CORRECTION_LEDGER.md:43: | **F09** | MAJOR | issue reports knn_341 +41.0%, ours differs +2.4 pp | **ACCEPTED** | Issue reports **+44.060%**; our +43.426% → **−0.63 pp**, wrong magnitude *and* sign | Table corrected to +44.245/+44.060/+46.142 and differences +0.29/−0.63/−10.94; configuration stated | `PAPER.md` abstract, §4.4 | **Yes — corrected transcription** | — | **CLOSED** |
+V3_CORRECTION_LEDGER.md:46: | **F12** | MAJOR | fixed seeds reproduce "bit-identically" across machines | **ACCEPTED** | Records hold gate counts only — no output QASM hash, operation sequence, layout or mapping | Restricted to "all 216 tested gate counts matched"; "bit-identical" removed | `PAPER.md` §3.4 | No | — | **CLOSED** |
+ATTACK_PACKET.md:64: Runtime is independent of both θ and the error rate; neither was consulted.
+ATTACK_PACKET.md:107: | `adder_n28` | +4.69% | [+4.00, +5.39] | false positive | 4.41% | [2.46, 7.36] |
+ATTACK_PACKET.md:122: was fixed before the data. This exclusion is conservative and works against the result.
+ATTACK_PACKET.md:204: 2. **Is 12/26 the right denominator?** 14 of the 26 are deterministic circuits that
+ATTACK_PACKET.md:226: | **G4** | excluding boundary circuits destroys ecological validity | **ANSWERED.** Including them: 22/36 = **61.1%** [44.9, 75.2]. The exclusion costs ~15 points and **stays**, because the rule was fixed before the data. |
+historical\2026-09-04-v1-bundle\ATTACK_PACKET.md:64: Runtime is independent of both θ and the error rate; neither was consulted.
+historical\2026-09-04-v1-bundle\ATTACK_PACKET.md:107: | `adder_n28` | +4.69% | [+4.00, +5.39] | false positive | 4.41% | [2.46, 7.36] |
+historical\2026-09-04-v1-bundle\ATTACK_PACKET.md:122: was fixed before the data. This exclusion is conservative and works against the result.
+historical\2026-09-04-v1-bundle\ATTACK_PACKET.md:204: 2. **Is 12/26 the right denominator?** 14 of the 26 are deterministic circuits that
+historical\2026-09-04-v1-bundle\ATTACK_PACKET.md:226: | **G4** | excluding boundary circuits destroys ecological validity | **ANSWERED.** Including them: 22/36 = **61.1%** [44.9, 75.2]. The exclusion costs ~15 points and **stays**, because the rule was fixed before the data. |
+PAPER.md:35: independent of it.
+PAPER.md:40: the 87.8th percentile of a distribution its own protocol produces, whose exact support
+PAPER.md:67: the pre-registration mechanism, the numeric inventory that re-checks every published
+PAPER.md:147: **+44.060%**. ⚠ v4 correction: v1–v3 rounded the third of these to +41%, which is not
+PAPER.md:206: before **the primary 39-circuit raw data** existed.
+PAPER.md:208: ⚠ v3 correction. Earlier versions said "before any measurement existed" and called the
+PAPER.md:233: said runtime "is independent of both θ and the risk". That is not established and is
+PAPER.md:285: What this does and does not affect. Every reported per-seed measurement stands — each
+PAPER.md:319:   The cross-machine check was pre-registered before the second machine existed
+PAPER.md:457: called such a window "unresolvable". It is not an impossibility — it is the width over
+PAPER.md:508: ⚠ v3 correction: earlier versions quoted the issue as reporting +44.0%, **+41.0%** and
+PAPER.md:514: A single three-run comparison of that circuit — the issue's own protocol — has exact
+PAPER.md:618: check that has to run in under a minute. **We therefore do not claim that every reported
+PREREGISTRATION.md:42: Runtime is recorded in the existing census and is independent of the change between
+PREREGISTRATION.md:74: ## 5. Analysis plan — fixed before the data exists
+historical\2026-09-04-v1-bundle\PREREGISTRATION.md:42: Runtime is recorded in the existing census and is independent of the change between
+historical\2026-09-04-v1-bundle\PREREGISTRATION.md:74: ## 5. Analysis plan — fixed before the data exists

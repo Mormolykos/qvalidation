@@ -1,0 +1,131 @@
+{
+  "baseline": {
+    "pages": 12,
+    "sha256": "ed159523c23832542d13ab0c36a2818e02bfc9f5b924ae4e9111b5d764897ffe",
+    "characters": 43058,
+    "hits": {
+      "10.9": [
+        1,
+        8,
+        9
+      ],
+      "99.9": [],
+      "12 / 26": [
+        7
+      ],
+      "46.142": [
+        3,
+        9
+      ],
+      "44.060": [
+        3,
+        9
+      ],
+      "Version 4, 2026-09-13": [
+        1
+      ],
+      "zero of the twenty-six": [],
+      "only 7 / 26": []
+    },
+    "detail_page": 7
+  },
+  "false": {
+    "pages": 12,
+    "sha256": "3bb4b826461a12e471ca456c4744d87dd599da175782e5dadc972d187f540c71",
+    "characters": 43070,
+    "hits": {
+      "10.9": [],
+      "99.9": [
+        1,
+        8,
+        9
+      ],
+      "12 / 26": [
+        7
+      ],
+      "46.142": [
+        3,
+        9
+      ],
+      "44.060": [
+        3,
+        9
+      ],
+      "Version 4, 2026-09-13": [
+        1
+      ],
+      "zero of the twenty-six": [],
+      "only 7 / 26": []
+    },
+    "detail_page": 1
+  },
+  "hidden": {
+    "pages": 12,
+    "sha256": "f15d18ef91eb19c54da4f60de160756eaa2295187b52c63e4dc64b12756fb664",
+    "characters": 42965,
+    "hits": {
+      "10.9": [
+        1,
+        8,
+        9
+      ],
+      "99.9": [],
+      "12 / 26": [],
+      "46.142": [
+        3,
+        9
+      ],
+      "44.060": [
+        3,
+        9
+      ],
+      "Version 4, 2026-09-13": [
+        1
+      ],
+      "zero of the twenty-six": [
+        7
+      ],
+      "only 7 / 26": []
+    },
+    "detail_page": 7
+  },
+  "abstract": {
+    "pages": 12,
+    "sha256": "c7677c5aaa566d1504bf8029c04196610254d2f4f53ad2986162eb5b6f3bbc0c",
+    "characters": 43132,
+    "hits": {
+      "10.9": [
+        1,
+        8,
+        9
+      ],
+      "99.9": [],
+      "12 / 26": [
+        7
+      ],
+      "46.142": [
+        3,
+        9
+      ],
+      "44.060": [
+        3,
+        9
+      ],
+      "Version 4, 2026-09-13": [
+        1
+      ],
+      "zero of the twenty-six": [],
+      "only 7 / 26": [
+        1
+      ]
+    },
+    "detail_page": 1
+  },
+  "stylesheet": {
+    "href": "publish/paper_style.css",
+    "resolved": "C:\\Users\\User\\AppData\\Local\\Temp\\astra-v4-4531d97-36c0767c\\snapshot\\publish\\publish\\paper_style.css",
+    "exists": false,
+    "corrected_build_exit": 0,
+    "corrected_pages": 14
+  }
+}
