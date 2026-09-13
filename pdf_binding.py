@@ -50,9 +50,9 @@ USAGE
 
 import os
 import re
+import shutil
 import subprocess
 import sys
-from collections import Counter
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, ROOT)
@@ -85,6 +85,35 @@ def flatten(text):
     return " ".join(KEEP.sub(" ", text.lower()).split())
 
 
+# Where a pdftotext may be, when it is not on PATH.
+#
+# WHY THIS LIST EXISTS. `shutil.which("pdftotext")` finds it under Git Bash, because
+# /mingw64/bin is on that shell's PATH, and does NOT find it under PowerShell, which is
+# the same interpreter running the same stage against the same file. Stage 13 therefore
+# passed or failed according to which shell invoked verify.py — a verdict that depends on
+# ambient environment rather than on the artifact, which is the defect Astra recorded as
+# A14 for line endings, in a different costume.
+#
+# So the requirement is DECLARED: stage 13 needs a PDF text extractor, these are the
+# places it looks, and if none is present it says so by name instead of failing with an
+# ImportError about a fallback library nobody installed.
+PDFTOTEXT_CANDIDATES = [
+    r"C:\Program Files\Git\mingw64\bin\pdftotext.exe",
+    r"C:\Program Files\Git\usr\bin\pdftotext.exe",
+    r"C:\Program Files (x86)\Git\mingw64\bin\pdftotext.exe",
+    "/usr/bin/pdftotext",
+    "/usr/local/bin/pdftotext",
+    "/opt/homebrew/bin/pdftotext",
+]
+
+
+def find_pdftotext():
+    found = shutil.which("pdftotext")
+    if found:
+        return found
+    return next((c for c in PDFTOTEXT_CANDIDATES if os.path.isfile(c)), None)
+
+
 def pdf_text():
     if not os.path.isfile(PDF):
         sys.exit(f"  no {os.path.relpath(PDF, ROOT)} — run publish/build_paper.sh first")
@@ -93,20 +122,28 @@ def pdf_text():
     # numerator on another -- so no row can be checked as a row, and it joins text across
     # boxes, which turned "0009-0007-3805-170X" into the number 00073805. Layout mode
     # preserves both. (Found when the V4-08 stylesheet fix changed the rendering.)
-    for tool in (["pdftotext", "-layout", PDF, "-"],):
-        try:
-            r = subprocess.run(tool, capture_output=True, text=True,
-                               encoding="utf-8", errors="replace", timeout=300)
-            if r.returncode == 0 and len(r.stdout) > 1000:
-                return r.stdout
-        except FileNotFoundError:
-            pass
+    exe = find_pdftotext()
+    if exe:
+        r = subprocess.run([exe, "-layout", PDF, "-"], capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", timeout=300)
+        if r.returncode == 0 and len(r.stdout) > 1000:
+            return r.stdout
+        sys.exit(f"  {exe} could not extract text from "
+                 f"{os.path.relpath(PDF, ROOT)} (exit {r.returncode}, "
+                 f"{len(r.stdout)} chars): {(r.stderr or '')[:200]}")
     try:
         import fitz
         d = fitz.open(PDF)
         return "".join(p.get_text() for p in d)
-    except Exception as exc:
-        sys.exit(f"  cannot extract text from the PDF: {exc}")
+    except Exception:
+        pass
+    sys.exit(
+        "  STAGE 13 CANNOT RUN: no PDF text extractor is available, so the published "
+        "PDF\n  was not checked against the manuscript. This is a missing prerequisite, "
+        "not a\n  passing artifact.\n\n"
+        "  Install poppler's pdftotext (Git for Windows ships one) or "
+        "`pip install PyMuPDF`.\n  Looked on PATH and at:\n"
+        + "".join(f"      {c}\n" for c in PDFTOTEXT_CANDIDATES))
 
 
 def check(txt, src, echo=print):

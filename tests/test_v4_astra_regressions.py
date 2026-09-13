@@ -244,6 +244,25 @@ def test_canonical_rows_must_appear_together_not_merely_somewhere(paper):
     assert fails and "does not appear as a row in the PDF" in reasons(fails)
 
 
+def test_the_pdf_extractor_is_found_without_help_from_the_shells_path(monkeypatch):
+    """Stage 13 passed under Git Bash and failed under PowerShell on the same file: one
+    shell had /mingw64/bin on PATH and the other did not. A stage whose verdict depends
+    on who invoked it is not checking the artifact. The requirement is declared instead."""
+    monkeypatch.setenv("PATH", "")
+    assert pb.find_pdftotext(), (
+        "no extractor found with an empty PATH; PDFTOTEXT_CANDIDATES must name the "
+        "usual install locations, and this machine has one at "
+        r"C:\Program Files\Git\mingw64\bin\pdftotext.exe")
+
+
+def test_a_missing_extractor_is_a_refusal_not_a_pass(monkeypatch):
+    monkeypatch.setattr(pb, "find_pdftotext", lambda: None)
+    monkeypatch.setitem(sys.modules, "fitz", None)
+    with pytest.raises(SystemExit) as exc:
+        pb.pdf_text()
+    assert "STAGE 13 CANNOT RUN" in str(exc.value)
+
+
 # ---------------------------------------------------------------- V4-07
 
 def test_a_crash_is_not_scored_as_a_detection():
