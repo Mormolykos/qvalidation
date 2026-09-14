@@ -59,6 +59,8 @@ import sys
 ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, ROOT)
 
+
+import validation_result as vr
 PAPER = os.path.join(ROOT, "PAPER.md")
 SELECTED = os.path.join(ROOT, "_selected.txt")
 
@@ -84,7 +86,18 @@ FRACTION = re.compile(r"(\d+)\s*/\s*(\d+)")
 # `<` immediately followed by a letter (optionally `/` or `!` first), no `<` or `>` inside.
 # The immediacy matters: prose writes "p < 0.001, n = 23)" and the naive `<[^>]+>` reads
 # everything up to the next `>` anywhere in the document as a tag.
-TAG = re.compile(r"<[!/]?[A-Za-z][^<>]{0,400}>")
+# NO LENGTH BOUND (Astra, 3643bbc differential). This was `[^<>]{0,400}`, so a tag longer
+# than 400 characters matched nothing and passed the domain check. A limit on how much an
+# attacker may type is not a domain, it is a budget. `[^<>]*` is unbounded and still
+# cannot run past the next angle bracket, so the scan stays linear. re.S so a tag broken
+# across lines is one tag.
+TAG = re.compile(r"<[!/?]?[A-Za-z][^<>]*>", re.S)
+# A `<` that opens a tag-shaped construct and never closes it. TAG cannot match these,
+# because `[^<>]*` stops at the next angle bracket of either kind, so without this they
+# are not seen AT ALL. The lookahead is `<|\Z`, not just `\Z`: an unterminated tag in the
+# middle of the document is followed by the next tag's `<` rather than by end-of-text, and
+# an earlier version anchored only to `\Z` missed exactly that.
+UNTERMINATED = re.compile(r"<[!/?]?[A-Za-z][^<>]*(?=<|\Z)", re.S)
 ALLOWED_TAGS = {"sub", "/sub", "sup", "/sup"}
 AUTOLINK = re.compile(r"\A<(?:[^\s<>@]+@[^\s<>@]+|https?://[^\s<>]+)>\Z")
 
@@ -112,35 +125,60 @@ def visible_text(raw):
 
 
 def html_domain_violations(text):
-    """Raw HTML outside the closed list. Run on comment-stripped, fence-stripped text."""
+    """Raw HTML outside the closed list. Run on comment-stripped, fence-stripped text.
+
+    The domain admits exactly two things: a BARE tag from ALLOWED_TAGS, and an autolink.
+    Everything else — any attribute, any other element, any unterminated construct, at any
+    length — is a violation. There is no size at which a tag stops being checked.
+    """
     out = []
+
+    def bad(pos, what, why):
+        line = text.count("\n", 0, pos) + 1
+        out.append(f"line {line}: {why} — {what[:80]!r}{'…' if len(what) > 80 else ''}. "
+                   f"The declared domain is Markdown whose only raw HTML is a bare tag "
+                   f"from {sorted(ALLOWED_TAGS)} or an autolink. Whether a reader sees "
+                   f"the content anything else governs cannot be decided from the "
+                   f"source, so this manuscript cannot be validated as what a reader "
+                   f"sees.")
+
     for m in TAG.finditer(text):
         s = m.group(0)
         if AUTOLINK.match(s):
             continue
-        if s[1:-1].strip().lower() in ALLOWED_TAGS and s[1:-1] == s[1:-1].strip():
+        inner = s[1:-1]
+        if inner.strip().lower() in ALLOWED_TAGS and inner == inner.strip():
             continue
-        line = text.count("\n", 0, m.start()) + 1
-        out.append(f"line {line}: raw HTML {s[:60]!r} is outside the declared domain "
-                   f"(bare {sorted(ALLOWED_TAGS)} only). Whether a reader sees the "
-                   f"content it governs cannot be decided from the source, so this "
-                   f"manuscript cannot be validated as what a reader sees.")
+        bad(m.start(), s, f"raw HTML ({len(s)} chars) is outside the declared domain")
+
+    for m in UNTERMINATED.finditer(text):
+        bad(m.start(), m.group(0), "an HTML tag is opened and never closed")
     return out
 
 
 def parse_tables(text):
-    """Every GFM table, as (header, rows) with cells split on '|'."""
-    lines = text.splitlines()
+    """Every GFM table, as (header, rows, line, span).
+
+    `span` is the table's (start, end) CHARACTER offsets in `text`. It exists because the
+    prose scan has to know WHERE the table is, not what it says — see main(). Callers that
+    only want the cells can keep unpacking the first three.
+    """
+    lines = text.splitlines(keepends=True)
+    starts, off = [], 0
+    for ln in lines:
+        starts.append(off)
+        off += len(ln)
+    starts.append(off)
     tables, i = [], 0
     while i < len(lines):
         if lines[i].strip().startswith("|") and i + 1 < len(lines) \
-                and re.fullmatch(r"\s*\|[\s:|-]+\|\s*", lines[i + 1]):
+                and re.fullmatch(r"\s*\|[\s:|-]+\|\s*", lines[i + 1].rstrip("\r\n")):
             header = [c.strip() for c in lines[i].strip().strip("|").split("|")]
             body, j = [], i + 2
             while j < len(lines) and lines[j].strip().startswith("|"):
                 body.append([c.strip() for c in lines[j].strip().strip("|").split("|")])
                 j += 1
-            tables.append((header, body, i + 1))
+            tables.append((header, body, i + 1, (starts[i], starts[j])))
             i = j
         else:
             i += 1
@@ -150,10 +188,11 @@ def parse_tables(text):
 def find_endpoint_tables(tables):
     """Tables whose first column carries the canonical endpoint labels."""
     out = []
-    for header, body, line in tables:
+    for t in tables:
+        header, body = t[0], t[1]
         labels = [r[0] for r in body if r]
         if all(any(lbl.startswith(k) for lbl in labels) for k in ROWS):
-            out.append((header, body, line))
+            out.append(t)
     return out
 
 
@@ -179,30 +218,27 @@ def main():
           f"{'ALL inside' if not outside else f'{len(outside)} OUTSIDE'} the declared "
           f"domain\n")
     if outside:
-        print("  ✗ THIS MANUSCRIPT CANNOT BE VALIDATED AS WHAT A READER SEES:\n")
-        for o in outside[:10]:
-            print(f"      {o}")
-        print()
-        sys.exit(1)
+        vr.reject("MANUSCRIPT_HTML_DOMAIN",
+                  "THIS MANUSCRIPT CANNOT BE VALIDATED AS WHAT A READER SEES",
+                  outside, limit=10)
 
     fails = []
     cand = find_endpoint_tables(parse_tables(vis))
 
     if len(cand) == 0:
-        print("  ✗ no VISIBLE table carries the primary endpoint rows.")
-        hidden_cand = find_endpoint_tables(parse_tables(raw))
-        if hidden_cand:
-            print("    A table with those rows exists but is inside an HTML comment, so")
-            print("    the reader never sees it. A commented claim is not a claim.")
-        sys.exit(1)
+        why = ["no VISIBLE table carries the primary endpoint rows"]
+        if find_endpoint_tables(parse_tables(raw)):
+            why.append("A table with those rows exists but is inside an HTML comment, "
+                       "so the reader never sees it. A commented claim is not a claim.")
+        vr.reject("CANONICAL_TABLE_PRESENT", "THE PRIMARY CLAIM IS NOT VISIBLE", why)
     if len(cand) > 1:
-        print(f"  ✗ {len(cand)} visible tables carry the primary endpoint rows "
-              f"(lines {[c[2] for c in cand]}).")
-        print("    Exactly one canonical table is required: with two, which one is the")
-        print("    claim is decided by the checker's search order, not by the author.")
-        sys.exit(1)
+        vr.reject("CANONICAL_TABLE_UNIQUE", "THE PRIMARY CLAIM IS AMBIGUOUS", [
+            f"{len(cand)} visible tables carry the primary endpoint rows "
+            f"(lines {[c[2] for c in cand]})",
+            "Exactly one canonical table is required: with two, which one is the claim "
+            "is decided by the checker's search order, not by the author."])
 
-    header, body, line = cand[0]
+    header, body, line, tbl_range = cand[0]
     print(f"  one canonical table, line {line}: {header}")
 
     from raw_endpoint import reconstruct, endpoint
@@ -244,7 +280,25 @@ def main():
     # see is how the next hole gets in.
     COUNTERFACTUAL = ("corrupt", "mutation", "attack", "audit", "withdraw", "would",
                       "v3 correction", "earlier versions", "changes the true endpoint")
-    tbl_span = "\n".join("|".join(r) for r in body)
+
+    # WHERE the canonical table is, not WHAT IT SAYS (Astra, 3643bbc differential).
+    #
+    # This was `m.group(0) in tbl_span`, a SUBSTRING test against the table's text. The
+    # canonical table legitimately contains "7 / 26", so every other occurrence of that
+    # string anywhere in the manuscript was skipped as though it were the table's own
+    # cell. Astra put "The primary risk interval excludes zero in only 7 / 26 eligible
+    # circuits." in the abstract and both stage 12 and stage 13 returned 0 — the exact
+    # defect the claim-identity check was added to close, still open because the scan
+    # never reached it.
+    #
+    # Identity of a text occurrence is its POSITION. Only the canonical table's own
+    # character range is excluded; any other table's cells are scanned as prose, because
+    # a false claim smuggled into a second table is still a false claim.
+    t_lo, t_hi = tbl_range
+
+    def in_canonical_table(pos):
+        return t_lo <= pos < t_hi
+
     paragraphs = [(mm.start(), mm.group(0)) for mm in re.finditer(r"[^\n]+(?:\n[^\n]+)*",
                                                                   vis)]
 
@@ -258,7 +312,7 @@ def main():
     exempt = 0
     for m in FRACTION.finditer(vis):
         num, den = int(m.group(1)), int(m.group(2))
-        if den != n_elig or m.group(0) in tbl_span or num in truth.values():
+        if den != n_elig or in_canonical_table(m.start()) or num in truth.values():
             continue
         para = enclosing(m.start())
         if any(w in para for w in COUNTERFACTUAL):
@@ -293,7 +347,7 @@ def main():
     bound = 0
     for m in QUANTITY.finditer(vis):
         tok, den = m.group(1), int(m.group(2))
-        if den != n_elig or m.group(0) in tbl_span:
+        if den != n_elig or in_canonical_table(m.start()):
             continue
         num = int(tok) if tok.isdigit() else WORD_NUM[tok.lower()]
         if any(w in sentence_at(m.start()) for w in COUNTERFACTUAL):
@@ -315,13 +369,9 @@ def main():
           f"endpoint their own sentence names")
 
     if fails:
-        print(f"  ✗ THE VISIBLE MANUSCRIPT DOES NOT MATCH THE RAW DATA — "
-              f"{len(fails)} problem(s):\n")
-        for f in fails[:20]:
-            print(f"      {f}")
-        print()
-        sys.exit(1)
-    print("  ✓ the table a reader sees states what the raw data produces.\n")
+        vr.reject("VISIBLE_CLAIMS_MATCH_RAW",
+                  "THE VISIBLE MANUSCRIPT DOES NOT MATCH THE RAW DATA", fails, limit=20)
+    vr.accept("  ✓ the table a reader sees states what the raw data produces.")
 
 
 if __name__ == "__main__":

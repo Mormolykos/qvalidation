@@ -1,0 +1,13 @@
+  STAGE 13 CANNOT RUN: no PDF text extractor is available, so the published PDF
+  was not checked against the manuscript. This is a missing prerequisite, not a
+  passing artifact.
+
+  Install poppler's pdftotext (Git for Windows ships one) or `pip install PyMuPDF`.
+  Looked on PATH and at:
+      C:\Program Files\Git\mingw64\bin\pdftotext.exe
+      C:\Program Files\Git\usr\bin\pdftotext.exe
+      C:\Program Files (x86)\Git\mingw64\bin\pdftotext.exe
+      /usr/bin/pdftotext
+      /usr/local/bin/pdftotext
+      /opt/homebrew/bin/pdftotext
+

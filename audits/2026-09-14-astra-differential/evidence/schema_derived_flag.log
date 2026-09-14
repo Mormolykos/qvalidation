@@ -1,0 +1,10 @@
+
+  SAVED SUMMARY BOUND TO A REPLAY OF ITS OWN ANALYSIS
+  39 rows, 19 columns
+
+  schema: 18 declared fields, 2 closed value sets, REJECTED
+
+  ✗ SAVED SUMMARY IS NOT A VALID ARTIFACT — 1 problem(s):
+
+      bv_n30.error_excludes_zero is False but the saved lower bound is 0.310522 — the primary endpoint flag must follow the interval it describes
+

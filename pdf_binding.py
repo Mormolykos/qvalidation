@@ -57,6 +57,8 @@ import sys
 ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, ROOT)
 
+
+import validation_result as vr
 PDF = os.path.join(ROOT, "publish", "paper.pdf")
 PAPER = os.path.join(ROOT, "PAPER.md")
 
@@ -186,7 +188,7 @@ def check(txt, src, echo=print):
     if len(cand) != 1:
         fails.append(f"{len(cand)} canonical endpoint tables in PAPER.md; expected 1")
     else:
-        _, body, _ = cand[0]
+        body = cand[0][1]
         placed = 0
         for row in body:
             want = flatten(" ".join(row))
@@ -237,18 +239,15 @@ def main():
 
     fails = check(txt, src)
     if fails:
-        print(f"\n  ✗ PDF AND MANUSCRIPT DISAGREE — {len(fails)} problem(s):\n")
-        for f in fails:
-            print(f"      {f}")
-        print()
-        sys.exit(1)
-    print("\n  ✓ the PDF's numeric content equals the manuscript's in both directions,")
-    print("    the canonical rows appear intact, the version line agrees, and no")
-    print("    withdrawn claim is asserted.")
-    print("    NOT established here: that each number sits in the sentence that means")
-    print("    it, prose equivalence, or layout. A documented human reading of the")
-    print("    built PDF against PAPER.md is still required before release.")
-    print("    (byte-identical PDFs are not promised)\n")
+        vr.reject("PDF_MATCHES_MANUSCRIPT", "PDF AND MANUSCRIPT DISAGREE", fails)
+    vr.accept(
+        "\n  ✓ the PDF's numeric content equals the manuscript's in both directions,",
+        "    the canonical rows appear intact, the version line agrees, and no",
+        "    withdrawn claim is asserted.",
+        "    NOT established here: that each number sits in the sentence that means",
+        "    it, prose equivalence, or layout. A documented human reading of the",
+        "    built PDF against PAPER.md is still required before release.",
+        "    (byte-identical PDFs are not promised)")
 
 
 if __name__ == "__main__":

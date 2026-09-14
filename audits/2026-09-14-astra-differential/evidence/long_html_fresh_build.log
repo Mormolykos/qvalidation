@@ -1,0 +1,5 @@
+  stylesheet resolves: publish/paper_style.css
+422265 bytes written to file C:/Users/User/AppData/Local/Temp/astra-diff-3643bbc-2ddc746a/rendered/publish/long_html_fresh.pdf
+[43344:15776:0913/223050.046:ERROR:chrome\browser\web_applications\os_integration\os_integration_manager.cc:261] Can't perform OS integration while the browser is shutting down.
+[43344:15776:0913/223050.054:ERROR:chrome\browser\web_applications\externally_managed_app_manager.cc:680] https://docs.google.com/document/installwebapp?usp=chrome_default from install source 1 failed to install with reason 21
+built publish/long_html_fresh.pdf

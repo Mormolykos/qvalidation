@@ -1,0 +1,4 @@
+✗ is not finite
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+RuntimeError: unrelated later failure

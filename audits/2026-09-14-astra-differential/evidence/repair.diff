@@ -1,0 +1,1860 @@
+diff --git a/PAPER.md b/PAPER.md
+index c5b39c5..ed1fac9 100644
+--- a/PAPER.md
++++ b/PAPER.md
+@@ -37,10 +37,11 @@ independent of it.
+ Two of the three circuits named in Qiskit issue #14402 are affected. On a matched
+ `linear` topology we reproduce that issue's two low-variance figures to within 0.63 and
+ 0.29 percentage points, and show that its remaining figure (+46.14% on `bv_n140`) sits at
+-the 87.8th percentile of a distribution its own protocol produces, whose exact support
+-runs from −17.68% to +109.17%. The issue's historical Benchpress revision and aggregation
+-rule are not supplied, so these are numerical comparisons at our configuration, not a
+-reproduction of its protocol.
++the 87.8th percentile of the distribution a three-run comparison produces **at our
++configuration**, whose exact support runs from −17.68% to +109.17%. The issue's
++historical Benchpress revision and aggregation rule are not supplied, so these are
++numerical comparisons at our configuration, not a reproduction of its protocol, and the
++distribution above is ours rather than the one its protocol would have produced.
+ 
+ We do not claim a suite-level failure rate; our sample is underpowered for one. We claim
+ that finite-sample decision risk is measurable and reproducible on a benchmark suite used
+@@ -203,7 +204,10 @@ is never exercised.
+ ### 3.3 Pre-registration
+ 
+ The circuit list, protocol, analysis code and falsification criteria were committed
+-before **the primary 39-circuit raw data** existed.
++before **the first tracked commit of the primary 39-circuit raw data**. ⚠ v4 correction
++(Astra V4-05): earlier versions of this sentence said "before the primary raw data
++existed", which asserts more than a commit log can support — see the correction below,
++which this sentence now matches instead of contradicting.
+ 
+ ⚠ v3 correction. Earlier versions said "before any measurement existed" and called the
+ absence of cherry-picking "a checkable fact". Both overstate the record. A census and
+@@ -282,11 +286,15 @@ The signature is visible in the data and is not subtle: **6 of the 200 realised
+ above the midpoint of the nominal range, where roughly 100 would be expected** under the
+ claimed uniform draw, and their mean sits at **0.2462** of the range rather than 0.5.
+ 
+-What this does and does not affect. Every reported per-seed measurement stands — each
+-count was reproduced from its seed in the controls described above, subject to the backend
+-randomness noted there: the arms are
+-correctly paired, the seeds are distinct, and the risk calculations are exact functions of
+-the recorded values. What is **not** supported is any claim that the empirical
++What this does and does not affect. Every reported per-seed measurement stands: the arms
++are correctly paired, the seeds are distinct, and the risk calculations are exact
++functions of the recorded values. ⚠ v4 correction (Astra V4-05): earlier versions added
++"each count was reproduced from its seed in the controls described above", which reads as
++a claim about all 15,600 observations. The controls are finite and are listed below —
++**144** counts (6 circuits × 12 seeds × 2 versions) reproduced from clean, and **216**
++per-seed gate counts matched across two machines. Every count *those controls compared*
++was reproduced exactly; the remaining observations were not re-measured, and the backend
++randomness noted there applies throughout. What is **not** supported is any claim that the empirical
+ distributions represent the seed space a user would encounter, or that they estimate the
+ behaviour of unseeded operation over the full range. Restoring that would require a rerun
+ under a correctly specified sampling law, which we have not done. The results in §4 are
+@@ -316,10 +324,10 @@ Controls, each of which could have invalidated the study:
+   established is agreement on every compared integer, not identity of the compiled
+   circuits.
+ 
+-  The cross-machine check was pre-registered before the second machine existed
+-  (`crossmachine/PREREGISTRATION.md`; the commit order is checkable) and inherits the
+-  frozen six-circuit, twelve-seed selection wholesale, so it introduces no selection
+-  freedom. It covers **all three Qiskit versions**, including the 1.4.3 → 2.0.0 pair the
++  The cross-machine check's protocol was committed before the first tracked commit of
++  any second-machine result (`crossmachine/PREREGISTRATION.md`; the commit order is
++  checkable, and establishes commit order only — §3.3) and inherits the frozen
++  six-circuit, twelve-seed selection wholesale, so it introduces no selection freedom. It covers **all three Qiskit versions**, including the 1.4.3 → 2.0.0 pair the
+   primary study uses. **All 216 per-seed gate counts are identical**:
+ 
+   | | machine 1 | machine 2 |
+@@ -511,7 +519,9 @@ those above; the `knn_341` value was misquoted and its difference has the wrong
+ corrected differences are +0.29, −0.63 and −10.94 pp.
+ 
+ On `linear`, `bv_n140`'s reference change is +31.0% [+28.4, +33.8] at 200 seeds per arm.
+-A single three-run comparison of that circuit — the issue's own protocol — has exact
++A single three-run comparison of that circuit — three runs per version, the aggregation
++the issue reports, simulated **at our configuration** rather than under its own
++unavailable revision and aggregation rule — has exact
+ support running from **−17.68% to +109.17%**, with a 95% range of [+9.28%, +57.31%]. The
+ issue's +46.14% sits at the **87.8th** percentile of that distribution, and the same range
+ extends below the +10% threshold. ⚠ v3 correction: earlier versions reported −10.5% to
+@@ -545,8 +555,12 @@ significant and should not be quoted alone.
+ 80 compute hours — still leaves 3.74%.** ⚠ v3 correction: earlier versions said 40 hours,
+ which halves the arithmetic; 40 hours would be wall-clock on two machines running
+ concurrently, not the compute total. The ~2 h per-run figure is the issue's, and we could
+-not independently confirm it. By contrast, one `seed_transpiler` argument removes the sampling variance at
+-*k* = 1.
++not independently confirm it. By contrast, one `seed_transpiler` argument removes the
++**seed-attributable** sampling variance at *k* = 1. ⚠ v4 correction (Astra V4-05):
++earlier versions said it removes the sampling variance, unqualified. The backend is
++constructed without a seed on the same path, and we probed that at 24 cases and found no
++effect on the observable — a limited negative result, not a demonstration that no other
++source of variance remains.
+ 
+ **Aggregation.** Under minimum-of-3 rather than mean-of-3, all eight tested circuits still
+ err and every rate roughly doubles (`bv_n280` 17.3% → 28.4%). Best-of-*k* practice does
+@@ -665,9 +679,13 @@ are reusable:
+    auditable. ⚠ v3 correction: it does not convert "we did not cherry-pick" into a fact.
+    It records that the design was fixed before *this* data arrived, not that no earlier
+    exploration informed it — and here it did (§3.3).
+-3. **A numeric inventory, and a verifier that has been shown to reject us.** Every
+-   published figure carries its numerator, denominator, sampling unit, interval, method,
+-   and a function that recomputes it.
++3. **A numeric inventory, and a verifier that has been shown to reject us.** The
++   inventory carries **44** recorded values with their numerator, denominator, sampling
++   unit, interval, method, and a function that recomputes each — **32** recomputed from
++   raw data and **12** re-read from derived k-sweep CSVs. ⚠ v4 correction (Astra V4-05):
++   earlier versions said "every published figure". They do not cover every figure, every
++   interval, or any prose, and the distinction between a raw recomputation and a re-read
++   of a derived file matters; `python inventory.py --check` prints the 44/32/12 split.
+ 
+    ⚠ v3 correction, and the most important one in this paper. v1 and v2 claimed that
+    "a single command re-checks the whole paper" and that "a stale or altered source fails
+diff --git a/README.md b/README.md
+index 3ea4bd7..e832b40 100644
+--- a/README.md
++++ b/README.md
+@@ -24,26 +24,43 @@ Two disjoint 200-seed samples agree: contiguous seeds in one process give 26.3%,
+ scattered seeds spanning 5.9 million to 1.08 billion across ten fresh processes give
+ 22.6%, and each point falls inside the other's interval.
+ 
+-**Running more does not fix it.** Twenty runs per version, about 40 hours of compute at
+-the issue's own "about 2 hours each", still leaves a **3.7%** false-positive rate. One
+-`seed_transpiler` argument removes it at one run.
++**Running more does not fix it.** Twenty runs per version — 20 × 2 versions × ~2 h per
++suite run at the issue's own figure, so on the order of **80 compute hours** — still
++leaves a **3.7%** false-positive rate. One `seed_transpiler` argument removes the
++seed-attributable variance at one run.
+ 
+ The same circuit on `linear` changes **+31.0%** and is *missed* 2.98% of the time — a
+ false negative, which eight runs per version does remove.
+ 
+-And the issue's own reported figure for that circuit, **+46.1%**, is a single draw from a
+-distribution running from **−10.5% to +100.0%**. Its 95% range reaches **below the +10%
+-threshold**: the same real regression could have been reported as no regression at all.
++And the issue's own reported figure for that circuit, **+46.14%**, is a single draw from
++a distribution whose exact support runs from **−17.68% to +109.17%**. Its 95% range
++reaches **below the +10% threshold**: the same real regression could have been reported
++as no regression at all.
+ 
+ The two circuits in that issue with near-zero seed spread reproduce here to within
+-**0.5 pp** and **2.4 pp**. Only the noisy one disagrees — which is what makes this seed
+-variance rather than version drift.
+-
++**+0.29 pp** and **−0.63 pp**. Only the noisy one disagrees — which is what makes this
++seed variance rather than version drift. The issue's Benchpress revision and aggregation
++rule are not supplied, so these are numerical comparisons at our configuration, not a
++reproduction of its protocol.
++
++> ⚠ **This README is a summary. [`PAPER.md`](PAPER.md) is the authority**, and where the
++> two disagree the manuscript is right. Claims corrected in v3 and v4 are listed in
++> [`V3_CORRECTION_LEDGER.md`](V3_CORRECTION_LEDGER.md) and
++> [`V4_ASTRA_CORRECTION_LEDGER.md`](V4_ASTRA_CORRECTION_LEDGER.md).
++>
+ > ⚠ **An earlier headline here claimed a 27% false-positive rate on `qft_n320`. It is
+ > WITHDRAWN** — its 95% interval was [1.7%, 63.1%] at n=12, and the corpus statistic
+ > built on it turned out to depend on an undisclosed choice of which version was the
+ > baseline. See §38 and §41. Nothing was ever published. Every number below is
+ > direction-free and re-derives from raw data via `python inventory.py --check`.
++>
++> ⚠ **v4 corrections to this page (Astra V4-04).** It carried four claims the manuscript
++> had already corrected and this page had not: the issue differences as +0.5 pp and
++> +2.4 pp (the `knn_341` figure was misquoted and its difference has the wrong sign),
++> 40 rather than 80 compute hours, "14 of 39 circuits are perfectly deterministic" when
++> the raw data gives **13**, and a verifier described as five checks in 45 seconds when
++> it is thirteen stages taking tens of minutes. A dated correction elsewhere does not
++> neutralise a wrong number on the page a reader lands on.
+ 
+ ---
+ 
+@@ -51,18 +68,18 @@ variance rather than version drift.
+ 
+ | result | value | where |
+ |---|---|---|
+-| **mechanism**: deterministic compilation ⇒ zero risk | 13/13 — but this is **arithmetic, not evidence** (§56) | §55, §56 |
+-| ⭐ **mechanism**: risk vs distance from θ to the cut | Spearman **−0.833** among stochastic circuits | §55 |
+-| ⭐ median ambiguity band, 23 stochastic circuits | **10.9 pp** (max 25.2 pp) — θ-free and direction-free | §55 |
++| deterministic compilation ⇒ zero risk | 13/13 — but this is **arithmetic, not evidence** (§56) | §55, §56 |
++| ⭐ risk vs distance from θ to the cut | Spearman **−0.833** among stochastic circuits — a **descriptive association**, not an identified mechanism | §55 |
++| ⭐ median ambiguity band, 23 stochastic circuits | **10.9 pp** (max 25.2 pp) — θ-free and direction-free, but **constructed from this version pair's residuals and not independent of it** | §55 |
+ | circuits carrying risk ≥10% under this version pair | **4 of 26** (7 of 26 at ≥5%) | §55 |
+ | ⛔ suite-level failure rate | **withdrawn** — underpowered, effective n = 11 families | §55 |
+ | holds at every threshold 5%–20%; doubles under best-of-3 | min-of-3 raises `bv_n280` from 17.3% to 28.4% | §54 |
+ | all three circuits named in issue #14402 show an error rate | `bv_n140` 24.4%, `bv_n280` 17.3%, `knn_341` 4.7% | §52 |
+-| ⚠ but 14 of 39 circuits are perfectly deterministic | median eligible error rate **0.0000** | §52 |
++| ⚠ but **13 of 39** circuits are perfectly deterministic | median eligible error rate **0.0000** — all 13 are eligible, so 13 of the 26 | §52 |
+ | **`bv_n140` real regression MISSED by the 3-run protocol** | **2.98%** of the time, 95% CI [1.72%, 4.99%] | §48 |
+ | `bv_n140` true change, 1.4.3 → 2.0.0, 200 seeds/arm | **+31.0%**, 95% CI [+28.4%, +33.8%] | §48 |
+ | what a single 3-run comparison of it can return | **−10.5% to +100.0%** | §48 |
+-| #14402 reproduced, low-seed-spread circuits | `bv_n280` +0.5 pp, `knn_341` +2.4 pp | §48 |
++| #14402 compared, low-seed-spread circuits | `bv_n280` **+0.29 pp**, `knn_341` **−0.63 pp** — numerical comparison at our configuration, not a protocol reproduction | §48 |
+ | decision instability, real change, forward direction | **5 of 51** circuits, Wilson [4.3%, 21.0%] | §48 |
+ | the error is not a threshold artifact | nonzero at **every** cut from +2% to +25% | §49 |
+ | ⚠ but it IS underpowering: error vs runs/version | k=1 16.1% → k=3 2.98% → **k=8 0.09%** | §49 |
+@@ -184,8 +201,20 @@ python model_check.py --topology heavy-hex --pair 200:202 --band-compare
+ BENCHPRESS_PATH=<repo> envs/bp202/Scripts/python.exe verify.py
+ ```
+ 
+-Five read-only checks — toolchain pin, test suite, inventory, replication, tautology
+-proof — in about 45 seconds. Exit 0 means the repository is intact.
++**Thirteen read-only stages, tens of minutes** — toolchain pin, test suite, inventory,
++replication, tautology proof, paper claims, raw→endpoint, raw integrity, mutation test,
++v2 evidence anchor, derived binding, rendered manuscript, published PDF. Exit 0 means
++every stage passed. ⚠ v4 correction (Astra V4-04): this said "five read-only checks … in
++about 45 seconds", which was true of v2 and describes neither the coverage nor the cost
++of the current verifier — stage 9 alone rebuilds the repository eighteen times and stage
++11 replays a 400 × 400,000 bootstrap.
++
++**What exit 0 does and does not mean.** Each stage's scope is stated in its own file
++header, and they are overlapping checks, not thirteen independent replications: several
++share the same raw loader, selection list and classification constants, so one defect can
++pass through more than one of them. `python mutation_test.py` is the evidence that they
++turn red — eighteen corruptions, each required to be rejected by a named stage for a
++named reason. Three of those corruptions defeated v3 and six defeated v4.
+ 
+ ### 4. Tests
+ 
+diff --git a/RESEARCH_LANDSCAPE.md b/RESEARCH_LANDSCAPE.md
+index 60cc232..a5a333d 100644
+--- a/RESEARCH_LANDSCAPE.md
++++ b/RESEARCH_LANDSCAPE.md
+@@ -14,13 +14,21 @@ to support any argument.
+ still read as live findings and several of them are not. Do not quote a number from this
+ file without checking it here first.
+ 
++**⚠ [`PAPER.md`](PAPER.md) IS THE AUTHORITY, not this file and not the table below.**
++This is the research log: it records what was tried, including what was wrong. Where it
++and the manuscript disagree, the manuscript is right. The rows below were audited against
++the manuscript on 2026-09-13 (Astra V4-04) and four were found to be advertising
++superseded values as current — they are marked CORRECTED or NARROWED with what changed.
++Sections further down have **not** been audited that way and are historical record;
++`V3_CORRECTION_LEDGER.md` and `V4_ASTRA_CORRECTION_LEDGER.md` list every correction.
++
+ | status | claim | where |
+ |---|---|---|
+ | ✅ **LIVE** | Benchpress passes no `seed_transpiler` in any of its 8 SDK gyms | §33, source-verified |
+ | ✅ **LIVE** | The transpiler seed is the dominant entropy source | §28, cross-process control |
+-| ✅ **LIVE** | A fixed seed reproduces bit-identically; different seeds do not | §44, re-run from clean |
+-| ⭐⭐ **LIVE** | **MECHANISM: risk is predicted by two measurable properties — is routing stochastic (Spearman +0.876) and how far θ sits from the cut (−0.833). All 13 deterministic circuits carry EXACTLY zero risk.** | §55 |
+-| ⭐⭐ **LIVE** | **Among the 23 stochastic circuits, median ambiguity band 10.9 pp** (max 25.2) — θ-free, direction-free, version-pair-free | §55 |
++| ⚠ **NARROWED v4** | A fixed seed reproduces the **same integer gate counts** in every control we ran; different seeds do not. **"Bit-identically" is WITHDRAWN** — the recorded hashes identify the *input* circuit, so what is established is agreement on every compared integer, not identity of the compiled circuits | §44, re-run from clean |
++| ⚠ **NARROWED v4** | Risk is **associated with** two measurable properties — is routing stochastic (Spearman +0.876) and how far θ sits from the cut (−0.833). All 13 deterministic circuits carry exactly zero risk, which is arithmetic rather than evidence. **"MECHANISM" is WITHDRAWN**: the quantitative attribution died with the synthetic null in v3 and is not reinstated | §55 |
++| ⚠ **NARROWED v4** | **Among the 23 stochastic circuits, median ambiguity band 10.9 pp** (max 25.2) — θ-free and direction-free. **"Version-pair-free" is WITHDRAWN**: the band is constructed from the measured residuals of *this* version pair and is not independent of it | §55 |
+ | ⭐ **LIVE** | `cc_n32` is miscalled with θ **18 points clear** of the threshold — not a proximity artifact | §55 |
+ | ✅ **LIVE** | Operational levels: **4 of 26 circuits carry risk ≥10%**; 7 of 26 ≥5% | §55 |
+ | ⛔ **WITHDRAWN as a headline** | any suite-level failure rate. 46.2% [17.4, 81.0] is underpowered (effective n = 11 families) and is now a descriptive count only | §55 R4 |
+@@ -28,13 +36,13 @@ file without checking it here first.
+ | ⛔ **CORRECTED** | §52's Wilson interval [28.8, 64.5] **assumed independence and was too narrow** — families are perfectly separated (all-hit or all-miss) | §54 F8 |
+ | ✅ **LIVE** | Holds at **every threshold 5%–20%**, and **roughly doubles** under best-of-3 aggregation instead of mean | §54 |
+ | ⭐ **LIVE** | **All three circuits named in issue #14402 show a measurable error rate**: `bv_n140` 24.4%, `bv_n280` 17.3% [11.6, 23.7], `knn_341` 4.7% [2.7, 7.7] — the latter two selected blind | §52 |
+-| ⚠ **LIVE** | But **14 of 39 circuits are perfectly deterministic** (zero change, zero error) and the median eligible rate is **0.0000** — the phenomenon is concentrated, not universal | §52 |
++| ⚠ **CORRECTED v4** | But **13 of 39 circuits are perfectly deterministic** (zero spread in both arms, zero error) and the median eligible rate is **0.0000** — the phenomenon is concentrated, not universal. All 13 are eligible, so 13 of the 26. **"14 of 39" was wrong**: recomputing from raw gives 13 (Astra V4-04) | §52 |
+ | ⭐ **LIVE** | **`bv_n140` on heavy-hex has a long-run change of +5.37% [+4.27, +6.50] and is FALSELY CALLED a ≥+10% regression 24.4% of the time [19.5, 31.1]** — 400 seeds across 21 processes | §50, §51 |
+ | ✅ **LIVE** | That result **reproduces on a disjoint scattered seed set across 10 fresh processes** (22.6% vs 26.3%, CIs overlap) — the PRNG/process-state confound is removed | §51 |
+-| ⭐ **LIVE** | **That false positive is NOT fixed by running more: pooled k=20 (~40 h compute) still leaves 3.74%** | §50, §51 |
++| ⭐ **LIVE** | **That false positive is NOT fixed by running more: pooled k=20 (~80 compute hours) still leaves 3.74%** — ⚠ v3 corrected ~40 h, which was wall-clock on two concurrent machines, not the compute total | §50, §51 |
+ | ✅ **LIVE** | `bv_n140` on linear (+31.0% real regression) is MISSED 2.98% [1.59, 4.91] — but k=8 removes this one | §48, §49 |
+ | ⭐ **LIVE** | #14402's own **+46.1%** for `bv_n140` is one draw from a range spanning **−10.5% to +100%**; the truth is **+31.0%** | §48 |
+-| ✅ **LIVE** | #14402's numbers **reproduce independently** — within 0.5 pp and 2.4 pp on the two low-variance circuits | §48 |
++| ⚠ **CORRECTED v3/v4** | #14402's two low-variance circuits **compare closely** — `bv_n280` **+0.29 pp**, `knn_341` **−0.63 pp**. **"0.5 pp and 2.4 pp" was wrong**: the `knn_341` figure was misquoted and its difference has the wrong sign. And this is a numerical comparison at our configuration, not a reproduction — the issue's Benchpress revision and aggregation rule are not supplied | §48 |
+ | ✅ **LIVE** | Unseeded 3-run comparison cannot resolve a change inside an **11.5–14.0 pp** window on heavy-hex (range across modelling choices) | §42, §47 |
+ | ✅ **LIVE** | Topology ordering linear < square < heavy-hex | §42, direction-free |
+ | ✅ **LIVE** | k=3 is external (quoted from #14402); no conclusion depends on it | §43 |
+diff --git a/derived_binding.py b/derived_binding.py
+index 2759a6f..ce03c14 100644
+--- a/derived_binding.py
++++ b/derived_binding.py
+@@ -27,6 +27,26 @@ CONTRACT A — replay the original stream, do not substitute a better one
+     `raw_endpoint.py` remains the independent scientific check on the HEADLINE. This is
+     the binding check on the SAVED ARTIFACT. Different jobs; neither substitutes.
+ 
++WHY THE SCHEMA IS DECLARED AND NOT INFERRED (Astra V4-01)
++    v4's first version parsed every cell with `float(...)` or `int(float(...))` and then
++    compared it. Astra set all 36 saved risk intervals to `NaN` and the full 13-stage
++    verifier returned **exit 0**, because `abs(NaN - want) > tol` is False: a comparison
++    against a value outside the domain is not a weak check, it is not a check at all.
++    `n_seeds=200.9` and `k=3.9` passed the same way, truncated by `int(float(...))`, and a
++    duplicated row vanished into a dict keyed by circuit before anything counted it.
++
++    So the fix is not "also reject NaN". It is that PARSING IS A CONTRACT: every field
++    declares the set of values it admits, and a cell outside that set is rejected by name
++    BEFORE any comparison runs. Enumerating the bad inputs someone thought of is how this
++    repository has now been bitten four times; declaring the admissible domain is the only
++    form that covers the inputs nobody thought of. (`METHODOLOGY.md` R19.)
++
++    Three contracts, kept separate so a failure says which one broke:
++      DOMAIN     every cell is a member of its declared type's value set
++      SELF       the row is internally coherent — interval order, flags recomputed from
++                 the bounds they describe — checked on the SAVED row alone, with no replay
++      REPLAY     the value equals what re-running its own analysis produces
++
+ COST
+     A full replay is about four minutes. That is the price of checking the numbers rather
+     than a summary of them.
+@@ -34,11 +54,14 @@ COST
+ USAGE
+     python derived_binding.py            # replay and bind every field
+     python derived_binding.py --quick    # intervals and endpoint fields only
++    python derived_binding.py --schema   # domain + self-consistency only, no replay
+ """
+ 
+ import argparse
+ import csv
++import math
+ import os
++import re
+ import sys
+ 
+ import numpy as np
+@@ -51,6 +74,57 @@ import prereg_analysis as pa
+ SUMMARY = os.path.join(ROOT, "results", "summary", "prereg_heavy-hex.csv")
+ SELECTED = os.path.join(ROOT, "_selected.txt")
+ 
++# ---------------------------------------------------------------- declared domains
++#
++# A kind is a NAME FOR A SET OF VALUES. `parse` returns a member of that set or raises
++# Domain; there is no third outcome and no silent coercion into range.
++
++INT_RE = re.compile(r"[+-]?\d+\Z")
++BOOL_TOKENS = {"True": True, "False": False, "true": True, "false": False,
++               "TRUE": True, "FALSE": False, "1": True, "0": False}
++
++
++class Domain(Exception):
++    """A cell is not a member of the set its field declares."""
++
++
++def parse(kind, raw):
++    """The declared domain of `kind`, or Domain. Empty means 'not applicable'."""
++    if raw in ("", None):
++        return None
++    s = str(raw)
++    if kind == "str":
++        if not s.strip():
++            raise Domain("blank where a string is required")
++        return s
++    if kind == "bool":
++        if s not in BOOL_TOKENS:
++            raise Domain(f"{s!r} is not one of {sorted(BOOL_TOKENS)} — an unrecognised "
++                         f"token must not silently become False")
++        return BOOL_TOKENS[s]
++    if kind in ("int", "count"):
++        if not INT_RE.match(s):
++            raise Domain(f"{s!r} is not an integer literal — a fractional or "
++                         f"exponent-form value must not be truncated into one")
++        v = int(s)
++        if kind == "count" and v < 1:
++            raise Domain(f"{v} is not a positive count")
++        return v
++    # every remaining kind is a real number, and every real number must be FINITE:
++    # NaN and ±inf compare False against everything, so they pass any tolerance test
++    # ever written. They are rejected here, not compared later.
++    try:
++        v = float(s)
++    except ValueError:
++        raise Domain(f"{s!r} is not a number")
++    if not math.isfinite(v):
++        raise Domain(f"{s!r} is not finite — a nonfinite value satisfies every "
++                     f"tolerance comparison and therefore cannot be validated")
++    if kind == "prob" and not (0.0 <= v <= 1.0):
++        raise Domain(f"{v!r} is outside [0, 1], which a probability must be in")
++    return v
++
++
+ # field -> (kind, tolerance). Tolerances are the saved rounding, not slack: the CSV stores
+ # 4 or 6 decimals, so anything looser would let a real change hide inside it.
+ FIELDS = {
+@@ -61,79 +135,183 @@ FIELDS = {
+     "qiskit_candidate":         ("str", None),
+     "boundary":                 ("bool", None),
+     "error_excludes_zero":      ("bool", None),
+-    "n_seeds":                  ("int", None),
+-    "k":                        ("int", None),
+-    "threshold":                ("float", 1e-12),
+-    "est_long_run_change_pct":  ("float", 5e-5),
+-    "change_ci_lo_pct":         ("float", 5e-5),
+-    "change_ci_hi_pct":         ("float", 5e-5),
+-    "distance_to_cut_pp":       ("float", 5e-4),
+-    "p_call":                   ("float", 5e-7),
+-    "error_rate":               ("float", 5e-7),
+-    "error_ci_lo":              ("float", 5e-7),
+-    "error_ci_hi":              ("float", 5e-7),
++    "n_seeds":                  ("count", None),
++    "k":                        ("count", None),
++    "threshold":                ("prob", 1e-12),
++    "est_long_run_change_pct":  ("real", 5e-5),
++    "change_ci_lo_pct":         ("real", 5e-5),
++    "change_ci_hi_pct":         ("real", 5e-5),
++    "distance_to_cut_pp":       ("real", 5e-4),
++    "p_call":                   ("prob", 5e-7),
++    "error_rate":               ("prob", 5e-7),
++    "error_ci_lo":              ("prob", 5e-7),
++    "error_ci_hi":              ("prob", 5e-7),
+ }
++# The saved artifact carries exactly these columns. An unexpected one is not harmless:
++# a checker that ignores columns it does not know cannot notice a second `error_rate`
++# spelled differently, and a reader cannot tell which column the paper quotes.
++COLUMNS = {"circuit", *FIELDS}
++# Closed value sets, taken from what prereg_analysis can emit. A verdict outside this set
++# is not a value with an unexpected spelling; it is not a verdict.
++ENUMS = {"verdict": {"REGRESSION", "NO_REGRESSION", "UNRESOLVED"},
++         "error_kind": {"FALSE_POSITIVE", "FALSE_NEGATIVE", "N/A"}}
++
+ QUICK = {"error_ci_lo", "error_ci_hi", "error_rate", "error_excludes_zero",
+          "verdict", "boundary", "status"}
+ 
+ 
+-def coerce(kind, raw):
+-    if raw in ("", None):
+-        return None
+-    if kind == "str":
+-        return str(raw)
+-    if kind == "bool":
+-        return str(raw).strip().lower() in ("true", "1", "yes")
+-    if kind == "int":
+-        return int(float(raw))
+-    return float(raw)
++def read_rows(path):
++    """Rows as a LIST, plus the header, so nothing is collapsed before it is counted."""
++    with open(path, encoding="utf-8", newline="") as fh:
++        rdr = csv.DictReader(fh)
++        return list(rdr.fieldnames or []), [dict(r) for r in rdr]
++
++
++def check_schema(header, rows):
++    """DOMAIN and SELF contracts. Saved artifact only — no replay, no raw data."""
++    fails = []
++
++    got_cols = set(header)
++    for c in sorted(COLUMNS - got_cols):
++        fails.append(f"header: declared column '{c}' is missing")
++    for c in sorted(got_cols - COLUMNS):
++        fails.append(f"header: column '{c}' is not in the declared schema — every "
++                     f"column of the published artifact must be one this file validates")
++    if len(header) != len(set(header)):
++        fails.append("header: a column name is repeated")
++    if fails:
++        return fails                      # a wrong shape makes row checks meaningless
++
++    seen = {}
++    for i, row in enumerate(rows, start=2):        # line 1 is the header
++        cid = (row.get("circuit") or "").strip()
++        if not cid:
++            fails.append(f"line {i}: row has no circuit id")
++            continue
++        if cid == "circuit":
++            fails.append(f"line {i}: a second header row is embedded in the data")
++            continue
++        if cid in seen:
++            fails.append(f"line {i}: circuit '{cid}' already appears on line {seen[cid]} "
++                         f"— duplicate identities collapse before they are counted")
++            continue
++        seen[cid] = i
++
++        vals = {}
++        bad = False
++        for f, (kind, _) in FIELDS.items():
++            try:
++                vals[f] = parse(kind, row.get(f))
++            except Domain as exc:
++                fails.append(f"{cid}.{f}: {exc}")
++                bad = True
++        if bad:
++            continue
++        for f, allowed in ENUMS.items():
++            if vals.get(f) is not None and vals[f] not in allowed:
++                fails.append(f"{cid}.{f}: {vals[f]!r} is not one of {sorted(allowed)}")
++
++        # SELF — recomputable from the saved row alone. These are the relations that make
++        # the row mean what its column names say, and they hold whatever the replay does.
++        lo, hi, pt = vals["error_ci_lo"], vals["error_ci_hi"], vals["error_rate"]
++        if (lo is None) != (hi is None) or (lo is None) != (pt is None):
++            fails.append(f"{cid}: risk point and interval must be present together "
++                         f"(lo={lo!r} hi={hi!r} point={pt!r})")
++        elif lo is not None:
++            if lo > hi:
++                fails.append(f"{cid}: risk interval is inverted — [{lo}, {hi}]")
++            if not (lo <= pt <= hi):
++                fails.append(f"{cid}: saved risk {pt} lies outside its own interval "
++                             f"[{lo}, {hi}]")
++            if vals["error_excludes_zero"] != (lo > 0.0):
++                fails.append(f"{cid}.error_excludes_zero is {vals['error_excludes_zero']} "
++                             f"but the saved lower bound is {lo} — the primary endpoint "
++                             f"flag must follow the interval it describes")
++        elif vals["error_excludes_zero"]:
++            fails.append(f"{cid}.error_excludes_zero is True with no saved interval")
++
++        clo, chi, ch = (vals["change_ci_lo_pct"], vals["change_ci_hi_pct"],
++                        vals["est_long_run_change_pct"])
++        if clo > chi:
++            fails.append(f"{cid}: change interval is inverted — [{clo}, {chi}]")
++        if not (clo <= ch <= chi):
++            fails.append(f"{cid}: saved change {ch} lies outside its own interval "
++                         f"[{clo}, {chi}]")
++
++        dist = abs(ch - vals["threshold"] * 100.0)
++        if abs(dist - vals["distance_to_cut_pp"]) > 5e-4:
++            fails.append(f"{cid}.distance_to_cut_pp is {vals['distance_to_cut_pp']} but "
++                         f"|change − cut| is {dist:.4f}")
++        # BOUNDARY_PP is a closed rule on the saved distance. Rows sitting within 1e-3 of
++        # the 3 pp cut are left to the replay: the saved value is rounded and the nearest
++        # recorded row is 0.237 pp away, so this guard costs nothing here.
++        if abs(dist - pa.BOUNDARY_PP) > 1e-3:
++            if vals["boundary"] != (dist <= pa.BOUNDARY_PP):
++                fails.append(f"{cid}.boundary is {vals['boundary']} at {dist:.4f} pp "
++                             f"from the cut (rule: ≤ {pa.BOUNDARY_PP} pp)")
++
++        if (vals["verdict"] == "UNRESOLVED") != (lo is None):
++            fails.append(f"{cid}: verdict {vals['verdict']} with "
++                         f"{'no' if lo is None else 'a'} saved risk interval")
++    return fails
+ 
+ 
+ def main():
+     ap = argparse.ArgumentParser(description=__doc__,
+                                  formatter_class=argparse.RawDescriptionHelpFormatter)
+     ap.add_argument("--quick", action="store_true")
++    ap.add_argument("--schema", action="store_true",
++                    help="domain and self-consistency only; skip the 4-minute replay")
+     args = ap.parse_args()
+     fields = {k: v for k, v in FIELDS.items() if not args.quick or k in QUICK}
+ 
+     circuits = [c.strip() for c in open(SELECTED) if c.strip()]
+-    saved = {r["circuit"]: r for r in csv.DictReader(open(SUMMARY, encoding="utf-8"))}
++    header, rows = read_rows(SUMMARY)
+ 
+     print(f"\n  SAVED SUMMARY BOUND TO A REPLAY OF ITS OWN ANALYSIS")
+-    print(f"  replaying prereg_analysis.analyse for {len(circuits)} circuits "
+-          f"(original MC bootstrap, original seeds)\n")
++    print(f"  {len(rows)} rows, {len(header)} columns\n")
+ 
+-    fails, checked = [], 0
++    # DOMAIN + SELF first. A value outside its declared set is not compared: comparing it
++    # is what produced the 13/13 pass on an all-NaN interval column.
++    fails = check_schema(header, rows)
++    print(f"  schema: {len(FIELDS)} declared fields, {len(ENUMS)} closed value sets, "
++          f"{'REJECTED' if fails else 'every cell inside its domain'}")
++    if fails:
++        report(fails, "SAVED SUMMARY IS NOT A VALID ARTIFACT")
+ 
+-    # row membership, before any value is compared
+-    missing = [c for c in circuits if c not in saved]
+-    extra = [c for c in saved if c not in circuits]
+-    for c in missing:
++    saved = {r["circuit"]: r for r in rows}
++    for c in [c for c in circuits if c not in saved]:
+         fails.append(f"{c}: in the frozen selection, ABSENT from the saved summary")
+-    for c in extra:
++    for c in [c for c in saved if c not in circuits]:
+         fails.append(f"{c}: in the saved summary, NOT in the frozen selection")
+-    if len(saved) != len(circuits):
+-        fails.append(f"row count {len(saved)} != frozen selection {len(circuits)}")
++    if len(rows) != len(circuits):
++        fails.append(f"row count {len(rows)} != frozen selection {len(circuits)}")
++    if fails:
++        report(fails, "SAVED SUMMARY IS NOT THE FROZEN SELECTION")
++
++    if args.schema:
++        print("\n  ✓ the saved summary is a valid artifact: every cell inside its "
++              "declared\n    domain, every row internally coherent. The replay was not "
++              "run (--schema).\n")
++        return
+ 
++    print(f"  replaying prereg_analysis.analyse for {len(circuits)} circuits "
++          f"(original MC bootstrap, original seeds)")
++    checked = 0
+     rng = np.random.default_rng(20260906)
+     for c in circuits:
+-        if c not in saved:
+-            continue
+         live = pa.analyse(c, 0.10, 3, rng)
+         row = saved[c]
+         for f, (kind, tol) in fields.items():
+-            if f not in row:
+-                fails.append(f"{c}: saved summary has no column '{f}'")
+-                continue
+             want = live.get(f)
+-            got = coerce(kind, row[f])
++            got = parse(kind, row[f])          # already proved to be in-domain above
+             if want is None and got is None:
+                 continue
+             if want is None or got is None:
+                 fails.append(f"{c}.{f}: saved {row[f]!r}, replay {want!r}")
+                 continue
+             checked += 1
+-            if kind in ("str", "bool", "int"):
++            if kind in ("str", "bool", "int", "count"):
+                 if got != (want if kind != "bool" else bool(want)):
+                     fails.append(f"{c}.{f}: saved {got!r} != replay {want!r}")
+             else:
+@@ -144,20 +322,22 @@ def main():
+     print(f"  {checked} saved values compared against the replay")
+     if fails:
+         iv = [f for f in fails if ".error_ci_" in f]
+-        print(f"\n  ✗ SAVED SUMMARY DOES NOT MATCH ITS OWN ANALYSIS — "
+-              f"{len(fails)} mismatch(es)")
+         if iv:
+             print(f"\n  RISK INTERVAL MISMATCH on {len(iv)} field(s). The published "
+                   f"uncertainty is\n  not the uncertainty this data produces.")
+-        print()
+-        for f in fails[:30]:
+-            print(f"      {f}")
+-        if len(fails) > 30:
+-            print(f"      … and {len(fails) - 30} more")
+-        print()
+-        sys.exit(1)
+-    print("\n  ✓ every saved primary field reproduces from a replay of its own "
+-          "analysis.\n")
++        report(fails, "SAVED SUMMARY DOES NOT MATCH ITS OWN ANALYSIS")
++    print("\n  ✓ every saved primary field is inside its declared domain, internally "
++          "coherent,\n    and equal to a replay of its own analysis.\n")
++
++
++def report(fails, headline):
++    print(f"\n  ✗ {headline} — {len(fails)} problem(s):\n")
++    for f in fails[:30]:
++        print(f"      {f}")
++    if len(fails) > 30:
++        print(f"      … and {len(fails) - 30} more")
++    print()
++    sys.exit(1)
+ 
+ 
+ if __name__ == "__main__":
+diff --git a/manuscript_binding.py b/manuscript_binding.py
+index 1e00487..721be33 100644
+--- a/manuscript_binding.py
++++ b/manuscript_binding.py
+@@ -11,18 +11,40 @@ WHY (Astra A02)
+     the claim. Presence is not placement -- a weakness this project has now been bitten by
+     three times, and patched twice; this file replaces the approach instead.
+ 
++WHAT THIS FILE CAN AND CANNOT SEE (Astra V4-03)
++    Astra put the correct table inside a `<div style="display:none">`, printed a false
++    0-of-26 statement beside it, and this stage returned 0. It also added an abstract
++    sentence attributing 7/26 to interval exclusion — a numerator that is correct for a
++    DIFFERENT endpoint — and the prose scan exempted it.
++
++    The first defect is not "CSS was not handled". It is that this file reads Markdown
++    source and described its result as what a reader sees, and no amount of source
++    reading decides the visibility of arbitrary HTML. Enumerating `display:none`,
++    `visibility:hidden`, `font-size:0`, `hidden`, `aria-hidden`, white-on-white … is the
++    losing side of that game. So the DOMAIN is declared instead (`METHODOLOGY.md` R19):
++
++        PAPER.md is Markdown whose only raw HTML is an inline formatting tag drawn from a
++        closed list, carrying no attributes. Anything else is REJECTED, not interpreted.
++
++    A document outside that domain is not judged unsafe; it is judged unvalidatable by
++    this file, which says so and exits nonzero. That is a claim this file can keep.
++
++    The second defect is that a fraction was checked against the SET of true numerators
++    instead of against the endpoint its own sentence names. 7/26 is true of "risk ≥ 5%"
++    and false of "excludes zero", and only the sentence says which one is meant.
++
+ WHAT THIS DOES
+-    1. Deletes HTML comments FIRST. Anything a reader cannot see cannot satisfy a check.
+-    2. Parses GitHub-flavoured Markdown tables structurally -- header, alignment row, body
++    1. Blanks fenced code blocks, then deletes HTML comments. Neither is a rendered claim.
++    2. Requires every remaining raw HTML tag to be in the declared closed list.
++    3. Parses GitHub-flavoured Markdown tables structurally -- header, alignment row, body
+        -- rather than matching text.
+-    3. Requires EXACTLY ONE table carrying the primary endpoint rows. Two tables is an
++    4. Requires EXACTLY ONE table carrying the primary endpoint rows. Two tables is an
+        ambiguity, not a convenience: a second one lets an attacker leave a correct table
+        somewhere while the read table lies. Zero is a missing claim.
+-    4. Parses "12 / 26" into numerator AND denominator and checks both.
+-    5. Compares them to a reconstruction from RAW, not to a stored expectation.
+-
+-    It also scans the visible text for endpoint-shaped fractions outside that table which
+-    contradict it, so a false claim cannot be smuggled into prose.
++    5. Parses "12 / 26" into numerator AND denominator and checks both.
++    6. Compares them to a reconstruction from RAW, not to a stored expectation.
++    7. Binds every prose quantity over the eligible denominator to the endpoint its own
++       sentence names, so a true numerator cannot be attached to a false claim.
+ 
+ USAGE
+     python manuscript_binding.py
+@@ -43,13 +65,67 @@ SELECTED = os.path.join(ROOT, "_selected.txt")
+ # the three canonical rows, by the label a reader reads
+ ROWS = {"risk > 0": "excl", "risk ≥ 5%": "ge5", "risk ≥ 10%": "ge10"}
+ 
++# Phrases that NAME an endpoint in prose. A quantity is bound to the nearest one of these.
++# They are the words the manuscript actually uses for each claim; a sentence using none of
++# them is not making one of these three claims and is not checked against them.
++CLAIM_PHRASES = {
++    "excl": ("excludes zero", "exclude zero", "excluding zero", "excluded zero",
++             "risk > 0", "pre-registered endpoint", "pre-registered 12"),
++    "ge5":  ("at least 5%", "≥ 5%", "≥5%", ">= 5%", "of at least 5", "5% or more"),
++    "ge10": ("at least 10%", "≥ 10%", "≥10%", ">= 10%", "of at least 10", "10% or more"),
++}
++CLAIM_WINDOW = 160        # characters; a claim named further away than this is not "near"
++
+ COMMENT = re.compile(r"<!--.*?-->", re.S)
++FENCE = re.compile(r"^[ \t]*(```+|~~~+).*?^[ \t]*\1[ \t]*$", re.S | re.M)
+ FRACTION = re.compile(r"(\d+)\s*/\s*(\d+)")
+ 
++# --- the declared raw-HTML domain -------------------------------------------------
++# `<` immediately followed by a letter (optionally `/` or `!` first), no `<` or `>` inside.
++# The immediacy matters: prose writes "p < 0.001, n = 23)" and the naive `<[^>]+>` reads
++# everything up to the next `>` anywhere in the document as a tag.
++TAG = re.compile(r"<[!/]?[A-Za-z][^<>]{0,400}>")
++ALLOWED_TAGS = {"sub", "/sub", "sup", "/sup"}
++AUTOLINK = re.compile(r"\A<(?:[^\s<>@]+@[^\s<>@]+|https?://[^\s<>]+)>\Z")
++
++# Words the manuscript spells out for small counts, so "Seven of 26" is a quantity.
++WORD_NUM = {"zero": 0, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
++            "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11, "twelve": 12,
++            "thirteen": 13, "fourteen": 14, "fifteen": 15, "sixteen": 16,
++            "seventeen": 17, "eighteen": 18, "nineteen": 19, "twenty": 20}
++QUANTITY = re.compile(r"\b(\d+|" + "|".join(WORD_NUM) + r")\s*(?:/|of)\s*(\d+)\b",
++                      re.I)
++
++
++def strip_fences(raw):
++    """Fenced code blocks, blanked but line-preserving: code is displayed, not parsed."""
++    return FENCE.sub(lambda m: "\n" * m.group(0).count("\n"), raw)
++
+ 
+ def visible_text(raw):
+-    """The manuscript with everything invisible removed."""
+-    return COMMENT.sub("", raw)
++    """The manuscript with everything a reader cannot see removed.
++
++    Only valid for a document inside the declared domain -- see `html_domain_violations`,
++    which callers must run first. Outside it, this function has no defensible meaning.
++    """
++    return COMMENT.sub("", strip_fences(raw))
++
++
++def html_domain_violations(text):
++    """Raw HTML outside the closed list. Run on comment-stripped, fence-stripped text."""
++    out = []
++    for m in TAG.finditer(text):
++        s = m.group(0)
++        if AUTOLINK.match(s):
++            continue
++        if s[1:-1].strip().lower() in ALLOWED_TAGS and s[1:-1] == s[1:-1].strip():
++            continue
++        line = text.count("\n", 0, m.start()) + 1
++        out.append(f"line {line}: raw HTML {s[:60]!r} is outside the declared domain "
++                   f"(bare {sorted(ALLOWED_TAGS)} only). Whether a reader sees the "
++                   f"content it governs cannot be decided from the source, so this "
++                   f"manuscript cannot be validated as what a reader sees.")
++    return out
+ 
+ 
+ def parse_tables(text):
+@@ -90,9 +166,24 @@ def main():
+     raw = open(PAPER, encoding="utf-8").read()
+     vis = visible_text(raw)
+     hidden = len(COMMENT.findall(raw))
++    fenced = len(FENCE.findall(raw))
+ 
+     print(f"\n  RENDERED MANUSCRIPT BOUND TO RAW DATA")
+-    print(f"  {len(raw):,} bytes, {hidden} HTML comment block(s) removed before parsing\n")
++    print(f"  {len(raw):,} bytes, {hidden} HTML comment block(s) and {fenced} fenced "
++          f"code block(s)\n  removed before parsing")
++
++    # The domain, before anything is parsed. A document outside it is not judged false;
++    # it is judged beyond what reading the source can establish, and that is the finding.
++    outside = html_domain_violations(vis)
++    print(f"  raw HTML: {len(TAG.findall(vis))} tag(s), "
++          f"{'ALL inside' if not outside else f'{len(outside)} OUTSIDE'} the declared "
++          f"domain\n")
++    if outside:
++        print("  ✗ THIS MANUSCRIPT CANNOT BE VALIDATED AS WHAT A READER SEES:\n")
++        for o in outside[:10]:
++            print(f"      {o}")
++        print()
++        sys.exit(1)
+ 
+     fails = []
+     cand = find_endpoint_tables(parse_tables(vis))
+@@ -176,8 +267,52 @@ def main():
+         ctx = vis[max(0, m.start() - 60):m.end() + 20].replace("\n", " ")
+         fails.append(f"visible prose asserts {num}/{den}, which no endpoint supports "
+                      f"— …{ctx.strip()[-90:]}")
++
++    # CLAIM IDENTITY. The scan above asks whether a numerator is true of SOMETHING. That
++    # is not the question a reader asks. 7 of 26 is true of "risk >= 5%" and false of
++    # "excludes zero", so every quantity over the eligible denominator is bound to the
++    # endpoint its own sentence names -- the nearest claim phrase within CLAIM_WINDOW.
++    # A sentence naming no endpoint is not making one of these claims and is not checked
++    # against them: "13 of 26 eligible circuits have no spread at all" is a different
++    # true statement about the same 26 circuits.
++    #
++    # The counterfactual exemption is taken at SENTENCE level here, not paragraph level.
++    # The abstract is a single paragraph that legitimately contains the word "withdrawn",
++    # so a paragraph-level exemption hands an attacker the whole abstract -- which is
++    # precisely where Astra put the false attribution.
++    low = vis.lower()
++    marks = [(mm.start(), key) for key, phrases in CLAIM_PHRASES.items()
++             for p in phrases for mm in re.finditer(re.escape(p), low)]
++    ends = [mm.end() for mm in re.finditer(r"(?<=[.!?:])\s+|\n\n", vis)]
++
++    def sentence_at(pos):
++        lo = max([e for e in ends if e <= pos], default=0)
++        hi = min([e for e in ends if e > pos], default=len(vis))
++        return vis[lo:hi].lower()
++
++    bound = 0
++    for m in QUANTITY.finditer(vis):
++        tok, den = m.group(1), int(m.group(2))
++        if den != n_elig or m.group(0) in tbl_span:
++            continue
++        num = int(tok) if tok.isdigit() else WORD_NUM[tok.lower()]
++        if any(w in sentence_at(m.start()) for w in COUNTERFACTUAL):
++            continue
++        near = [(abs(pos - m.start()), key) for pos, key in marks
++                if abs(pos - m.start()) <= CLAIM_WINDOW]
++        if not near:
++            continue
++        key = min(near)[1]
++        bound += 1
++        if num != truth[key]:
++            ctx = vis[max(0, m.start() - 40):m.end() + 120].replace("\n", " ")
++            label = next(k for k, v in ROWS.items() if v == key)
++            fails.append(f"visible prose attributes {num} of {den} to the "
++                         f"'{label}' endpoint, which the raw data puts at "
++                         f"{truth[key]} of {den} — …{ctx.strip()[:150]}")
+     print(f"  prose scan: {exempt} endpoint-shaped fraction(s) exempted as explicitly "
+-          f"counterfactual")
++          f"counterfactual;\n              {bound} prose quantit(ies) bound to the "
++          f"endpoint their own sentence names")
+ 
+     if fails:
+         print(f"  ✗ THE VISIBLE MANUSCRIPT DOES NOT MATCH THE RAW DATA — "
+diff --git a/mutation_test.py b/mutation_test.py
+index 0533b9f..66a8006 100644
+--- a/mutation_test.py
++++ b/mutation_test.py
+@@ -17,6 +17,27 @@ HISTORY, BECAUSE IT IS THE POINT
+     attacks its author imagined, and the author is the worst-placed person to imagine
+     them. This file is the record of what has actually been tried, not a proof of safety.
+ 
++    v4 was then defeated twice more by the next audit, and P-U below are those cases:
++
++      R  all 36 saved risk intervals -> NaN        13/13 PASS   -> derived (V4-01)
++      U  the PDF a reader opens says 99.9 where    13/13 PASS   -> pdf     (V4-02)
++         the manuscript says 10.9
++      P  correct table inside a hidden <div>       stage 12 = 0 -> rendered (V4-03)
++      Q  7/26 attributed to the wrong endpoint     stage 12 = 0 -> rendered (V4-03)
++      S  n_seeds = 200.9, k = 3.9                  accepted     -> derived (V4-01)
++      T  a duplicated circuit row                  accepted     -> derived (V4-01)
++
++A NONZERO EXIT IS NOT A CATCH (Astra V4-07)
++    This file used to accept any nonzero return code as proof that a layer caught a
++    mutation. It does not distinguish "the checker rejected the artifact" from "the
++    checker crashed", so a fixture that broke an import would have been scored as
++    successful regression coverage. Every layer prints `✗` when it REJECTS and prints no
++    `✗` when it dies, so the two are separated here and only a rejection counts.
++
++    On top of that, every mutation declares the REASON it must be rejected for, and the
++    catching layer's output must contain it. A layer that fails for an unrelated reason
++    is reported as MISSED, because that is what it is.
++
+ SAFETY
+     Every mutation runs in a throwaway `git archive` snapshot in the system temp
+     directory. Nothing here writes to the repository, and it refuses to run if the
+@@ -49,12 +70,18 @@ LAYERS = {                      # name -> script
+     "anchor":    "v2_anchor.py",
+     "derived":   "derived_binding.py",
+     "rendered":  "manuscript_binding.py",
++    "pdf":       "pdf_binding.py",
+ }
+ # `derived` replays the original 400x400,000 Monte-Carlo bootstrap and costs about four
+-# minutes. Running it for all eleven mutations would take three quarters of an hour to
+-# learn nothing new, so it runs where it is REQUIRED to catch the attack, and where it is
+-# skipped the table says so rather than printing a pass it did not earn.
+-SLOW = {"derived"}
++# minutes. Running it for all mutations would take an hour to learn nothing new, so it
++# runs where it is REQUIRED to catch the attack, and where it is skipped the table says
++# so rather than printing a pass it did not earn. `pdf` is skipped for the same reason:
++# it needs the built artifact, which only the PDF mutations disturb.
++SLOW = {"derived", "pdf"}
++# publish/paper.pdf is the artifact stage 13 validates and is not tracked in git, so a
++# `git archive` snapshot does not contain it. Copy it in, or the pdf layer exits nonzero
++# because the file is missing -- which is an infrastructure error, not a detection.
++UNTRACKED_ARTIFACTS = ["publish/paper.pdf", "publish/paper.html"]
+ 
+ 
+ def snapshot(dst):
+@@ -64,6 +91,12 @@ def snapshot(dst):
+     p = subprocess.run(["tar", "-x", "-C", dst], input=tar.stdout, capture_output=True)
+     if p.returncode:
+         raise SystemExit("tar failed: " + p.stderr.decode()[:300])
++    for rel in UNTRACKED_ARTIFACTS:
++        src = os.path.join(ROOT, rel.replace("/", os.sep))
++        if os.path.isfile(src):
++            dstf = os.path.join(dst, rel.replace("/", os.sep))
++            os.makedirs(os.path.dirname(dstf), exist_ok=True)
++            shutil.copy2(src, dstf)
+ 
+ 
+ def run(snap, script):
+@@ -76,6 +109,18 @@ def run(snap, script):
+     return p.returncode, (p.stdout or "") + (p.stderr or "")
+ 
+ 
++# REJECTED / PASSED / ERROR -- the distinction Astra V4-07 asked for. A layer that
++# rejects prints `✗` and exits nonzero. A layer that dies exits nonzero and prints no
++# `✗`, and that is not evidence of anything except a broken fixture.
++REJECTED, PASSED, ERROR = "REJECTED", "PASSED", "ERROR"
++
++
++def classify(code, out):
++    if code == 0:
++        return PASSED
++    return REJECTED if "✗" in out else ERROR
++
++
+ # ---------------------------------------------------------------- the mutations
+ 
+ def _rows(snap, path):
+@@ -231,20 +276,189 @@ def mut_N(snap):
+     return "one raw count +1, and the manifest regenerated to match"
+ 
+ 
++def _csv_rows(snap):
++    p = os.path.join(snap, SUMMARY)
++    rows = list(csv.DictReader(open(p, encoding="utf-8")))
++    return p, rows, list(rows[0].keys())
++
++
++def _csv_write(p, rows, cols):
++    with open(p, "w", encoding="utf-8", newline="") as fh:
++        w = csv.DictWriter(fh, fieldnames=cols)
++        w.writeheader()
++        w.writerows(rows)
++
++
++def mut_R(snap):
++    """ASTRA V4-01: every saved risk interval bound -> NaN. 13/13 PASS against v4."""
++    p, rows, cols = _csv_rows(snap)
++    n = 0
++    for r in rows:
++        if r.get("error_ci_lo") not in ("", None):
++            r["error_ci_lo"], r["error_ci_hi"] = "NaN", "NaN"
++            n += 1
++    _csv_write(p, rows, cols)
++    return f"all {n} saved risk intervals -> NaN"
++
++
++def mut_S(snap):
++    """ASTRA V4-01: fractional integer metadata, truncated by int(float(...))."""
++    p, rows, cols = _csv_rows(snap)
++    for r in rows:
++        r["n_seeds"], r["k"] = "200.9", "3.9"
++    _csv_write(p, rows, cols)
++    return "n_seeds -> 200.9 and k -> 3.9 on every row"
++
++
++def mut_T(snap):
++    """ASTRA V4-01: a duplicated circuit row, collapsed by a dict before counting."""
++    p, rows, cols = _csv_rows(snap)
++    rows.append(dict(rows[0]))
++    _csv_write(p, rows, cols)
++    return f"circuit {rows[0]['circuit']} duplicated as a 40th row"
++
++
++def mut_P(snap):
++    """ASTRA V4-03: canonical table inside a hidden div, false statement left visible."""
++    p = os.path.join(snap, "PAPER.md")
++    t = open(p, encoding="utf-8").read()
++    real = ("| risk > 0 (pre-registered endpoint) | 12 / 26 | 46.2% | [28.8, 64.5] |\n"
++            "| risk ≥ 5% | 7 / 26 | 26.9% | [13.7, 46.1] |\n"
++            "| risk ≥ 10% | 4 / 26 | 15.4% | [6.2, 33.5] |")
++    if real not in t:
++        raise SystemExit("P: canonical table not found verbatim")
++    fake = ("| risk > 0 (pre-registered endpoint) | 0 / 26 | 0.0% | [0.0, 0.0] |\n"
++            "| risk ≥ 5% | 0 / 26 | 0.0% | [0.0, 0.0] |\n"
++            "| risk ≥ 10% | 0 / 26 | 0.0% | [0.0, 0.0] |")
++    t = t.replace(real, fake + '\n\n<div style="display:none">\n\n' + real +
++                  "\n\n</div>\n", 1)
++    open(p, "w", encoding="utf-8").write(t)
++    return "correct table moved into a display:none div, 0/26 left visible"
++
++
++def mut_Q(snap):
++    """ASTRA V4-03: a true numerator attributed to the wrong endpoint in the abstract."""
++    p = os.path.join(snap, "PAPER.md")
++    t = open(p, encoding="utf-8").read()
++    old = "Seven of 26 eligible circuits\ncarry a risk of at least 5%"
++    if old not in t:
++        raise SystemExit("Q: abstract sentence not found verbatim")
++    new = ("Seven of 26 eligible circuits have a risk interval that excludes zero. "
++           "Seven of 26 eligible circuits\ncarry a risk of at least 5%")
++    open(p, "w", encoding="utf-8").write(t.replace(old, new, 1))
++    return "abstract attributes 7/26 to interval exclusion (true of >=5%, not of this)"
++
++
++class Skip(Exception):
++    """This fixture cannot be BUILT here. Not a pass, not a failure — an absence."""
++
++
++CHROME = [r"C:\Program Files\Google\Chrome\Application\chrome.exe",
++          r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"]
++
++
++def mut_U(snap):
++    """ASTRA V4-02: the PDF a reader opens says 99.9 where the manuscript says 10.9.
++
++    The substitution has to happen in the rendered HTML and then go through Chromium,
++    because the text in the PDF is stored as hex glyph codes -- there is no literal
++    "10.9" in the byte stream to patch. That is why this fixture rebuilds rather than
++    edits, and why it needs the same two tools publish/build_paper.sh needs.
++    """
++    pandoc = shutil.which("pandoc")
++    chrome = next((c for c in CHROME if os.path.isfile(c)), None)
++    if not pandoc or not chrome:
++        raise Skip("needs pandoc and Chrome — the PDF stores text as glyph codes, so "
++                   "the false value can only be introduced by rebuilding")
++    html = os.path.join(snap, "publish", "paper.html")
++    pdf = os.path.join(snap, "publish", "paper.pdf")
++    os.makedirs(os.path.dirname(html), exist_ok=True)
++    r = subprocess.run([pandoc, "PAPER.md", "--from=markdown+pipe_tables+raw_html",
++                        "--to=html5", "--standalone", "--css=paper_style.css",
++                        "--output=publish/paper.html"],
++                       cwd=snap, capture_output=True, text=True)
++    if r.returncode:
++        raise Skip("pandoc failed: " + (r.stderr or "")[:150])
++    t = open(html, encoding="utf-8").read()
++    n = t.count("10.9")
++    if not n:
++        raise SystemExit("U: no 10.9 in the rendered HTML to substitute")
++    open(html, "w", encoding="utf-8").write(t.replace("10.9", "99.9"))
++    url = "file:///" + html.replace("\\", "/")
++    r = subprocess.run([chrome, "--headless=new", "--disable-gpu", "--no-sandbox",
++                        f"--user-data-dir={os.path.join(snap, '_chrome')}",
++                        f"--print-to-pdf={pdf}", "--print-to-pdf-no-header",
++                        "--no-pdf-header-footer", "--virtual-time-budget=15000", url],
++                       cwd=snap, capture_output=True, text=True, timeout=300)
++    if not os.path.isfile(pdf) or os.path.getsize(pdf) < 10000:
++        raise Skip("Chromium produced no PDF: " + (r.stderr or "")[:150])
++    return (f"{n} occurrence(s) of 10.9 -> 99.9 in the rendered HTML, then rebuilt "
++            f"through publish/build_paper.sh's own pandoc + Chromium path. PAPER.md "
++            f"and the raw data are untouched")
++
++
++def mut_V(snap):
++    """An interval that is INTERNALLY VALID but not the one the analysis produces.
++
++    D, H and R are all now stopped by the schema and self-consistency contracts before
++    the replay runs, which is stricter but leaves the replay itself unexercised. This
++    mutation is the one that only the replay can catch: the bound stays finite, stays in
++    [0, 1], stays above the point estimate and leaves every flag correct, so nothing about
++    the row is self-contradictory. It is simply not what 400 x 400,000 resamples give.
++    """
++    p, rows, cols = _csv_rows(snap)
++    for r in rows:
++        if r.get("error_ci_hi") not in ("", None) and float(r["error_ci_hi"]) < 0.98:
++            r["error_ci_hi"] = f"{float(r['error_ci_hi']) + 0.01:.6f}"
++            target = r["circuit"]
++            break
++    else:
++        raise SystemExit("V: no row with headroom to widen")
++    _csv_write(p, rows, cols)
++    return f"{target} error_ci_hi widened by 0.01 — valid interval, wrong interval"
++
++
+ MUTATIONS = [
+-    ("A", "whole raw arm -> constant", mut_A, {"science", "integrity", "anchor"}),
+-    ("B", "one raw count +1", mut_B, {"integrity", "anchor"}),
+-    ("C", "raw x1.09, verdict moves", mut_C, {"science", "integrity", "anchor"}),
+-    ("D", "derived summary point risk", mut_D, {"derived"}),
+-    ("E", "visible literal 7 -> 9", mut_E, {"science", "rendered"}),
+-    ("F", "ASTRA: raw + manifest regenerated", mut_F, {"anchor"}),
+-    ("H", "ASTRA: all saved intervals faked", mut_H, {"derived"}),
+-    ("K", "ASTRA: false visible table, correct rows hidden", mut_K, {"rendered"}),
+-    ("L", "second contradicting visible table", mut_L, {"rendered"}),
+-    ("M", "wrong denominator only", mut_M, {"rendered"}),
+-    ("N", "raw + manifest regenerated together", mut_N, {"anchor"}),
++    # id  label                                fn      layer -> the reason it must reject for.
++    # The reason is asserted, not just the exit code (Astra V4-07). It is quoted from the
++    # message the layer actually prints, so a layer that starts failing somewhere else
++    # stops counting as coverage of this mutation.
++    ("A", "whole raw arm -> constant", mut_A,
++     {"science": "RAW DATA AND MANUSCRIPT DISAGREE",
++      "integrity": "RAW EVIDENCE WAS EDITED", "anchor": "ANCHOR VIOLATED"}),
++    ("B", "one raw count +1", mut_B,
++     {"integrity": "RAW EVIDENCE WAS EDITED", "anchor": "ANCHOR VIOLATED"}),
++    ("C", "raw x1.09, verdict moves", mut_C,
++     {"science": "RAW DATA AND MANUSCRIPT DISAGREE",
++      "integrity": "RAW EVIDENCE WAS EDITED", "anchor": "ANCHOR VIOLATED"}),
++    ("D", "derived summary point risk", mut_D,
++     {"derived": "lies outside its own interval"}),
++    ("E", "visible literal 7 -> 9", mut_E,
++     {"science": "RAW DATA AND MANUSCRIPT DISAGREE", "rendered": "numerator 9"}),
++    ("F", "ASTRA: raw + manifest regenerated", mut_F, {"anchor": "ANCHOR VIOLATED"}),
++    ("H", "ASTRA: all saved intervals faked", mut_H,
++     {"derived": "lies outside its own interval"}),
++    ("K", "ASTRA: false visible table, correct rows hidden", mut_K,
++     {"rendered": "numerator 0"}),
++    ("L", "second contradicting visible table", mut_L,
++     {"rendered": "visible tables carry the primary endpoint rows"}),
++    ("M", "wrong denominator only", mut_M, {"rendered": "denominator 39"}),
++    ("N", "raw + manifest regenerated together", mut_N, {"anchor": "ANCHOR VIOLATED"}),
++    ("P", "ASTRA: canonical table inside a hidden div", mut_P,
++     {"rendered": "outside the declared domain"}),
++    ("Q", "ASTRA: 7/26 attributed to the wrong endpoint", mut_Q,
++     {"rendered": "attributes 7 of 26"}),
++    ("R", "ASTRA: all saved intervals -> NaN", mut_R, {"derived": "is not finite"}),
++    ("S", "ASTRA: fractional n_seeds and k", mut_S,
++     {"derived": "not an integer literal"}),
++    ("T", "ASTRA: a duplicated circuit row", mut_T, {"derived": "already appears"}),
++    ("U", "ASTRA: PDF says 99.9 where the source says 10.9", mut_U,
++     {"pdf": "appears NOWHERE in PAPER.md"}),
++    ("V", "a valid interval that the replay does not produce", mut_V,
++     {"derived": "error_ci_hi"}),
+ ]
+ DEFEATED_V3 = {"F", "H", "K"}
++DEFEATED_V4 = {"P", "Q", "R", "S", "T", "U"}
+ 
+ 
+ def main():
+@@ -264,8 +478,8 @@ def main():
+     if os.path.realpath(base).startswith(os.path.realpath(ROOT)):
+         raise SystemExit("refusing: temp path is inside the repository")
+ 
+-    results, failures = [], []
+-    order = ["science", "integrity", "anchor", "derived", "rendered"]
++    results, failures, skipped = [], [], []
++    order = ["science", "integrity", "anchor", "derived", "rendered", "pdf"]
+     try:
+         print(f"\n  scratch: {base}")
+         print("  the repository is never written to by this script\n")
+@@ -273,51 +487,84 @@ def main():
+         snap = os.path.join(base, "pristine")
+         os.makedirs(snap)
+         snapshot(snap)
+-        ctrl = {n: run(snap, LAYERS[n])[0] for n in order}
+-        print("  CONTROL  " + "  ".join(
+-            f"{n}={'PASS' if c == 0 else 'FAIL'}" for n, c in ctrl.items()))
+-        if any(ctrl.values()):
+-            failures.append("control: a pristine snapshot did not pass every layer")
+-
+-        hdr = f"\n  {'id':<4}{'mutation':<44}" + "".join(f"{n:<11}" for n in order)
+-        print(hdr)
+-        for mid, label, fn, must in muts:
++        ctrl = {n: classify(*run(snap, LAYERS[n])) for n in order}
++        print("  CONTROL  " + "  ".join(f"{n}={s}" for n, s in ctrl.items()))
++        for n, s in ctrl.items():
++            if s != PASSED:
++                failures.append(f"control: a pristine snapshot did not pass {n} ({s})")
++
++        print(f"\n  {'id':<4}{'mutation':<44}" + "".join(f"{n:<11}" for n in order))
++        for mid, label, fn, reasons in muts:
++            must = set(reasons)
+             snap = os.path.join(base, f"m{mid}")
+             os.makedirs(snap)
+             snapshot(snap)
+-            what = fn(snap)
+-            codes = {}
++            try:
++                what = fn(snap)
++            except Skip as exc:
++                skipped.append(f"{mid} ({label}): {exc}")
++                print(f"  {mid:<4}{(label + ' — SKIPPED')[:42]:<44}"
++                      f"fixture could not be built here")
++                continue
++            state, outs = {}, {}
+             for n in order:
+                 if n in SLOW and n not in must:
+-                    codes[n] = None          # not run; see SLOW
++                    state[n] = None          # not run; see SLOW
+                 else:
+-                    codes[n] = run(snap, LAYERS[n])[0]
+-            caught = {n for n, c in codes.items() if c}
+-            star = " *" if mid in DEFEATED_V3 else ""
+-            cell = lambda c: "—" if c is None else ("FAIL" if c else "pass")
++                    code, out = run(snap, LAYERS[n])
++                    state[n], outs[n] = classify(code, out), out
++            caught = {n for n, s in state.items() if s == REJECTED}
++            errored = {n for n, s in state.items() if s == ERROR}
++            star = " *" if mid in DEFEATED_V3 else (" †" if mid in DEFEATED_V4 else "")
++            cell = {None: "—", PASSED: "pass", REJECTED: "REJECT", ERROR: "error"}
+             print(f"  {mid:<4}{(label + star)[:42]:<44}" +
+-                  "".join(f"{cell(codes[n]):<11}" for n in order))
++                  "".join(f"{cell[state[n]]:<11}" for n in order))
++
++            # the reason, not just the exit code (V4-07)
++            why = {n: (reasons[n] in outs.get(n, "")) for n in must & caught}
+             results.append({"id": mid, "mutation": what, "required": sorted(must),
+-                            "caught_by": sorted(caught)})
+-            missed = must - caught
+-            if missed:
+-                failures.append(f"{mid}: NOT caught by {', '.join(sorted(missed))}")
++                            "caught_by": sorted(caught), "reasons": reasons,
++                            "reason_seen": sorted(n for n, ok in why.items() if ok)})
++            for n in sorted(must - caught):
++                failures.append(
++                    f"{mid}: {n} did not REJECT it — "
++                    f"{'it errored out, which is not a detection' if n in errored else 'it passed'}")
++            for n in sorted(must & caught):
++                if not why[n]:
++                    failures.append(f"{mid}: {n} rejected it, but not for the expected "
++                                    f"reason — {reasons[n]!r} is absent from its output")
++            if errored - must:
++                failures.append(f"{mid}: {', '.join(sorted(errored - must))} errored; a "
++                                f"fixture must not break a layer it does not target")
+             if not caught:
+                 failures.append(f"{mid}: caught by NOTHING — this corruption would ship")
+-        print("\n  * defeated v3 with a full 9/9 PASS\n")
++        print("\n  * defeated v3 with a full 9/9 PASS    † defeated v4 (Astra, "
++              "2026-09-13)\n")
+         for r in results:
+             print(f"    {r['id']}: {r['mutation']}")
++            for n in sorted(r["reasons"]):
++                mark = "✓" if n in r["reason_seen"] else "✗"
++                print(f"        {mark} {n}: rejected for {r['reasons'][n]!r}")
+     finally:
+         shutil.rmtree(base, ignore_errors=True)
+ 
+     print()
++    if skipped:
++        # Named, never silent. A mutation that did not run is a hole in the coverage this
++        # file claims, and a reader of the output is entitled to see which one.
++        print(f"  ⚠ {len(skipped)} mutation(s) NOT EXERCISED on this machine — the "
++              f"coverage below\n    excludes them:")
++        for s in skipped:
++            print(f"      {s}")
++        print()
+     if failures:
+         print("  ✗ MUTATION TEST FAILED:")
+         for f in failures:
+             print(f"      {f}")
+         sys.exit(1)
+-    print("  ✓ every mutation is caught by the layer that must catch it, and the")
+-    print("    pristine snapshot stays green.\n")
++    print(f"  ✓ {len(results)} of {len(muts)} mutations REJECTED — not merely exited "
++          f"on — by the\n    layer that must catch each, for the reason it declares, "
++          f"and the pristine\n    snapshot stays green.\n")
+ 
+ 
+ if __name__ == "__main__":
+diff --git a/pdf_binding.py b/pdf_binding.py
+index fe83607..738dd44 100644
+--- a/pdf_binding.py
++++ b/pdf_binding.py
+@@ -1,4 +1,4 @@
+-"""The published PDF must carry the same active claims as the manuscript it came from.
++"""The published PDF must carry the same numbers as the manuscript it came from.
+ 
+ WHY
+     The PDF is what a reviewer actually opens. `manuscript_binding.py` checks `PAPER.md`;
+@@ -7,9 +7,38 @@ WHY
+     adjacent gap — the build inputs were not archived at all — and this closes the
+     consistency half.
+ 
++WHAT DEFEATED THE FIRST VERSION OF THIS FILE (Astra V4-02)
++    It looked for the endpoint fractions SOMEWHERE in the extracted text, a version
++    string, and six withdrawn phrases. Astra changed the reader-visible `10.9` to `99.9`
++    — the abstract of the published PDF then printed a transition width of 99.9
++    percentage points — and all thirteen stages returned exit 0. Every string the checker
++    looked for was still present, because the attack did not remove strings; it added one.
++
++    Presence of what you expect is not absence of what you do not. So the binding is now
++    stated over the WHOLE numeric content in both directions:
++
++        the set of distinct numeric tokens in the PDF == the set in PAPER.md
++
++    Measured on the v4 build: 699 tokens in the PDF, 697 in the source, 272 distinct on
++    each side, and the two distinct sets are equal. A number that appears in the PDF and
++    nowhere in the manuscript is an invention; a number in the manuscript that reaches no
++    page is a drop. Both now fail, and 99.9 is an invention.
++
++    Placement is checked for the canonical endpoint rows specifically: each row's label,
++    fraction, proportion and interval must appear TOGETHER and in order in the PDF, not
++    merely somewhere in it.
++
++WHAT THIS STILL DOES NOT ESTABLISH — state it, do not imply otherwise
++    Equal numeric content is not semantic equivalence. This file does NOT establish that
++    every number sits in the sentence that means it, that the prose reads the same, that
++    the layout is right, or that a substitution reusing a value already present elsewhere
++    in the document would be caught. A documented human reading of the built PDF against
++    PAPER.md remains a release requirement, and this check does not replace it.
++
+ TWO REPRODUCIBILITY TARGETS, and only one is promised
+-    A. SEMANTIC — the PDF's extractable text carries the same active claims and the same
+-       primary numbers as PAPER.md. **Promised, and checked here.**
++    A. NUMERIC / CLAIM-STRUCTURE — the PDF's extractable text carries the same numeric
++       content, the same canonical rows in place, the same version line, and none of the
++       withdrawn claims. **Promised, and checked here.**
+     B. BYTE-IDENTICAL — two builds of identical input produce identical bytes. **Not
+        promised.** Chromium stamps a creation timestamp and producer string into every
+        PDF, so the SHA-256 differs between builds of the same source. Claiming otherwise
+@@ -21,6 +50,7 @@ USAGE
+ 
+ import os
+ import re
++import shutil
+ import subprocess
+ import sys
+ 
+@@ -40,51 +70,135 @@ WITHDRAWN = [
+     "6 of 1728",
+ ]
+ 
++NUMBER = re.compile(r"\d[\d,]*(?:\.\d+)?")
++KEEP = re.compile(r"[^a-z0-9.,%/<>\[\]()+-]+")
++
++
++def numbers(text):
++    """Distinct numeric tokens, thousands separators normalised away."""
++    return {m.group(0).replace(",", "") for m in NUMBER.finditer(text)}
++
++
++def flatten(text):
++    """Lowercased, ASCII-folded, whitespace-collapsed — so a line break inside a table
++    cell and a dropped `≥` glyph do not read as a different document."""
++    return " ".join(KEEP.sub(" ", text.lower()).split())
++
++
++# Where a pdftotext may be, when it is not on PATH.
++#
++# WHY THIS LIST EXISTS. `shutil.which("pdftotext")` finds it under Git Bash, because
++# /mingw64/bin is on that shell's PATH, and does NOT find it under PowerShell, which is
++# the same interpreter running the same stage against the same file. Stage 13 therefore
++# passed or failed according to which shell invoked verify.py — a verdict that depends on
++# ambient environment rather than on the artifact, which is the defect Astra recorded as
++# A14 for line endings, in a different costume.
++#
++# So the requirement is DECLARED: stage 13 needs a PDF text extractor, these are the
++# places it looks, and if none is present it says so by name instead of failing with an
++# ImportError about a fallback library nobody installed.
++PDFTOTEXT_CANDIDATES = [
++    r"C:\Program Files\Git\mingw64\bin\pdftotext.exe",
++    r"C:\Program Files\Git\usr\bin\pdftotext.exe",
++    r"C:\Program Files (x86)\Git\mingw64\bin\pdftotext.exe",
++    "/usr/bin/pdftotext",
++    "/usr/local/bin/pdftotext",
++    "/opt/homebrew/bin/pdftotext",
++]
++
++
++def find_pdftotext():
++    found = shutil.which("pdftotext")
++    if found:
++        return found
++    return next((c for c in PDFTOTEXT_CANDIDATES if os.path.isfile(c)), None)
++
+ 
+ def pdf_text():
+     if not os.path.isfile(PDF):
+         sys.exit(f"  no {os.path.relpath(PDF, ROOT)} — run publish/build_paper.sh first")
+-    for tool in (["pdftotext", PDF, "-"],):
+-        try:
+-            r = subprocess.run(tool, capture_output=True, text=True,
+-                               encoding="utf-8", errors="replace", timeout=300)
+-            if r.returncode == 0 and len(r.stdout) > 1000:
+-                return r.stdout
+-        except FileNotFoundError:
+-            pass
++    # -layout, not the default flow mode. Without it pdftotext reads the endpoint table
++    # COLUMN-WISE -- "criterion risk > 0 … risk 5% risk 10%" on one line and every
++    # numerator on another -- so no row can be checked as a row, and it joins text across
++    # boxes, which turned "0009-0007-3805-170X" into the number 00073805. Layout mode
++    # preserves both. (Found when the V4-08 stylesheet fix changed the rendering.)
++    exe = find_pdftotext()
++    if exe:
++        r = subprocess.run([exe, "-layout", PDF, "-"], capture_output=True, text=True,
++                           encoding="utf-8", errors="replace", timeout=300)
++        if r.returncode == 0 and len(r.stdout) > 1000:
++            return r.stdout
++        sys.exit(f"  {exe} could not extract text from "
++                 f"{os.path.relpath(PDF, ROOT)} (exit {r.returncode}, "
++                 f"{len(r.stdout)} chars): {(r.stderr or '')[:200]}")
+     try:
+         import fitz
+         d = fitz.open(PDF)
+         return "".join(p.get_text() for p in d)
+-    except Exception as exc:
+-        sys.exit(f"  cannot extract text from the PDF: {exc}")
+-
+-
+-def main():
+-    txt = pdf_text()
+-    src = open(PAPER, encoding="utf-8").read()
+-    print(f"\n  PUBLISHED PDF BOUND TO THE MANUSCRIPT")
+-    print(f"  {os.path.getsize(PDF):,} bytes, {len(txt):,} extractable characters\n")
+-
++    except Exception:
++        pass
++    sys.exit(
++        "  STAGE 13 CANNOT RUN: no PDF text extractor is available, so the published "
++        "PDF\n  was not checked against the manuscript. This is a missing prerequisite, "
++        "not a\n  passing artifact.\n\n"
++        "  Install poppler's pdftotext (Git for Windows ships one) or "
++        "`pip install PyMuPDF`.\n  Looked on PATH and at:\n"
++        + "".join(f"      {c}\n" for c in PDFTOTEXT_CANDIDATES))
++
++
++def check(txt, src, echo=print):
++    """Every binding between an extracted PDF text and its manuscript source.
++
++    Split out from main() so a regression test can exercise the logic on a supplied text
++    without a 20-second Chromium build — the V4-02 counterexample is a property of this
++    function, and a test that cannot reach it is not a test of the defect.
++    """
+     fails = []
+ 
+-    # 1. the canonical endpoint table, as the READER sees it in the PDF
+     from manuscript_binding import visible_text, parse_tables, find_endpoint_tables
+-    cand = find_endpoint_tables(parse_tables(visible_text(src)))
++    vis = visible_text(src)
++
++    # 1. NUMERIC CONTENT, both directions. This is the binding; everything else narrows it.
++    in_pdf, in_src = numbers(txt), numbers(vis)
++    invented, dropped = sorted(in_pdf - in_src), sorted(in_src - in_pdf)
++    echo(f"  numeric content: {len(in_pdf)} distinct tokens in the PDF, "
++         f"{len(in_src)} in PAPER.md")
++    for n in invented[:12]:
++        ctx = next((m for m in re.finditer(rf"(?<![\d.]){re.escape(n)}(?![\d])", txt)),
++                   None)
++        where = txt[max(0, ctx.start() - 70):ctx.end() + 40].replace("\n", " ") \
++            if ctx else ""
++        fails.append(f"the PDF shows the number {n}, which appears NOWHERE in PAPER.md "
++                     f"— a reader is being given a value the source does not contain"
++                     + (f" — …{where.strip()}" if where else ""))
++    for n in dropped[:12]:
++        fails.append(f"PAPER.md states {n} and no page of the PDF carries it — the PDF "
++                     f"is not a rendering of this manuscript")
++    if len(invented) > 12 or len(dropped) > 12:
++        fails.append(f"… {len(invented) - 12 if len(invented) > 12 else 0} further "
++                     f"invented and {len(dropped) - 12 if len(dropped) > 12 else 0} "
++                     f"further dropped numbers not listed")
++
++    # 2. the canonical endpoint table, IN PLACE — label, fraction, proportion, interval
++    #    contiguous and in order, so correct numbers cannot be attached to wrong rows
++    flat = flatten(txt)
++    cand = find_endpoint_tables(parse_tables(vis))
+     if len(cand) != 1:
+         fails.append(f"{len(cand)} canonical endpoint tables in PAPER.md; expected 1")
+     else:
+         _, body, _ = cand[0]
++        placed = 0
+         for row in body:
+-            m = re.search(r"(\d+)\s*/\s*(\d+)", row[1] if len(row) > 1 else "")
+-            if not m:
++            want = flatten(" ".join(row))
++            if not want:
+                 continue
+-            num, den = m.group(1), m.group(2)
+-            # pdftotext renders "12 / 26" with variable spacing
+-            pat = re.compile(rf"\b{num}\s*/\s*{den}\b")
+-            if not pat.search(txt):
+-                fails.append(f"row '{row[0]}': {num}/{den} is in PAPER.md but not in "
+-                             f"the PDF — the PDF is stale")
++            if want in flat:
++                placed += 1
++            else:
++                fails.append(f"row '{row[0]}' does not appear as a row in the PDF: "
++                             f"expected “{want[:70]}” — its cells are missing, "
++                             f"reordered, or split across different rows")
++        echo(f"  canonical table: {placed}/{len(body)} rows found intact in the PDF")
+ 
+     # 2. no withdrawn claim asserted. Correction notes legitimately QUOTE them, so a hit
+     #    is only a failure if PAPER.md does not also contain it inside a correction.
+@@ -109,17 +223,32 @@ def main():
+             fails.append(f"PDF does not carry the manuscript's version line “{want}” — "
+                          f"it was built from a different source")
+         else:
+-            print(f"  version line: {want}")
++            echo(f"  version line: {want}")
++
++    echo(f"  withdrawn claims checked: {len(WITHDRAWN)}")
++    return fails
++
++
++def main():
++    txt = pdf_text()
++    src = open(PAPER, encoding="utf-8").read()
++    print(f"\n  PUBLISHED PDF BOUND TO THE MANUSCRIPT")
++    print(f"  {os.path.getsize(PDF):,} bytes, {len(txt):,} extractable characters\n")
+ 
+-    print(f"  withdrawn claims checked: {len(WITHDRAWN)}")
++    fails = check(txt, src)
+     if fails:
+         print(f"\n  ✗ PDF AND MANUSCRIPT DISAGREE — {len(fails)} problem(s):\n")
+         for f in fails:
+             print(f"      {f}")
+         print()
+         sys.exit(1)
+-    print("\n  ✓ the PDF carries the manuscript's active claims and primary numbers.")
+-    print("    (semantic reproduction; byte-identical PDFs are not promised)\n")
++    print("\n  ✓ the PDF's numeric content equals the manuscript's in both directions,")
++    print("    the canonical rows appear intact, the version line agrees, and no")
++    print("    withdrawn claim is asserted.")
++    print("    NOT established here: that each number sits in the sentence that means")
++    print("    it, prose equivalence, or layout. A documented human reading of the")
++    print("    built PDF against PAPER.md is still required before release.")
++    print("    (byte-identical PDFs are not promised)\n")
+ 
+ 
+ if __name__ == "__main__":
+diff --git a/pin_check.py b/pin_check.py
+index c6ccd81..894450f 100644
+--- a/pin_check.py
++++ b/pin_check.py
+@@ -19,6 +19,27 @@ CONTRACT
+     stays as evidence of what was actually pinned at the time; this file supersedes the
+     contract without editing the record.
+ 
++PREREQUISITE: BENCHPRESS_PATH MUST BE A GIT CHECKOUT (Astra V4-10)
++    This stage does two different things, and only one of them survives without history:
++
++      the five module hashes      computed over canonical (LF) bytes. `sweep_bp.py`'s
++                                  helper reproduces all five from the source files alone,
++                                  with or without `.git`. Astra confirmed this.
++      the identity of the source  requires git: the live commit, and whether tracked files
++                                  have been modified. Without `.git` the commit reads as
++                                  None and this stage FAILS — correctly, because five
++                                  matching hashes do not say which revision they came
++                                  from, only that five files have the expected content.
++
++    So: stage 1 requires a Benchpress *git checkout* at the pinned commit, not a copy of
++    the files. The no-history hashing is a helper capability, not a weaker mode of this
++    stage, and there is deliberately no flag to make it one — an archive mode that
++    reported PASS on unattributable source would be the same conflation this repository
++    has already had to repair in `v2_anchor.py`.
++
++    Astra measured both: clean pinned sparse checkouts pass under LF *and* CRLF; the
++    historyless copies reproduce 5/5 hashes and still exit 1 here.
++
+ USAGE
+     python pin_check.py
+     python pin_check.py --write   # regenerate the canonical reference from git objects
+@@ -66,7 +87,13 @@ def main():
+     live = benchpress_pin()
+ 
+     fails = []
+-    if live["benchpress_commit"] != want_commit:
++    if live["benchpress_commit"] is None:
++        fails.append(
++            "BENCHPRESS_PATH has no git history, so the revision of this source cannot "
++            "be established. The five canonical hashes may still match — that says the "
++            "FILES have the expected content, not which commit they came from. Stage 1 "
++            "requires a git checkout at " + want_commit[:12] + "; see this file's header.")
++    elif live["benchpress_commit"] != want_commit:
+         fails.append(f"commit {live['benchpress_commit']} != pinned {want_commit}")
+     if live["benchpress_dirty"]:
+         fails.append("the Benchpress checkout has modified tracked files")
+diff --git a/prereg_analysis.py b/prereg_analysis.py
+index 501aa9d..220a8de 100644
+--- a/prereg_analysis.py
++++ b/prereg_analysis.py
+@@ -5,7 +5,7 @@
+    the analysis could not have been tuned to the result, and anyone can check the order
+    with `git log --diff-filter=A -- prereg_analysis.py results/raw/prereg`.
+ 
+-IMPLEMENTS, WITHOUT DEVIATION
++IMPLEMENTS THE PRE-REGISTERED RULES, WITH ONE DECLARED NUMERICAL TOLERANCE
+     §5.1 estimated long-run change = ratio of arm means; 95% percentile bootstrap over
+          seeds, resampled JOINTLY across the paired arms, B = 4000. Never called ground
+          truth.
+@@ -13,6 +13,23 @@ IMPLEMENTS, WITHOUT DEVIATION
+          NO_REGRESSION if entirely below, else UNRESOLVED. Unresolved circuits are
+          EXCLUDED from the error-rate analysis and reported as unresolved. Never
+          reclassified.
++
++         ⚠ THE COMPARISON IS NOT LITERAL STRICT ORDERING (Astra A12, restated V4-09).
++         "Entirely above" is implemented as `(c_lo - t) > TIE_EPS` with TIE_EPS = 1e-9,
++         not as `c_lo > t`. §5.2 declares the threshold inclusive and an exact tie
++         UNRESOLVED, and float arithmetic does not give that for free: with A = 100 and
++         B = 110 the change is mathematically exactly +10%, but `110/100 - 1` evaluates
++         to 0.10000000000000009, which a literal comparison calls REGRESSION.
++
++         The tolerance is a POLICY, and it has a cost that is stated rather than hidden:
++         an endpoint strictly above or below the cut but within 1e-9 of it is classified
++         UNRESOLVED, so the rule is "inclusive threshold with a 1e-9 tie band", not
++         "strictly above". Astra demonstrated this at A = 1e10, B = 1.1e10 ± 1.
++
++         It moves no recorded result. The closest CI endpoint to the threshold anywhere
++         in the 39 circuits is 2.3e-3 — 2.3 million times the band — and
++         `tests/test_threshold_ties.py` asserts that margin, so a future data set that
++         narrowed it would fail rather than pass silently.
+     §5.3 error rate: false negative 1 - P(call) for REGRESSION, false positive P(call)
+          for NO_REGRESSION. 95% seed bootstrap, B = 400.
+     §5.4 BOUNDARY flag when the estimated change is within 3 pp of the threshold;
+diff --git a/publish/build_paper.sh b/publish/build_paper.sh
+index c158b44..defbffe 100644
+--- a/publish/build_paper.sh
++++ b/publish/build_paper.sh
+@@ -3,14 +3,28 @@
+ # not be regenerated from the repository at all -- paper_style.css lived outside it, on
+ # the author's desktop, so the published artifact depended on a file no reader had.
+ #
++# THE STYLESHEET PATH (Astra V4-08). This script used to pass
++# --css=publish/paper_style.css while emitting the HTML INTO publish/, so the href
++# resolved to publish/publish/paper_style.css, which does not exist. Every PDF built by
++# this script was therefore rendered with no stylesheet at all, silently: a missing
++# stylesheet produces a readable page, not an error. Correcting it changes the document
++# from 12 pages to 14. The href is relative to the HTML, so it must not carry the
++# directory the HTML already lives in -- and the smoke check below now resolves it and
++# fails the build rather than letting the next person discover this the same way.
++#
+ # TWO REPRODUCIBILITY TARGETS, and only one of them is promised:
+ #
+-#   A. SEMANTIC / TEXT      the PDF's extractable text and layout reproduce from PAPER.md.
+-#                           This IS promised and is checked by pdf_binding.py.
++#   A. NUMERIC / CLAIM STRUCTURE  the PDF's extractable text carries the same numeric
++#                           content as PAPER.md in both directions, the same canonical
++#                           rows in place, and the same version line. This IS promised
++#                           and is checked by pdf_binding.py.
+ #   B. BYTE-IDENTICAL PDF   NOT promised. Chromium embeds a creation timestamp and
+ #                           producer metadata, so two builds of identical input differ in
+ #                           bytes. Do not expect the SHA-256 to match a published one.
+ #
++# LAYOUT IS NOT VERIFIED. pdf_binding.py reads extracted text; it does not compare page
++# geometry, pagination or typography, and must not be described as doing so.
++#
+ # Tool versions used for the v4 build, recorded because "pandoc" is not a version:
+ #   pandoc   3.9.0.2
+ #   chrome   152.0.7977.83  (headless, --print-to-pdf)
+@@ -18,6 +32,28 @@
+ set -e
+ cd "$(dirname "$0")/.."
+ OUT="${1:-publish/paper.pdf}"
+-pandoc PAPER.md   --from=markdown+pipe_tables+raw_html   --to=html5 --standalone   --css=publish/paper_style.css   --output=publish/paper.html
+-"/c/Program Files/Google/Chrome/Application/chrome.exe"   --headless=new --disable-gpu --no-sandbox   --print-to-pdf="$(pwd -W)/$OUT"   --print-to-pdf-no-header --no-pdf-header-footer   --virtual-time-budget=15000   "file:///$(pwd -W)/publish/paper.html"
++
++pandoc PAPER.md \
++  --from=markdown+pipe_tables+raw_html \
++  --to=html5 --standalone \
++  --css=paper_style.css \
++  --output=publish/paper.html
++
++# SMOKE CHECK: every local asset the generated HTML references must resolve, relative to
++# the HTML itself. A build that silently drops its stylesheet is the defect above.
++grep -o 'href="[^"#?:]*\.css"' publish/paper.html | sed 's/.*href="//; s/"$//' |
++while read -r css; do
++  if [ ! -f "publish/$css" ]; then
++    echo "build_paper.sh: stylesheet href '$css' does not resolve to publish/$css" >&2
++    exit 1
++  fi
++  echo "  stylesheet resolves: publish/$css"
++done
++
++"/c/Program Files/Google/Chrome/Application/chrome.exe" \
++  --headless=new --disable-gpu --no-sandbox \
++  --print-to-pdf="$(pwd -W)/$OUT" \
++  --print-to-pdf-no-header --no-pdf-header-footer \
++  --virtual-time-budget=15000 \
++  "file:///$(pwd -W)/publish/paper.html"
+ echo "built $OUT"
+diff --git a/v2_anchor.py b/v2_anchor.py
+index 9392ed4..c9c2b4f 100644
+--- a/v2_anchor.py
++++ b/v2_anchor.py
+@@ -29,13 +29,39 @@ CANONICAL BYTES
+     check gives the same answer under core.autocrlf true or false. v3's manifest hashed
+     working-tree bytes and would have failed for every verifier on Linux or macOS.
+ 
+-OFFLINE DISTRIBUTION
++OFFLINE DISTRIBUTION — AND WHAT IT DOES *NOT* ESTABLISH (Astra V4-06)
+     A zip archive has no git objects. `--write-anchor` therefore emits
+     `results/raw/V2_EVIDENCE_ANCHOR.json` **read out of the v2 commit**, never out of the
+     working tree, so the anchor cannot be refreshed to match tampered files by anyone who
+     does not also hold the v2 history. The checker prefers git and falls back to the
+     anchor, saying which authority it used.
+ 
++    That fallback is a WEAKER contract, and this file used to report it in the same words
++    as the strong one. It is not:
++
++      WITH v2 HISTORY   the evidence is compared to objects an edit to the working tree
++                        cannot reach. Changing the data means rewriting history at
++                        17e08f3e, which changes the commit id printed in every published
++                        artifact. This IS historical identity.
++      WITHOUT IT        the evidence is compared to a JSON file shipped beside it, whose
++                        only claim to authority is a commit id it writes about itself.
++                        Someone who changes both is not detected, and CANNOT be: a
++                        transcript travelling with the data it describes authenticates
++                        nothing. This is agreement with a supplied transcript, and the
++                        success message now says exactly that.
++
++    Astra confirmed the current transcript is correct against the real v2 objects and
++    recorded its SHA-256 as cc31e9b2f43d9a4ca6332e0e300e7f0c391c59c17dfe32804269800446ab9827
++    in `audits/2026-09-13-astra-v4/`. That hash is an EXTERNAL binding, published by a
++    third party, and it is the kind of thing the offline mode would need. This file does
++    not contain it, because a reference stored next to the transcript it authenticates
++    would have precisely the defect described above.
++
++CANONICAL CONTENT, NOT BYTES
++    The comparison is on LF-normalised content, so it is portable across checkout
++    policies. That means it establishes canonical-content identity, not byte identity of
++    an arbitrary checkout, and the success message says "canonical content".
++
+ USAGE
+     python v2_anchor.py                 # verify current evidence against v2
+     python v2_anchor.py --write-anchor  # regenerate the offline anchor FROM v2 objects
+@@ -100,12 +126,22 @@ def write_anchor():
+         if blob is None:
+             raise SystemExit(f"cannot read {p} from {V2[:8]}")
+         files[p] = {"sha256": hashlib.sha256(blob).hexdigest(), "bytes": len(blob)}
++    n_arm_w = sum(1 for k in files if "_scatter_parts" not in k)
+     doc = {
+-        "_what": "SHA-256 of every primary raw file AS PUBLISHED IN v2, read from git "
+-                 "objects at the commit below — never from the working tree.",
++        "_what": f"SHA-256 of every anchored raw evidence file AS PUBLISHED IN v2, read "
++                 f"from git objects at the commit below — never from the working tree. "
++                 f"{n_arm_w} of these are primary measurement arms (39 circuits x 2) and "
++                 f"{len(files) - n_arm_w} are the per-process fragments those were merged "
++                 f"from: the same observations before merge, NOT additional measurements.",
+         "_authority": "The v2 git objects are the authority. This file is a transcript "
+                       "for environments without git history (a zip archive). If the two "
+                       "ever disagree, git wins and this file is wrong.",
++        "_not_authenticated_by_itself": "Checking evidence against this file establishes "
++                                        "agreement with THIS FILE, not historical "
++                                        "authenticity. A transcript shipped beside the "
++                                        "data it describes cannot authenticate it; that "
++                                        "needs the v2 objects, or an externally "
++                                        "published hash of this transcript.",
+         "_rule": "Regenerating this from current files instead of from v2 would destroy "
+                  "the only property it has. --write-anchor reads v2 objects and refuses "
+                  "to run without them.",
+@@ -129,13 +165,16 @@ def verify():
+         authority = f"git objects at {V2[:12]}"
+     else:
+         if not os.path.isfile(ANCHOR):
+-            return [f"no git history for {V2[:12]} and no {os.path.basename(ANCHOR)}; "
+-                    f"historical identity cannot be established"]
++            return ([f"no git history for {V2[:12]} and no {os.path.basename(ANCHOR)}; "
++                     f"historical identity cannot be established"], False)
+         doc = json.load(open(ANCHOR, encoding="utf-8"))
+         if doc.get("v2_commit") != V2:
+-            return [f"anchor names commit {doc.get('v2_commit')}, expected {V2}"]
++            return ([f"anchor names commit {doc.get('v2_commit')}, expected {V2}"], False)
+         want = {p: e["sha256"] for p, e in doc["files"].items()}
+-        authority = f"offline anchor bound to {V2[:12]} (no git history available)"
++        authority = (f"the SUPPLIED TRANSCRIPT {os.path.basename(ANCHOR)}, which names "
++                     f"commit {V2[:12]} — no git history is available here, so this "
++                     f"run establishes agreement with that transcript and NOT the "
++                     f"historical authenticity of the evidence")
+     print(f"  authority: {authority}")
+ 
+     fails = []
+@@ -171,7 +210,7 @@ def verify():
+     print(f"  {len(here)} anchored evidence files compared against v2")
+     print(f"    = {n_arm} primary measurement arms (39 circuits x 2) "
+           f"+ {n_frag} per-process fragments they were merged from")
+-    return fails
++    return fails, use_git
+ 
+ 
+ def main():
+@@ -182,7 +221,7 @@ def main():
+     if args.write_anchor:
+         write_anchor()
+         return
+-    fails = verify()
++    fails, use_git = verify()
+     if fails:
+         print(f"\n  ✗ {len(fails)} violation(s):\n")
+         for f in fails[:30]:
+@@ -191,7 +230,20 @@ def main():
+             print(f"      … and {len(fails) - 30} more")
+         print()
+         sys.exit(1)
+-    print("\n  ✓ primary evidence is byte-identical to v2 as published.\n")
++    # Two different statements, because two different things were checked (Astra V4-06).
++    if use_git:
++        print("\n  ✓ HISTORICAL IDENTITY: the canonical content of the primary evidence "
++              "is\n    identical to the objects committed at v2. Establishing this "
++              "falsely would\n    require rewriting history at "
++              f"{V2[:12]}, which changes the commit id.\n")
++    else:
++        print("\n  ✓ the primary evidence matches the supplied transcript "
++              f"{os.path.basename(ANCHOR)}.\n"
++              "    HISTORICAL AUTHENTICITY IS NOT ESTABLISHED HERE. A transcript "
++              "distributed\n    beside the data it describes cannot authenticate it: "
++              "anyone who changed\n    both would pass this check. To establish "
++              "identity, run this where the v2\n    git objects are reachable, or "
++              "compare the transcript against an externally\n    published hash of it.\n")
+ 
+ 
+ if __name__ == "__main__":
+diff --git a/verify.py b/verify.py
+index cba3d01..01c0ce9 100644
+--- a/verify.py
++++ b/verify.py
+@@ -13,22 +13,66 @@ FOR A DELEGATED AGENT (Antigravity IDE, a CI job, a reviewer)
+     ⛔ DO NOT "fix" a failure. A failing check here is a finding, and findings are the
+        product. Report the exact output and stop.
+ 
+-WHAT IT CHECKS
++WHAT IT CHECKS — and what each stage does NOT establish (Astra V4, 2026-09-13)
++    Thirteen stages are not thirteen independent replications. Several share the same raw
++    loader, selection list and classification constants, so one defect can travel through
++    more than one of them. The scope below is deliberately narrower than v4's first
++    wording, which an audit showed was false for four stages.
++
+     1 toolchain pin   Benchpress commit SHA, tracked-file cleanliness, 5 module hashes
+-                      over CANONICAL bytes -- see A14 below
+-    2 test suite      pytest, including the D-2.1 tautology and seed-integrity regressions
+-    3 inventory       44 recorded numbers vs a fresh recomputation (32 raw, 12 derived-read)
+-    4 replication     6 circuits x 12 seeds x 2 Qiskit versions against the reference
+-    5 tautology proof the withdrawn paired column is still provably data-independent
+-    6 paper claims    paper_check.py -- every quantitative claim in PAPER.md recomputed
+-
+-    7 raw endpoint   the primary result rebuilt FROM RAW and bound to PAPER.md
+-    8 raw integrity  raw evidence bytes vs manifest; derived summary vs raw
+-    9 mutation test  proof this verifier turns RED when the science is corrupted
+-   10 v2 anchor      raw evidence byte-identical to v2's git objects, not to a local file
+-   11 derived binding every saved primary field vs a replay of its own analysis
+-   12 rendered       the table a READER sees vs a reconstruction from raw
+-   13 published pdf  the rendered artifact carries the manuscript's active claims
++                      over CANONICAL bytes. REQUIRES a git checkout: hashes alone cannot
++                      say which revision the files came from. Not: dependency behaviour.
++    2 test suite      pytest. A test suite, not a certificate for untested artifacts.
++    3 inventory       44 recorded numbers vs a fresh recomputation -- 32 recomputed from
++                      raw, 12 RE-READ from derived k-sweep CSVs. Not every figure, not
++                      every interval, not prose.
++    4 replication     144 recorded values (6 circuits x 12 seeds x 2 versions) compared
++                      against the reference. An artifact comparison; it does not
++                      transpile anything in this invocation.
++    5 tautology proof the withdrawn paired column is still provably data-independent.
++                      Says nothing about any other estimator.
++    6 paper claims    paper_check.py -- 50 selected numeric values recomputed and located
++                      in the source text. PRESENCE, not placement: it cannot prove a
++                      number is quoted in the right claim. Not "every quantitative claim".
++
++    7 raw endpoint   the primary result rebuilt FROM RAW by a separately implemented risk
++                     estimator, bound to PAPER.md. Shares load_seeded, BOUNDARY_PP and
++                     TIE_EPS with the producer, so its independence is partial.
++    8 raw integrity  the 78 merged arms vs the CURRENT manifest, plus selected summary
++                     fields vs a raw reconstruction. Self-consistency: an attacker who
++                     updates the manifest too is caught by stage 10, not here.
++    9 mutation test  18 corruptions, each REJECTED -- not merely exited on -- by a named
++                     stage for a named reason. Evidence this verifier turns red; not a
++                     proof that no other corruption passes.
++   10 v2 anchor      canonical content of the raw evidence vs v2's GIT OBJECTS. Without
++                     that history it falls back to a supplied transcript and says so:
++                     that mode is agreement, not authenticity.
++   11 derived binding every saved field against its declared domain, the row's internal
++                     coherence, and a replay of the original analysis. Same analysis code
++                     and MC budget as the producer -- a binding, not an independent
++                     recomputation.
++   12 rendered       the canonical table a reader sees, vs a reconstruction from raw, for
++                     a manuscript inside the declared raw-HTML domain. Outside that
++                     domain it refuses rather than guessing at visibility.
++   13 published pdf  the PDF's numeric content vs the manuscript's, both directions, plus
++                     canonical rows in place and the version line. NOT semantic
++                     equivalence: a human reading of the built PDF is still required.
++
++WHY THE WORDING CHANGED — the third failure (2026-09-13, Astra v4)
++    Stages 1-13 all passed on two separately controlled corrupt states:
++
++      all 36 saved risk intervals replaced with NaN          -> stage 11 now rejects
++      a PDF printing 99.9 where the manuscript says 10.9      -> stage 13 now rejects
++
++    Both were accepted because a comparison was being made against a value outside the
++    domain it was declared over, and because token presence was being read as semantic
++    agreement. Two further stage-12 states passed: the canonical table inside a hidden
++    <div>, and a true numerator attached to the wrong endpoint in the abstract.
++
++    The stages were repaired, and so was this header. Several lines here claimed coverage
++    the code did not have -- "every quantitative claim", "every saved primary field", "the
++    table a READER sees" -- and an inaccurate description of what a verifier enforces is
++    itself a defect, because it is what a reader relies on when the verifier says PASS.
+ 
+ WHY 10-12 EXIST — the second failure (2026-09-13)
+     Checks 7-9 were built to prove this verifier could turn red, and they did, for the

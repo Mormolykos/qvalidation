@@ -1,0 +1,11 @@
+
+  HISTORICAL EVIDENCE IDENTITY — anchored to v2 17e08f3e9253
+
+  authority: git objects at 17e08f3e9253
+  858 anchored evidence files compared against v2
+    = 78 primary measurement arms (39 circuits x 2) + 780 per-process fragments they were merged from
+
+  ✗ 1 violation(s):
+
+      results/raw/prereg/multiplier_n45_heavy-hex_q200.jsonl: TRUSTED HISTORICAL EVIDENCE ANCHOR VIOLATED — canonical content differs from the bytes published in v2 (17e08f3e9253). now 861884a4d1166c75…, v2 5604158bf06ea3b6…. This is not a manifest mismatch: the primary evidence itself is not the evidence the published result was computed from.
+

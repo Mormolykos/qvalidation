@@ -1,0 +1,17 @@
+
+  PUBLISHED PDF BOUND TO THE MANUSCRIPT
+  428,549 bytes, 45,985 extractable characters
+
+  numeric content: 272 distinct tokens in the PDF, 272 in PAPER.md
+  canonical table: 3/3 rows found intact in the PDF
+  version line: Version 4, 2026-09-13
+  withdrawn claims checked: 6
+
+  ✓ the PDF's numeric content equals the manuscript's in both directions,
+    the canonical rows appear intact, the version line agrees, and no
+    withdrawn claim is asserted.
+    NOT established here: that each number sits in the sentence that means
+    it, prose equivalence, or layout. A documented human reading of the
+    built PDF against PAPER.md is still required before release.
+    (byte-identical PDFs are not promised)
+

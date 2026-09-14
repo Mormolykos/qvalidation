@@ -1,0 +1,23 @@
+
+  PUBLISHED PDF BOUND TO THE MANUSCRIPT
+  422,265 bytes, 45,515 extractable characters
+
+  numeric content: 264 distinct tokens in the PDF, 272 in PAPER.md
+  canonical table: 0/3 rows found intact in the PDF
+  version line: Version 4, 2026-09-13
+  withdrawn claims checked: 6
+
+  ✗ PDF AND MANUSCRIPT DISAGREE — 11 problem(s):
+
+      PAPER.md states 13.7 and no page of the PDF carries it — the PDF is not a rendering of this manuscript
+      PAPER.md states 15.4 and no page of the PDF carries it — the PDF is not a rendering of this manuscript
+      PAPER.md states 26.9 and no page of the PDF carries it — the PDF is not a rendering of this manuscript
+      PAPER.md states 28.8 and no page of the PDF carries it — the PDF is not a rendering of this manuscript
+      PAPER.md states 33.5 and no page of the PDF carries it — the PDF is not a rendering of this manuscript
+      PAPER.md states 46.2 and no page of the PDF carries it — the PDF is not a rendering of this manuscript
+      PAPER.md states 6.2 and no page of the PDF carries it — the PDF is not a rendering of this manuscript
+      PAPER.md states 64.5 and no page of the PDF carries it — the PDF is not a rendering of this manuscript
+      row 'risk > 0 (pre-registered endpoint)' does not appear as a row in the PDF: expected “risk > 0 (pre-registered endpoint) 12 / 26 46.2% [28.8, 64.5]” — its cells are missing, reordered, or split across different rows
+      row 'risk ≥ 5%' does not appear as a row in the PDF: expected “risk 5% 7 / 26 26.9% [13.7, 46.1]” — its cells are missing, reordered, or split across different rows
+      row 'risk ≥ 10%' does not appear as a row in the PDF: expected “risk 10% 4 / 26 15.4% [6.2, 33.5]” — its cells are missing, reordered, or split across different rows
+

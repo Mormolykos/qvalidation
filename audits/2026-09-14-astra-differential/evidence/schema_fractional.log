@@ -1,0 +1,11 @@
+
+  SAVED SUMMARY BOUND TO A REPLAY OF ITS OWN ANALYSIS
+  39 rows, 19 columns
+
+  schema: 18 declared fields, 2 closed value sets, REJECTED
+
+  ✗ SAVED SUMMARY IS NOT A VALID ARTIFACT — 2 problem(s):
+
+      bv_n30.n_seeds: '200.9' is not an integer literal — a fractional or exponent-form value must not be truncated into one
+      bv_n30.k: '3.9' is not an integer literal — a fractional or exponent-form value must not be truncated into one
+

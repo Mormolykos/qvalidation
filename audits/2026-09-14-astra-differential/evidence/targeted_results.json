@@ -1,0 +1,165 @@
+[
+  {
+    "case": "schema_nan",
+    "args": [
+      "derived_binding.py"
+    ],
+    "exit": 1,
+    "state": "REJECTED",
+    "traceback": false
+  },
+  {
+    "case": "schema_inf",
+    "args": [
+      "derived_binding.py"
+    ],
+    "exit": 1,
+    "state": "REJECTED",
+    "traceback": false
+  },
+  {
+    "case": "schema_fractional",
+    "args": [
+      "derived_binding.py"
+    ],
+    "exit": 1,
+    "state": "REJECTED",
+    "traceback": false
+  },
+  {
+    "case": "schema_bool",
+    "args": [
+      "derived_binding.py"
+    ],
+    "exit": 1,
+    "state": "REJECTED",
+    "traceback": false
+  },
+  {
+    "case": "schema_duplicate",
+    "args": [
+      "derived_binding.py"
+    ],
+    "exit": 1,
+    "state": "REJECTED",
+    "traceback": false
+  },
+  {
+    "case": "schema_inverted",
+    "args": [
+      "derived_binding.py"
+    ],
+    "exit": 1,
+    "state": "REJECTED",
+    "traceback": false
+  },
+  {
+    "case": "schema_outside_interval",
+    "args": [
+      "derived_binding.py"
+    ],
+    "exit": 1,
+    "state": "REJECTED",
+    "traceback": false
+  },
+  {
+    "case": "schema_derived_flag",
+    "args": [
+      "derived_binding.py"
+    ],
+    "exit": 1,
+    "state": "REJECTED",
+    "traceback": false
+  },
+  {
+    "case": "schema_blank_required",
+    "args": [
+      "derived_binding.py"
+    ],
+    "exit": 1,
+    "state": "ERROR",
+    "traceback": true
+  },
+  {
+    "case": "schema_extra_cell",
+    "args": [
+      "derived_binding.py",
+      "--schema"
+    ],
+    "exit": 0,
+    "state": "PASSED",
+    "traceback": false
+  },
+  {
+    "case": "hidden_original",
+    "args": [
+      "manuscript_binding.py"
+    ],
+    "exit": 1,
+    "state": "REJECTED",
+    "traceback": false
+  },
+  {
+    "case": "abstract_original",
+    "args": [
+      "manuscript_binding.py"
+    ],
+    "exit": 0,
+    "state": "PASSED",
+    "traceback": false
+  },
+  {
+    "case": "abstract_words",
+    "args": [
+      "manuscript_binding.py"
+    ],
+    "exit": 1,
+    "state": "REJECTED",
+    "traceback": false
+  },
+  {
+    "case": "raw_html",
+    "args": [
+      "manuscript_binding.py"
+    ],
+    "exit": 1,
+    "state": "REJECTED",
+    "traceback": false
+  },
+  {
+    "case": "long_html",
+    "args": [
+      "manuscript_binding.py"
+    ],
+    "exit": 0,
+    "state": "PASSED",
+    "traceback": false
+  },
+  {
+    "case": "pdf_original",
+    "args": [
+      "pdf_binding.py"
+    ],
+    "exit": 1,
+    "state": "REJECTED",
+    "traceback": false
+  },
+  {
+    "case": "pdf_row_swap",
+    "args": [
+      "pdf_binding.py"
+    ],
+    "exit": 1,
+    "state": "REJECTED",
+    "traceback": false
+  },
+  {
+    "case": "pdf_drop",
+    "args": [
+      "pdf_binding.py"
+    ],
+    "exit": 1,
+    "state": "REJECTED",
+    "traceback": false
+  }
+]

@@ -1,0 +1,11 @@
+
+  RENDERED MANUSCRIPT BOUND TO RAW DATA
+  46,818 bytes, 0 HTML comment block(s) and 1 fenced code block(s)
+  removed before parsing
+  raw HTML: 35 tag(s), 2 OUTSIDE the declared domain
+
+  ✗ THIS MANUSCRIPT CANNOT BE VALIDATED AS WHAT A READER SEES:
+
+      line 411: raw HTML '<section>' is outside the declared domain (bare ['/sub', '/sup', 'sub', 'sup'] only). Whether a reader sees the content it governs cannot be decided from the source, so this manuscript cannot be validated as what a reader sees.
+      line 419: raw HTML '</section>' is outside the declared domain (bare ['/sub', '/sup', 'sub', 'sup'] only). Whether a reader sees the content it governs cannot be decided from the source, so this manuscript cannot be validated as what a reader sees.
+

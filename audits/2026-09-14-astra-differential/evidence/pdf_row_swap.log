@@ -1,0 +1,14 @@
+
+  PUBLISHED PDF BOUND TO THE MANUSCRIPT
+  459,463 bytes, 45,985 extractable characters
+
+  numeric content: 272 distinct tokens in the PDF, 272 in PAPER.md
+  canonical table: 1/3 rows found intact in the PDF
+  version line: Version 4, 2026-09-13
+  withdrawn claims checked: 6
+
+  ✗ PDF AND MANUSCRIPT DISAGREE — 2 problem(s):
+
+      row 'risk ≥ 5%' does not appear as a row in the PDF: expected “risk 5% 7 / 26 26.9% [13.7, 46.1]” — its cells are missing, reordered, or split across different rows
+      row 'risk ≥ 10%' does not appear as a row in the PDF: expected “risk 10% 4 / 26 15.4% [6.2, 33.5]” — its cells are missing, reordered, or split across different rows
+

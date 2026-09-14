@@ -1,0 +1,10 @@
+
+  TOOLCHAIN PIN — canonical bytes
+
+  commit b695f30e83a3 | 5 modules | source: working tree, LF-normalised
+  working-tree hashes equal to canonical here: 0/5 (CRLF checkout) — the canonical check is unaffected either way
+
+  ✗ 1 problem(s):
+
+      commit HEAD != pinned b695f30e83a32bac05b9b4d8e98d37ba9aae5236
+

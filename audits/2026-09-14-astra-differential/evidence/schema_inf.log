@@ -1,0 +1,10 @@
+
+  SAVED SUMMARY BOUND TO A REPLAY OF ITS OWN ANALYSIS
+  39 rows, 19 columns
+
+  schema: 18 declared fields, 2 closed value sets, REJECTED
+
+  ✗ SAVED SUMMARY IS NOT A VALID ARTIFACT — 1 problem(s):
+
+      bv_n30.error_ci_hi: '-Inf' is not finite — a nonfinite value satisfies every tolerance comparison and therefore cannot be validated
+

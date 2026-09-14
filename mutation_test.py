@@ -60,6 +60,10 @@ import sys
 import tempfile
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, ROOT)
+
+import validation_result as vr                                       # noqa: E402
+
 PY = sys.executable
 ARM = "results/raw/prereg/knn_n67_heavy-hex_q200.jsonl"
 SUMMARY = "results/summary/prereg_heavy-hex.csv"
@@ -100,25 +104,33 @@ def snapshot(dst):
 
 
 def run(snap, script):
+    """(exit code, stdout, stderr) -- kept SEPARATE, see classify."""
     env = dict(os.environ)
     env.setdefault("BENCHPRESS_PATH", r"C:\Users\User\Desktop\benchpress_test")
     env["PYTHONDONTWRITEBYTECODE"] = "1"
     parts = script.split()
     p = subprocess.run([PY, *parts], cwd=snap, capture_output=True, text=True,
                        env=env, timeout=3600)
-    return p.returncode, (p.stdout or "") + (p.stderr or "")
+    return p.returncode, (p.stdout or ""), (p.stderr or "")
 
 
-# REJECTED / PASSED / ERROR -- the distinction Astra V4-07 asked for. A layer that
-# rejects prints `✗` and exits nonzero. A layer that dies exits nonzero and prints no
-# `✗`, and that is not evidence of anything except a broken fixture.
-REJECTED, PASSED, ERROR = "REJECTED", "PASSED", "ERROR"
+# REJECTED / PASSED / ERROR. The outcome is READ FROM THE LAYER'S TERMINAL VERDICT, not
+# inferred from its console text.
+#
+# Round one of V4-07 replaced "any nonzero exit" with "nonzero exit and a ✗ somewhere in
+# the output". Astra then made a layer print its expected rejection diagnostic and raise
+# afterwards: still nonzero, still contained ✗, still scored REJECTED, and the declared
+# reason was present. Scraping evidence ABOUT an outcome cannot distinguish a layer that
+# finished from one that fell over after printing — and a layer that fell over did not
+# finish, so it cannot vouch for anything.
+#
+# validation_result.classify requires the sentinel to be the LAST line of stdout and no
+# traceback on stderr. See validation_result.py.
+REJECTED, PASSED, ERROR = vr.REJECTED, vr.PASSED, vr.ERROR
 
 
-def classify(code, out):
-    if code == 0:
-        return PASSED
-    return REJECTED if "✗" in out else ERROR
+def classify(code, out, err=""):
+    return vr.classify(code, out, err)[0]
 
 
 # ---------------------------------------------------------------- the mutations
@@ -418,47 +430,130 @@ def mut_V(snap):
     return f"{target} error_ci_hi widened by 0.01 — valid interval, wrong interval"
 
 
+def mut_Y(snap):
+    """A required cell left blank. This used to CRASH the checker with a TypeError,
+    which says nothing a reader can act on and is not a detection."""
+    p, rows, cols = _csv_rows(snap)
+    rows[0]["n_seeds"] = ""
+    _csv_write(p, rows, cols)
+    return f"{rows[0]['circuit']}.n_seeds blanked — a required field with no value"
+
+
+def mut_Z(snap):
+    """ASTRA, 3643bbc differential: one surplus cell, belonging to no column.
+
+    csv.DictReader files the overflow under the None key, where no field-by-field check
+    ever looks at it. The row is malformed and every declared column still validates.
+    """
+    p = os.path.join(snap, SUMMARY)
+    lines = open(p, encoding="utf-8").read().splitlines()
+    lines[1] = lines[1] + ",9999"
+    open(p, "w", encoding="utf-8", newline="").write("\n".join(lines) + "\n")
+    return "a 20th cell appended to a 19-column row, under no column name"
+
+
+def mut_W(snap):
+    """ASTRA, 3643bbc differential: the ORIGINAL false-abstract reproducer, verbatim.
+
+    Q used the word-number form ("Seven of 26"), which the repaired scan caught -- and
+    that masked the fact that the numeral form Astra actually ran still passed. The
+    canonical table legitimately contains "7 / 26", and the prose scan skipped any
+    occurrence whose TEXT matched the table's, wherever in the document it was. So the
+    fixture is preserved in Astra's own words, not in a paraphrase that happens to work.
+    """
+    p = os.path.join(snap, "PAPER.md")
+    t = open(p, encoding="utf-8").read()
+    if "## Abstract" not in t:
+        raise SystemExit("W: abstract heading not found")
+    sentence = ("The primary risk interval excludes zero in only 7 / 26 eligible "
+                "circuits.")
+    open(p, "w", encoding="utf-8").write(
+        t.replace("## Abstract", "## Abstract\n\n" + sentence, 1))
+    return ("abstract asserts 7 / 26 for interval exclusion, in numerals, where the "
+            "canonical table carries the identical string")
+
+
+def mut_X(snap):
+    """A tag longer than the scanner's old 400-character bound.
+
+    The domain check used `[^<>]{0,400}`, so a sufficiently verbose attribute list was
+    not a tag at all and passed unexamined. A limit on how much an attacker may type is
+    not a domain, it is a budget.
+    """
+    p = os.path.join(snap, "PAPER.md")
+    t = open(p, encoding="utf-8").read()
+    padding = " ".join(f'data-x{i}="{"y" * 12}"' for i in range(60))   # ~1,200 chars
+    if "## Abstract" not in t:
+        raise SystemExit("X: abstract heading not found")
+    open(p, "w", encoding="utf-8").write(
+        t.replace("## Abstract",
+                  f'<div style="display:none" {padding}>\n\n## Abstract', 1))
+    return f"a {len(padding) + 40}-character opening tag, past the old 400-char bound"
+
+
 MUTATIONS = [
-    # id  label                                fn      layer -> the reason it must reject for.
-    # The reason is asserted, not just the exit code (Astra V4-07). It is quoted from the
-    # message the layer actually prints, so a layer that starts failing somewhere else
-    # stops counting as coverage of this mutation.
+    # id  label   fn   layer -> (INVARIANT the layer must reject under, message fragment)
+    #
+    # TWO declarations, because they answer different questions (Astra V4-07, 3643bbc).
+    # The INVARIANT comes from the layer's terminal verdict line and is structural: it is
+    # emitted only by validation_result.reject(), only after the routine ran to
+    # completion, so it cannot be produced by a crash. The FRAGMENT is quoted from the
+    # human-readable message and pins down WHICH defect within that invariant was seen,
+    # so a layer that starts rejecting for an unrelated reason stops counting as coverage.
     ("A", "whole raw arm -> constant", mut_A,
-     {"science": "RAW DATA AND MANUSCRIPT DISAGREE",
-      "integrity": "RAW EVIDENCE WAS EDITED", "anchor": "ANCHOR VIOLATED"}),
+     {"science": ("ENDPOINT_MATCHES_RAW", "raw data gives"),
+      "integrity": ("RAW_SELF_CONSISTENT", "RAW EVIDENCE WAS EDITED"),
+      "anchor": ("EVIDENCE_MATCHES_", "ANCHOR VIOLATED")}),
     ("B", "one raw count +1", mut_B,
-     {"integrity": "RAW EVIDENCE WAS EDITED", "anchor": "ANCHOR VIOLATED"}),
+     {"integrity": ("RAW_SELF_CONSISTENT", "RAW EVIDENCE WAS EDITED"),
+      "anchor": ("EVIDENCE_MATCHES_", "ANCHOR VIOLATED")}),
     ("C", "raw x1.09, verdict moves", mut_C,
-     {"science": "RAW DATA AND MANUSCRIPT DISAGREE",
-      "integrity": "RAW EVIDENCE WAS EDITED", "anchor": "ANCHOR VIOLATED"}),
+     {"science": ("ENDPOINT_MATCHES_RAW", "raw data gives"),
+      "integrity": ("RAW_SELF_CONSISTENT", "RAW EVIDENCE WAS EDITED"),
+      "anchor": ("EVIDENCE_MATCHES_", "ANCHOR VIOLATED")}),
     ("D", "derived summary point risk", mut_D,
-     {"derived": "lies outside its own interval"}),
+     {"derived": ("SAVED_SCHEMA", "lies outside its own interval")}),
     ("E", "visible literal 7 -> 9", mut_E,
-     {"science": "RAW DATA AND MANUSCRIPT DISAGREE", "rendered": "numerator 9"}),
-    ("F", "ASTRA: raw + manifest regenerated", mut_F, {"anchor": "ANCHOR VIOLATED"}),
+     {"science": ("ENDPOINT_MATCHES_RAW", "PAPER.md says 9"),
+      "rendered": ("VISIBLE_CLAIMS_MATCH_RAW", "numerator 9")}),
+    ("F", "ASTRA: raw + manifest regenerated", mut_F,
+     {"anchor": ("EVIDENCE_MATCHES_", "ANCHOR VIOLATED")}),
     ("H", "ASTRA: all saved intervals faked", mut_H,
-     {"derived": "lies outside its own interval"}),
+     {"derived": ("SAVED_SCHEMA", "lies outside its own interval")}),
     ("K", "ASTRA: false visible table, correct rows hidden", mut_K,
-     {"rendered": "numerator 0"}),
+     {"rendered": ("VISIBLE_CLAIMS_MATCH_RAW", "numerator 0")}),
     ("L", "second contradicting visible table", mut_L,
-     {"rendered": "visible tables carry the primary endpoint rows"}),
-    ("M", "wrong denominator only", mut_M, {"rendered": "denominator 39"}),
-    ("N", "raw + manifest regenerated together", mut_N, {"anchor": "ANCHOR VIOLATED"}),
+     {"rendered": ("CANONICAL_TABLE_UNIQUE", "visible tables carry the primary")}),
+    ("M", "wrong denominator only", mut_M,
+     {"rendered": ("VISIBLE_CLAIMS_MATCH_RAW", "denominator 39")}),
+    ("N", "raw + manifest regenerated together", mut_N,
+     {"anchor": ("EVIDENCE_MATCHES_", "ANCHOR VIOLATED")}),
     ("P", "ASTRA: canonical table inside a hidden div", mut_P,
-     {"rendered": "outside the declared domain"}),
-    ("Q", "ASTRA: 7/26 attributed to the wrong endpoint", mut_Q,
-     {"rendered": "attributes 7 of 26"}),
-    ("R", "ASTRA: all saved intervals -> NaN", mut_R, {"derived": "is not finite"}),
+     {"rendered": ("MANUSCRIPT_HTML_DOMAIN", "outside the declared domain")}),
+    ("Q", "ASTRA: 7 of 26 attributed to the wrong endpoint", mut_Q,
+     {"rendered": ("VISIBLE_CLAIMS_MATCH_RAW", "attributes 7 of 26")}),
+    ("R", "ASTRA: all saved intervals -> NaN", mut_R,
+     {"derived": ("SAVED_SCHEMA", "is not finite")}),
     ("S", "ASTRA: fractional n_seeds and k", mut_S,
-     {"derived": "not an integer literal"}),
-    ("T", "ASTRA: a duplicated circuit row", mut_T, {"derived": "already appears"}),
+     {"derived": ("SAVED_SCHEMA", "not an integer literal")}),
+    ("T", "ASTRA: a duplicated circuit row", mut_T,
+     {"derived": ("SAVED_SCHEMA", "already appears")}),
     ("U", "ASTRA: PDF says 99.9 where the source says 10.9", mut_U,
-     {"pdf": "appears NOWHERE in PAPER.md"}),
+     {"pdf": ("PDF_MATCHES_MANUSCRIPT", "appears NOWHERE in PAPER.md")}),
     ("V", "a valid interval that the replay does not produce", mut_V,
-     {"derived": "error_ci_hi"}),
+     {"derived": ("SAVED_MATCHES_REPLAY", "error_ci_hi")}),
+    ("W", "ASTRA: 7 / 26 attributed to the wrong endpoint, in numerals", mut_W,
+     {"rendered": ("VISIBLE_CLAIMS_MATCH_RAW", "attributes 7 of 26")}),
+    ("X", "ASTRA: a tag longer than the old 400-char scan bound", mut_X,
+     {"rendered": ("MANUSCRIPT_HTML_DOMAIN", "outside the declared domain")}),
+    ("Y", "a required cell left blank", mut_Y,
+     {"derived": ("SAVED_SCHEMA", "required field is empty")}),
+    ("Z", "ASTRA: an extra unlabelled CSV cell", mut_Z,
+     {"derived": ("SAVED_SCHEMA", "belongs to no column")}),
 ]
 DEFEATED_V3 = {"F", "H", "K"}
 DEFEATED_V4 = {"P", "Q", "R", "S", "T", "U"}
+DEFEATED_V5 = {"W", "X", "Y", "Z"}
 
 
 def main():
@@ -487,7 +582,7 @@ def main():
         snap = os.path.join(base, "pristine")
         os.makedirs(snap)
         snapshot(snap)
-        ctrl = {n: classify(*run(snap, LAYERS[n])) for n in order}
+        ctrl = {n: vr.classify(*run(snap, LAYERS[n]))[0] for n in order}
         print("  CONTROL  " + "  ".join(f"{n}={s}" for n, s in ctrl.items()))
         for n, s in ctrl.items():
             if s != PASSED:
@@ -506,45 +601,57 @@ def main():
                 print(f"  {mid:<4}{(label + ' — SKIPPED')[:42]:<44}"
                       f"fixture could not be built here")
                 continue
-            state, outs = {}, {}
+            state, outs, got_inv = {}, {}, {}
             for n in order:
                 if n in SLOW and n not in must:
                     state[n] = None          # not run; see SLOW
                 else:
-                    code, out = run(snap, LAYERS[n])
-                    state[n], outs[n] = classify(code, out), out
+                    code, out, err = run(snap, LAYERS[n])
+                    state[n], got_inv[n] = vr.classify(code, out, err)
+                    outs[n] = out
             caught = {n for n, s in state.items() if s == REJECTED}
             errored = {n for n, s in state.items() if s == ERROR}
-            star = " *" if mid in DEFEATED_V3 else (" †" if mid in DEFEATED_V4 else "")
+            star = (" *" if mid in DEFEATED_V3 else " †" if mid in DEFEATED_V4 else
+                    " ‡" if mid in DEFEATED_V5 else "")
             cell = {None: "—", PASSED: "pass", REJECTED: "REJECT", ERROR: "error"}
             print(f"  {mid:<4}{(label + star)[:42]:<44}" +
                   "".join(f"{cell[state[n]]:<11}" for n in order))
 
-            # the reason, not just the exit code (V4-07)
-            why = {n: (reasons[n] in outs.get(n, "")) for n in must & caught}
+            # BOTH declarations, not just the exit code (V4-07, twice over). The invariant
+            # is structural and comes from the terminal verdict; the fragment says which
+            # defect under that invariant was actually seen.
+            why = {}
+            for n in must & caught:
+                want_inv, frag = reasons[n]
+                why[n] = got_inv.get(n, "").startswith(want_inv) and frag in outs.get(n, "")
             results.append({"id": mid, "mutation": what, "required": sorted(must),
                             "caught_by": sorted(caught), "reasons": reasons,
+                            "invariants": got_inv,
                             "reason_seen": sorted(n for n, ok in why.items() if ok)})
             for n in sorted(must - caught):
                 failures.append(
                     f"{mid}: {n} did not REJECT it — "
-                    f"{'it errored out, which is not a detection' if n in errored else 'it passed'}")
+                    f"{'it errored out (' + got_inv.get(n, '') + '), which is not a detection' if n in errored else 'it passed'}")
             for n in sorted(must & caught):
                 if not why[n]:
-                    failures.append(f"{mid}: {n} rejected it, but not for the expected "
-                                    f"reason — {reasons[n]!r} is absent from its output")
+                    want_inv, frag = reasons[n]
+                    failures.append(
+                        f"{mid}: {n} rejected it, but not as declared — expected "
+                        f"invariant {want_inv!r} and {frag!r}; got invariant "
+                        f"{got_inv.get(n, '')!r}")
             if errored - must:
                 failures.append(f"{mid}: {', '.join(sorted(errored - must))} errored; a "
                                 f"fixture must not break a layer it does not target")
             if not caught:
                 failures.append(f"{mid}: caught by NOTHING — this corruption would ship")
-        print("\n  * defeated v3 with a full 9/9 PASS    † defeated v4 (Astra, "
-              "2026-09-13)\n")
+        print("\n  * defeated v3 (9/9 PASS)   † defeated v4 (Astra 2026-09-13)   "
+              "‡ defeated the v4 repairs (Astra differential, 3643bbc)\n")
         for r in results:
             print(f"    {r['id']}: {r['mutation']}")
             for n in sorted(r["reasons"]):
                 mark = "✓" if n in r["reason_seen"] else "✗"
-                print(f"        {mark} {n}: rejected for {r['reasons'][n]!r}")
+                inv, frag = r["reasons"][n]
+                print(f"        {mark} {n}: {r['invariants'].get(n, '—')} — {frag!r}")
     finally:
         shutil.rmtree(base, ignore_errors=True)
 

@@ -24,7 +24,7 @@ Sections further down have **not** been audited that way and are historical reco
 
 | status | claim | where |
 |---|---|---|
-| ✅ **LIVE** | Benchpress passes no `seed_transpiler` in any of its 8 SDK gyms | §33, source-verified |
+| ⚠ **NARROWED v4** | Benchpress's **Qiskit** gym compiles without passing `seed_transpiler` on the inspected preset-pass-manager path. **"any of its 8 SDK gyms" is WITHDRAWN**: source inspection covers **two of the eight** — Qiskit passes no compiler seed, BQSKit passes `seed=0` — and the remaining six use their own compilation interfaces and are **not assessed**. A claim about one revision of one repository | §33, source-verified |
 | ✅ **LIVE** | The transpiler seed is the dominant entropy source | §28, cross-process control |
 | ⚠ **NARROWED v4** | A fixed seed reproduces the **same integer gate counts** in every control we ran; different seeds do not. **"Bit-identically" is WITHDRAWN** — the recorded hashes identify the *input* circuit, so what is established is agreement on every compared integer, not identity of the compiled circuits | §44, re-run from clean |
 | ⚠ **NARROWED v4** | Risk is **associated with** two measurable properties — is routing stochastic (Spearman +0.876) and how far θ sits from the cut (−0.833). All 13 deterministic circuits carry exactly zero risk, which is arithmetic rather than evidence. **"MECHANISM" is WITHDRAWN**: the quantitative attribution died with the synthetic null in v3 and is not reinstated | §55 |
@@ -41,9 +41,9 @@ Sections further down have **not** been audited that way and are historical reco
 | ✅ **LIVE** | That result **reproduces on a disjoint scattered seed set across 10 fresh processes** (22.6% vs 26.3%, CIs overlap) — the PRNG/process-state confound is removed | §51 |
 | ⭐ **LIVE** | **That false positive is NOT fixed by running more: pooled k=20 (~80 compute hours) still leaves 3.74%** — ⚠ v3 corrected ~40 h, which was wall-clock on two concurrent machines, not the compute total | §50, §51 |
 | ✅ **LIVE** | `bv_n140` on linear (+31.0% real regression) is MISSED 2.98% [1.59, 4.91] — but k=8 removes this one | §48, §49 |
-| ⭐ **LIVE** | #14402's own **+46.1%** for `bv_n140` is one draw from a range spanning **−10.5% to +100%**; the truth is **+31.0%** | §48 |
+| ⚠ **CORRECTED v3** | #14402's own **+46.14%** for `bv_n140` is one draw from a distribution whose exact support is **−17.68% to +109.17%**; the reference change is **+31.0%**. **"−10.5% to +100%" was wrong** — those were extrema of a finite sample, not support bounds | §48 |
 | ⚠ **CORRECTED v3/v4** | #14402's two low-variance circuits **compare closely** — `bv_n280` **+0.29 pp**, `knn_341` **−0.63 pp**. **"0.5 pp and 2.4 pp" was wrong**: the `knn_341` figure was misquoted and its difference has the wrong sign. And this is a numerical comparison at our configuration, not a reproduction — the issue's Benchpress revision and aggregation rule are not supplied | §48 |
-| ✅ **LIVE** | Unseeded 3-run comparison cannot resolve a change inside an **11.5–14.0 pp** window on heavy-hex (range across modelling choices) | §42, §47 |
+| ⚠ **NARROWED v4** | Unseeded 3-run comparison resolves a change inside an **11.5–14.0 pp** window on heavy-hex with **call probability between 5% and 95%** (range across modelling choices) — a transition width under the stated model, pair, *k* and threshold, **not a categorical inability to resolve** | §42, §47 |
 | ✅ **LIVE** | Topology ordering linear < square < heavy-hex | §42, direction-free |
 | ✅ **LIVE** | k=3 is external (quoted from #14402); no conclusion depends on it | §43 |
 | ✅ **LIVE** | Backend error rates are unseeded but **do not affect the observable** — 0/24 cases, controls verified distinct | §46 |
@@ -1312,7 +1312,9 @@ is topology-specific.
 §49 R2 said the error was underpowering and k=8 removed it. **That was true only for the
 false negative.** On `heavy-hex`, twenty runs per version — roughly **40 hours** of
 compute at the issue's own "about 2 hours each" — still leaves a **4.84%** false-positive
-rate. The remedy this record recommended in §49 is refuted for the false-positive case,
+rate. *(⛔ the 40-hour figure is SUPERSEDED: 20 runs × 2 versions × ~2 h is on the order
+of **80 compute hours**. 40 h would be wall-clock on two machines running concurrently,
+not the compute total. Corrected in v3; the rate is unaffected.)* The remedy this record recommended in §49 is refuted for the false-positive case,
 by this record, one section later.
 
 ### Split-half stability — heavy-hex is the most stable number in the study
@@ -1360,6 +1362,10 @@ to a factor of two applies to the linear false negative, not to this.
 > Qiskit 1.4.3 and 2.0.0. Benchpress's own 3-run unseeded protocol reports it as a
 > ≥+10% regression 26.3% of the time (95% CI 18.9%–34.9%). Running twenty times instead
 > of three — about 40 hours of compute — still leaves 4.8%.**
+>
+> ⛔ **SUPERSEDED as a headline.** The compute figure is **~80 hours**, not 40 (v3), and
+> the current headline numbers are in `PAPER.md` — this section's +5.75% and 26.3% come
+> from an earlier sample. The pooled k=20 rate now reported is **3.74%**.
 
 Not a magnitude-estimation failure. A binary decision failure, on a false positive, where
 the truth is 4 pp clear of the threshold and running more does not fix it.
@@ -1488,6 +1494,12 @@ regression at all.
 
 The discrepancy could be Benchpress version drift — the issue is from May 2025 and our
 checkout is `b695f30e` (July 2026). If so, **all three** circuits would disagree:
+
+> ⛔ **SUPERSEDED — the `knn_341` issue figure below is MISQUOTED.** The issue reports
+> **+44.060%**, not +41.0%, so that row's difference is **−0.63 pp**, not +2.4 pp — the
+> wrong magnitude *and* the wrong sign. Corrected in v3; see `PAPER.md` §2.2 and
+> `V3_CORRECTION_LEDGER.md`. The corrected differences are **+0.29, −0.63 and −10.94 pp**.
+> The table is left as recorded because the misquote is part of what happened here.
 
 | circuit | issue | ours (12 seeds) | diff | seed spread 1.4.3 | seed spread 2.0.0 |
 |---|---:|---:|---:|---:|---:|

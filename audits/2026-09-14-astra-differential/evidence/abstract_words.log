@@ -1,0 +1,15 @@
+
+  RENDERED MANUSCRIPT BOUND TO RAW DATA
+  46,875 bytes, 0 HTML comment block(s) and 1 fenced code block(s)
+  removed before parsing
+  raw HTML: 33 tag(s), ALL inside the declared domain
+
+  one canonical table, line 413: ['criterion', 'circuits', 'proportion', 'Wilson 95% CI']
+  reconstructed from raw: 12/26, 7/26, 4/26
+
+  prose scan: 3 endpoint-shaped fraction(s) exempted as explicitly counterfactual;
+              3 prose quantit(ies) bound to the endpoint their own sentence names
+  ✗ THE VISIBLE MANUSCRIPT DOES NOT MATCH THE RAW DATA — 1 problem(s):
+
+      visible prose attributes 7 of 26 to the 'risk > 0' endpoint, which the raw data puts at 12 of 26 — …ary risk interval excludes zero in only seven of 26 eligible circuits.  Quantum compiler benchmarks are used to accept or reject changes to production
+

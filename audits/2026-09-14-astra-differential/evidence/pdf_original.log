@@ -1,0 +1,16 @@
+
+  PUBLISHED PDF BOUND TO THE MANUSCRIPT
+  515,669 bytes, 45,986 extractable characters
+
+  numeric content: 272 distinct tokens in the PDF, 272 in PAPER.md
+  canonical table: 3/3 rows found intact in the PDF
+  version line: Version 4, 2026-09-13
+  withdrawn claims checked: 6
+
+  ✗ PDF AND MANUSCRIPT DISAGREE — 4 problem(s):
+
+      the PDF shows the number 99.9, which appears NOWHERE in PAPER.md — a reader is being given a value the source does not contain — …nder a +10% threshold. The median circuit admits an ambiguity band of 99.9 percentage points -- the total width of
+      the PDF shows the number 99.94, which appears NOWHERE in PAPER.md — a reader is being given a value the source does not contain — …1.0% bv_n140          +46.142%        +35.207%      -99.94 pp
+      PAPER.md states 10.9 and no page of the PDF carries it — the PDF is not a rendering of this manuscript
+      PAPER.md states 10.94 and no page of the PDF carries it — the PDF is not a rendering of this manuscript
+

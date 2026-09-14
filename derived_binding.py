@@ -69,6 +69,8 @@ import numpy as np
 ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, ROOT)
 
+
+import validation_result as vr
 import prereg_analysis as pa
 
 SUMMARY = os.path.join(ROOT, "results", "summary", "prereg_heavy-hex.csv")
@@ -161,10 +163,30 @@ QUICK = {"error_ci_lo", "error_ci_hi", "error_rate", "error_excludes_zero",
 
 
 def read_rows(path):
-    """Rows as a LIST, plus the header, so nothing is collapsed before it is counted."""
+    """Rows as a LIST, plus the header, so nothing is collapsed before it is counted.
+
+    `restval=MISSING` distinguishes "this row is SHORT" from "this cell is empty", which
+    DictReader otherwise renders identically as None/''. Overflow cells land under the
+    None key and are kept, not discarded — see check_schema.
+    """
     with open(path, encoding="utf-8", newline="") as fh:
-        rdr = csv.DictReader(fh)
+        rdr = csv.DictReader(fh, restval=MISSING)
         return list(rdr.fieldnames or []), [dict(r) for r in rdr]
+
+
+# The declared column ORDER, not merely the set. A reordered header is a different file:
+# anything reading it positionally — a spreadsheet, awk, a diff against the published
+# artifact — would silently transpose columns.
+COLUMN_ORDER = ["boundary", "change_ci_hi_pct", "change_ci_lo_pct", "circuit",
+                "distance_to_cut_pp", "error_ci_hi", "error_ci_lo",
+                "error_excludes_zero", "error_kind", "error_rate",
+                "est_long_run_change_pct", "k", "n_seeds", "p_call", "qiskit_baseline",
+                "qiskit_candidate", "status", "threshold", "verdict"]
+# Fields that may be empty, and only then: the risk figures do not exist for a circuit
+# whose verdict is UNRESOLVED. Every other declared field must carry a value. An empty
+# cell anywhere else is a missing measurement, not a permitted blank.
+OPTIONAL = {"error_ci_lo", "error_ci_hi", "error_rate", "p_call"}
+MISSING = object()          # sentinel: DictReader had no cell at all for this column
 
 
 def check_schema(header, rows):
@@ -179,12 +201,16 @@ def check_schema(header, rows):
                      f"column of the published artifact must be one this file validates")
     if len(header) != len(set(header)):
         fails.append("header: a column name is repeated")
+    if not fails and list(header) != COLUMN_ORDER:
+        fails.append(f"header: column ORDER differs from the declared contract. "
+                     f"expected {COLUMN_ORDER}, got {list(header)}")
     if fails:
         return fails                      # a wrong shape makes row checks meaningless
 
     seen = {}
     for i, row in enumerate(rows, start=2):        # line 1 is the header
-        cid = (row.get("circuit") or "").strip()
+        cid = row.get("circuit")
+        cid = "" if cid is MISSING or cid is None else str(cid).strip()
         if not cid:
             fails.append(f"line {i}: row has no circuit id")
             continue
@@ -197,11 +223,36 @@ def check_schema(header, rows):
             continue
         seen[cid] = i
 
+        # ROW WIDTH. A row with more cells than the header puts the surplus under the
+        # None key; a row with fewer leaves MISSING behind. Either is a malformed record,
+        # and neither is visible once the row is read field by field (Astra, 3643bbc
+        # differential: an extra unlabelled cell passed the whole schema).
+        extra = row.get(None)
+        if extra is not None:
+            fails.append(f"{cid}: row has {len(header) + len(extra)} cells for "
+                         f"{len(header)} declared columns — surplus {extra!r} belongs to "
+                         f"no column, so no check can ever see it")
+            continue
+        short = [f for f in COLUMN_ORDER if row.get(f, MISSING) is MISSING]
+        if short:
+            fails.append(f"{cid}: row ends before column(s) {short} — a short row is a "
+                         f"missing measurement, not an empty one")
+            continue
+
         vals = {}
         bad = False
         for f, (kind, _) in FIELDS.items():
+            raw = row.get(f)
+            # A REQUIRED field that is blank is rejected here, by name. It used to reach
+            # the SELF checks as None and raise TypeError on the first comparison — a
+            # crash, which says nothing a reader can act on (Astra, 3643bbc differential).
+            if (raw is None or raw == "") and f not in OPTIONAL:
+                fails.append(f"{cid}.{f}: required field is empty. Only {sorted(OPTIONAL)}"
+                             f" may be blank, and only on an UNRESOLVED circuit")
+                bad = True
+                continue
             try:
-                vals[f] = parse(kind, row.get(f))
+                vals[f] = parse(kind, raw)
             except Domain as exc:
                 fails.append(f"{cid}.{f}: {exc}")
                 bad = True
@@ -277,7 +328,7 @@ def main():
     print(f"  schema: {len(FIELDS)} declared fields, {len(ENUMS)} closed value sets, "
           f"{'REJECTED' if fails else 'every cell inside its domain'}")
     if fails:
-        report(fails, "SAVED SUMMARY IS NOT A VALID ARTIFACT")
+        report(fails, "SAVED SUMMARY IS NOT A VALID ARTIFACT", "SAVED_SCHEMA")
 
     saved = {r["circuit"]: r for r in rows}
     for c in [c for c in circuits if c not in saved]:
@@ -287,13 +338,12 @@ def main():
     if len(rows) != len(circuits):
         fails.append(f"row count {len(rows)} != frozen selection {len(circuits)}")
     if fails:
-        report(fails, "SAVED SUMMARY IS NOT THE FROZEN SELECTION")
+        report(fails, "SAVED SUMMARY IS NOT THE FROZEN SELECTION", "SAVED_MEMBERSHIP")
 
     if args.schema:
-        print("\n  ✓ the saved summary is a valid artifact: every cell inside its "
-              "declared\n    domain, every row internally coherent. The replay was not "
-              "run (--schema).\n")
-        return
+        vr.accept("\n  ✓ the saved summary is a valid artifact: every cell inside its "
+                  "declared\n    domain, every row internally coherent. The replay was "
+                  "not run (--schema).")
 
     print(f"  replaying prereg_analysis.analyse for {len(circuits)} circuits "
           f"(original MC bootstrap, original seeds)")
@@ -325,19 +375,14 @@ def main():
         if iv:
             print(f"\n  RISK INTERVAL MISMATCH on {len(iv)} field(s). The published "
                   f"uncertainty is\n  not the uncertainty this data produces.")
-        report(fails, "SAVED SUMMARY DOES NOT MATCH ITS OWN ANALYSIS")
-    print("\n  ✓ every saved primary field is inside its declared domain, internally "
-          "coherent,\n    and equal to a replay of its own analysis.\n")
+        report(fails, "SAVED SUMMARY DOES NOT MATCH ITS OWN ANALYSIS",
+               "SAVED_MATCHES_REPLAY")
+    vr.accept("\n  ✓ every saved primary field is inside its declared domain, "
+              "internally coherent,\n    and equal to a replay of its own analysis.")
 
 
-def report(fails, headline):
-    print(f"\n  ✗ {headline} — {len(fails)} problem(s):\n")
-    for f in fails[:30]:
-        print(f"      {f}")
-    if len(fails) > 30:
-        print(f"      … and {len(fails) - 30} more")
-    print()
-    sys.exit(1)
+def report(fails, headline, invariant):
+    vr.reject(invariant, headline, fails)
 
 
 if __name__ == "__main__":

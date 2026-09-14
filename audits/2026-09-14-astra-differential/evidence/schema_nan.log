@@ -1,0 +1,40 @@
+
+  SAVED SUMMARY BOUND TO A REPLAY OF ITS OWN ANALYSIS
+  39 rows, 19 columns
+
+  schema: 18 declared fields, 2 closed value sets, REJECTED
+
+  ✗ SAVED SUMMARY IS NOT A VALID ARTIFACT — 72 problem(s):
+
+      bv_n30.error_ci_lo: 'NaN' is not finite — a nonfinite value satisfies every tolerance comparison and therefore cannot be validated
+      bv_n30.error_ci_hi: 'NaN' is not finite — a nonfinite value satisfies every tolerance comparison and therefore cannot be validated
+      cat_n35.error_ci_lo: 'NaN' is not finite — a nonfinite value satisfies every tolerance comparison and therefore cannot be validated
+      cat_n35.error_ci_hi: 'NaN' is not finite — a nonfinite value satisfies every tolerance comparison and therefore cannot be validated
+      knn_n31.error_ci_lo: 'NaN' is not finite — a nonfinite value satisfies every tolerance comparison and therefore cannot be validated
+      knn_n31.error_ci_hi: 'NaN' is not finite — a nonfinite value satisfies every tolerance comparison and therefore cannot be validated
+      ising_n34.error_ci_lo: 'NaN' is not finite — a nonfinite value satisfies every tolerance comparison and therefore cannot be validated
+      ising_n34.error_ci_hi: 'NaN' is not finite — a nonfinite value satisfies every tolerance comparison and therefore cannot be validated
+      wstate_n36.error_ci_lo: 'NaN' is not finite — a nonfinite value satisfies every tolerance comparison and therefore cannot be validated
+      wstate_n36.error_ci_hi: 'NaN' is not finite — a nonfinite value satisfies every tolerance comparison and therefore cannot be validated
+      swap_test_n41.error_ci_lo: 'NaN' is not finite — a nonfinite value satisfies every tolerance comparison and therefore cannot be validated
+      swap_test_n41.error_ci_hi: 'NaN' is not finite — a nonfinite value satisfies every tolerance comparison and therefore cannot be validated
+      knn_n41.error_ci_lo: 'NaN' is not finite — a nonfinite value satisfies every tolerance comparison and therefore cannot be validated
+      knn_n41.error_ci_hi: 'NaN' is not finite — a nonfinite value satisfies every tolerance comparison and therefore cannot be validated
+      cat_n65.error_ci_lo: 'NaN' is not finite — a nonfinite value satisfies every tolerance comparison and therefore cannot be validated
+      cat_n65.error_ci_hi: 'NaN' is not finite — a nonfinite value satisfies every tolerance comparison and therefore cannot be validated
+      ghz_n40.error_ci_lo: 'NaN' is not finite — a nonfinite value satisfies every tolerance comparison and therefore cannot be validated
+      ghz_n40.error_ci_hi: 'NaN' is not finite — a nonfinite value satisfies every tolerance comparison and therefore cannot be validated
+      adder_n28.error_ci_lo: 'NaN' is not finite — a nonfinite value satisfies every tolerance comparison and therefore cannot be validated
+      adder_n28.error_ci_hi: 'NaN' is not finite — a nonfinite value satisfies every tolerance comparison and therefore cannot be validated
+      bv_n70.error_ci_lo: 'NaN' is not finite — a nonfinite value satisfies every tolerance comparison and therefore cannot be validated
+      bv_n70.error_ci_hi: 'NaN' is not finite — a nonfinite value satisfies every tolerance comparison and therefore cannot be validated
+      ising_n66.error_ci_lo: 'NaN' is not finite — a nonfinite value satisfies every tolerance comparison and therefore cannot be validated
+      ising_n66.error_ci_hi: 'NaN' is not finite — a nonfinite value satisfies every tolerance comparison and therefore cannot be validated
+      ising_n42.error_ci_lo: 'NaN' is not finite — a nonfinite value satisfies every tolerance comparison and therefore cannot be validated
+      ising_n42.error_ci_hi: 'NaN' is not finite — a nonfinite value satisfies every tolerance comparison and therefore cannot be validated
+      ghz_n127.error_ci_lo: 'NaN' is not finite — a nonfinite value satisfies every tolerance comparison and therefore cannot be validated
+      ghz_n127.error_ci_hi: 'NaN' is not finite — a nonfinite value satisfies every tolerance comparison and therefore cannot be validated
+      wstate_n76.error_ci_lo: 'NaN' is not finite — a nonfinite value satisfies every tolerance comparison and therefore cannot be validated
+      wstate_n76.error_ci_hi: 'NaN' is not finite — a nonfinite value satisfies every tolerance comparison and therefore cannot be validated
+      … and 42 more
+

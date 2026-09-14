@@ -1,0 +1,77 @@
+[
+  {
+    "case": "pdf_powershell_environment",
+    "exit": 0,
+    "state": "PASSED"
+  },
+  {
+    "case": "pdf_gitbash_environment",
+    "exit": 0,
+    "state": "PASSED"
+  },
+  {
+    "case": "pdf_empty_path",
+    "exit": 0,
+    "state": "PASSED"
+  },
+  {
+    "case": "pdf_no_extractor",
+    "exit": 1,
+    "state": "ERROR"
+  },
+  {
+    "case": "pdf_reference",
+    "exit": 0,
+    "state": "PASSED"
+  },
+  {
+    "case": "pin_no_git_LF",
+    "exit": 1,
+    "state": "REJECTED"
+  },
+  {
+    "case": "pin_no_git_CRLF",
+    "exit": 1,
+    "state": "REJECTED"
+  },
+  {
+    "case": "pin_git_control",
+    "exit": 0,
+    "state": "PASSED"
+  },
+  {
+    "case": "pin_unborn_git",
+    "exit": 1,
+    "state": "REJECTED"
+  },
+  {
+    "case": "history_manifest",
+    "exit": 0,
+    "state": "PASSED"
+  },
+  {
+    "case": "history_changed",
+    "exit": 1,
+    "state": "REJECTED"
+  },
+  {
+    "case": "offline_pristine",
+    "exit": 0,
+    "state": "PASSED"
+  },
+  {
+    "case": "offline_changed_transcript",
+    "exit": 0,
+    "state": "PASSED"
+  },
+  {
+    "case": "offline_write_refused",
+    "exit": 1,
+    "state": "ERROR"
+  },
+  {
+    "case": "builtin_u",
+    "exit": 1,
+    "state": "REJECTED"
+  }
+]

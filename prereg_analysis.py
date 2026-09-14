@@ -1,9 +1,18 @@
 """Analysis for the pre-registered multi-circuit replication. PREREGISTRATION.md §5.
 
-⚠ THIS FILE WAS WRITTEN AND COMMITTED BEFORE THE DATA EXISTED. The git commit adding it
-   predates the commit adding results/raw/prereg/*.jsonl. That ordering is the point:
-   the analysis could not have been tuned to the result, and anyone can check the order
-   with `git log --diff-filter=A -- prereg_analysis.py results/raw/prereg`.
+⚠ THIS FILE WAS COMMITTED BEFORE THE FIRST TRACKED COMMIT OF THE PRIMARY DATA. The
+   commit adding it precedes the commit adding results/raw/prereg/*.jsonl, and anyone can
+   check that order with
+   `git log --diff-filter=A -- prereg_analysis.py results/raw/prereg`.
+
+   What that order establishes is commit chronology and nothing more. It does not
+   establish when any output was first looked at, that no uncommitted data existed, or
+   that the local clock was truthful — so it does not establish that the analysis was not
+   tuned to a result. That the analysis was intended to be blind is an author process
+   statement, attributed as such in PAPER.md §3.3, not a fact this repository can prove.
+   ⚠ v4 correction (Astra V4-05): this header previously said the file was written before
+   the data EXISTED and inferred that it could not have been tuned. Both overstate what a
+   commit log can support, and both contradicted the manuscript's own §3.3 correction.
 
 IMPLEMENTS THE PRE-REGISTERED RULES, WITH ONE DECLARED NUMERICAL TOLERANCE
     §5.1 estimated long-run change = ratio of arm means; 95% percentile bootstrap over

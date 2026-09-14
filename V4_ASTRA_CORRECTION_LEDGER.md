@@ -1,8 +1,9 @@
 # v4 correction ledger — every Astra finding against v3, then against v4
 
-> **Part 2 (V4-01 … V4-10), the audit of the corrected v4 tree, is at the bottom of this
-> file.** Part 1 below is the v3 audit (A01–A14) and is unchanged. Read them in order:
-> part 2 is the record of what part 1's repairs still got wrong.
+> **Three audits, in order.** Part 1 is the v3 audit (A01–A14). Part 2 is the audit of
+> the corrected v4 tree (V4-01…V4-10). Part 3 is the differential audit of Part 2's own
+> repairs, which found that four of the ten were closed and six were not. Each part is
+> the record of what the previous part's repairs still got wrong.
 
 ---
 
@@ -261,3 +262,129 @@ Added by this round:
 6. **A verifier only tests the attacks someone thought of.** Four rounds have now each
    ended with a green verifier that a hostile auditor then broke. This ledger records what
    has been tried, not that nothing remains.
+
+---
+---
+
+# Part 3 — the differential audit of Part 2's repairs
+
+Audit: `audits/2026-09-14-astra-differential/` (`REVIEW.md`, SHA-256
+`218f0adecf7d7202…`), against `3643bbcdb30c595c4a6caf0e8b41f179a3c15cdb`.
+
+**Verdict as delivered: four CLOSED, six PARTIAL, one new defect. CORE SURVIVES MAJOR
+CORRECTIONS.** No raw measurement changed. No reported scientific number changed.
+
+Part 2 reported ten findings closed. Four were. The claim that all ten were is the thing
+this part exists to correct, and the reason is worth stating plainly: **the repairs were
+tested against fixtures written after reading the findings, not against the reproducers
+Astra actually ran.** Two of those paraphrases passed where the originals did not.
+
+---
+
+## The two that Part 2 got wrong
+
+| | what Astra ran | Part 2 | now |
+|---|---|---|---|
+| **V4-03** | `The primary risk interval excludes zero in only 7 / 26 eligible circuits.`, inserted after `## Abstract` | stages 12 **and** 13 returned 0 | mutation **W**, plus the positional fix below |
+| **V4-07** | a layer printing its expected rejection diagnostic, then raising `RuntimeError` | classified **REJECTED**, declared reason present | terminal-verdict contract; classified **ERROR** |
+
+**V4-03's cause was a one-line bug of mine.** The prose scan skipped any fraction whose
+TEXT matched the canonical table's cells — `m.group(0) in tbl_span`, a substring test.
+The canonical table legitimately contains `7 / 26`, so that string was skipped *wherever
+in the document it appeared*, including the abstract. Part 2's fixture used the
+word-number form ("Seven of 26"), which does not occur in the table, so it was caught and
+the numeral form was not. Identity of a text occurrence is its **position**:
+`parse_tables` now returns each table's character range and only the canonical table's own
+range is excluded.
+
+**V4-07's cause was the same mistake one level down.** Round one replaced "any nonzero
+exit" with "nonzero exit and a `✗` in the output". Both read evidence *about* an outcome,
+scraped after the fact, instead of the outcome itself — and neither can tell a layer that
+finished and rejected from one that rejected and then fell over. A layer that fell over
+did not finish, so it cannot vouch for anything.
+
+---
+
+## Findings
+
+| ID | Prior | Defect remaining | Correction | New test | Status |
+|---|---|---|---|---|---|
+| **V4-01** | PARTIAL | a blank required cell CRASHED with `TypeError`; an extra unlabelled CSV cell passed the whole schema | Required vs `OPTIONAL` fields declared — only the four risk figures may be blank, and only on an `UNRESOLVED` circuit; a blank elsewhere is rejected by name. Row WIDTH is checked: `DictReader` files a surplus cell under the `None` key where no field-by-field check looks, and a short row leaves a `MISSING` sentinel; both are rejected. Column **order** is now part of the contract, not just the set | mutations **Y**, **Z**; 9 pytest cases | **CLOSED** |
+| **V4-02** | CLOSED | — | — | — | **CLOSED** |
+| **V4-03** | PARTIAL | the original numeral-form false abstract still passed; tags longer than 400 chars escaped the domain check | Canonical-table exclusion is **positional**, not textual. `TAG` bound removed (`[^<>]*`), and `UNTERMINATED` now anchors on `<|\Z` rather than `\Z` alone — writing the test revealed that an unterminated tag mid-document escaped entirely when another `<` preceded the next `>` | mutations **W**, **X**; 6 pytest cases | **CLOSED** |
+| **V4-04** | PARTIAL | README "seed variance rather than version drift" and the old `−10.5% to +100.0%` range; LIVE rows for the 8 SDK gyms, the old range, and the categorical 11.5–14.0 pp window | README: inference narrowed to "consistent with", support corrected to **−17.68% to +109.17%**, and the gym row corrected to **2 of 8 inspected** (Qiskit passes no seed, BQSKit passes `seed=0`, the other six are **not assessed**) — "0 of 8" asserted something about all eight. LIVE rows relabelled CORRECTED/NARROWED. Inline SUPERSEDED markers added at the two historical sections a reader could still land on: §48's misquoted `knn_341` row and §49/§50's 40-hour figure | — | **CLOSED** |
+| **V4-05** | PARTIAL | "every published figure" survived at PAPER.md:68; "before the primary data exists" at :678; `prereg_analysis.py`'s header still inferred that chronology ruled out tuning; `paper_check.py` still said "every quantitative claim" | All four corrected. The analysis header now states that commit order establishes **commit chronology and nothing more**, and that blindness is an attributed author process statement. `paper_check.py`'s header states its actual scope — 50 enumerated claims — and that **presence is not placement** | 1 pytest case | **CLOSED** |
+| **V4-06** | CLOSED | — | — | — | **CLOSED** |
+| **V4-07** | PARTIAL | expected diagnostic **then** crash still classified REJECTED | `validation_result.py`: every layer ends at `accept()` or `reject()`, which print a terminal `##QVALIDATION-RESULT##` line as the last thing before exit. A verdict is read only if that line is the final non-empty line of **stdout** and **stderr** carries no traceback — the two streams are kept separate so an ordinary warning cannot read as a crash. Each mutation declares an **invariant** (structural, emitted only by a completed routine) *and* a message fragment (which defect under it) | 5 pytest cases, one a real subprocess doing exactly what Astra did | **CLOSED** |
+| **V4-08** | CLOSED | — | — | — | **CLOSED** |
+| **V4-09** | PARTIAL | the code header disclosed the guard; PAPER.md still gave the entirely-above/below rule unqualified | §3.3 now states the rule **with** ε = 10⁻⁹, the reason (`110/100 − 1` is `0.10000000000000009`), the cost (an endpoint strictly outside but within 10⁻⁹ is `UNRESOLVED`), and the margin (2.3 × 10⁻³, 2.3 million ×). The exact integer comparison for the *k*-run decision event is stated as separate and untouched | 1 pytest case asserting the disclosure sits with the rule | **CLOSED** |
+| **V4-10** | CLOSED | — | — | — | **CLOSED** |
+| **NEW-BUILD-01** | — | a locked destination let Chromium fail while `build_paper.sh` exited 0 and printed "built", leaving the previous PDF in place for every downstream stage to validate | `publish/finalize_pdf.py`. The build goes to a unique temporary path; the fresh file is inspected (`%PDF-` magic, `%%EOF` trailer, size floor, page count); it is moved onto the destination; the destination is **re-read** and must now be that file. A locked destination fails nonzero with an explanation, leaves the old PDF intact and the fresh one on disk for retry. Success means an artifact exists, not that a command returned | 3 pytest cases, one taking a real Windows exclusive handle | **CLOSED** |
+
+**11 of 11 accepted. None rejected.** Two were re-derived rather than taken on the
+auditor's word: the 8-gym scope (the manuscript's own §6 says source inspection covers
+**two** of eight), and the unterminated-tag hole, which the regression test for V4-03
+exposed and which Astra had not reported.
+
+---
+
+## Resource failures are not validation outcomes
+
+Astra's pristine runs died at **99.98% commit charge** (115,302,940,672 of
+115,322,265,600 bytes), and one stage exit includes reviewer intervention to clear
+stalled `git archive` children. Two of this repository's own runs died the same way while
+`q5_fuzz.py --f1` held 4.25 GB.
+
+None of those are counted as verifier results, here or in the review. A `MemoryError` is
+an **ERROR** under the contract added for V4-07 — neither a pass nor a detection — and
+the mutation test reported it as exactly that: *"control: a pristine snapshot did not pass
+derived (ERROR)"*. Before the certifying run, host memory was measured and recorded rather
+than assumed.
+
+---
+
+## The verifier, in layers — after the differential
+
+Unchanged in structure. What changed is how an outcome is **read**:
+
+| | before | now |
+|---|---|---|
+| a layer passed | exit code 0 | terminal `PASSED` verdict **and** exit 0 |
+| a layer rejected | nonzero exit containing `✗` | terminal `REJECTED <invariant>` verdict, no traceback on stderr, **and** nonzero exit |
+| a layer crashed | indistinguishable from rejecting | **ERROR**, and never counted as either |
+
+**22 mutations**, each REJECTED by the layer that must catch it, under its declared
+invariant, for its declared reason. New in this round: **W**, **X**, **Y**, **Z**.
+
+---
+
+## Preserved science — unchanged, reconfirmed
+
+15,600 observations · 36 resolved / 3 unresolved · 26 eligible · **12/26, 7/26, 4/26** ·
+all 36 original bootstrap intervals · ρ = −0.8329214038556598 descriptively · ~10.9 pp
+transition width, scoped to this version pair · k=20 `bv_n140` risk 3.741473676562272% ·
+216/216 cross-machine gate counts · 858 anchored evidence files = 78 arms + 780 fragments.
+Both revisions carry the identical `results/raw/prereg` tree object
+`3114a270ccd78b0daaa2a1bc451dd15155d55c13`.
+
+---
+
+## Open limitations — labelled, not closed
+
+Everything carried forward from Parts 1 and 2, plus:
+
+1. **A paraphrased reproducer is not a reproducer.** Two repairs passed fixtures written
+   from the findings while the auditor's own cases still failed. Every case Astra ran is
+   now a standing fixture in its original form, and a test asserts they are all present.
+2. **Numeric-set equality is still not semantic equivalence**, and a human reading of the
+   built PDF remains a release requirement.
+3. **The offline anchor still cannot authenticate itself.**
+4. **Stage 9 still needs `git archive HEAD`**, so mutation fixtures test the committed
+   tree, not the working tree.
+5. **Mutation U still needs pandoc and Chromium**, and is named as skipped where absent.
+6. **Historical sections of `RESEARCH_LANDSCAPE.md` are marked, not rewritten.** Two
+   inline SUPERSEDED markers were added where a reader could land on a corrected number;
+   the 231 KB record has not been swept sentence by sentence.
+7. **A verifier only tests the attacks someone thought of.** Four audits have each ended
+   with a green verifier that a hostile auditor then broke, and this one broke the
+   repairs rather than the science. That is a narrowing, not a finish.

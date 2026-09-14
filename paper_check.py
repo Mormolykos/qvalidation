@@ -1,8 +1,18 @@
-"""Verify every quantitative claim in PAPER.md against the raw data. Fails loudly.
+"""Verify an ENUMERATED LIST of quantitative claims in PAPER.md against the data.
 
 A paper whose numbers were typed from a transcript is a paper with typos in it. This
-re-derives each figure and asserts it appears in PAPER.md, so a drifted number is caught
-before anyone reads it.
+re-derives each figure on that list and asserts it appears in PAPER.md, so a drifted
+number is caught before anyone reads it.
+
+WHAT IT DOES NOT DO — say the scope, because a PASS is read as a promise (Astra V4-05)
+    This header said "every quantitative claim in PAPER.md". It checks the claims listed
+    in this file: 50 of them at present, not every number in the manuscript, not the
+    intervals, and no prose.
+
+    PRESENCE IS NOT PLACEMENT. Each check asserts that a recomputed value APPEARS
+    somewhere in the source text. A number found in an unrelated sentence satisfies it.
+    Binding a claim to the endpoint it names is `manuscript_binding.py`'s job, and the
+    reason that file exists.
 """
 
 import csv

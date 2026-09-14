@@ -1,0 +1,10 @@
+
+  SAVED SUMMARY BOUND TO A REPLAY OF ITS OWN ANALYSIS
+  40 rows, 19 columns
+
+  schema: 18 declared fields, 2 closed value sets, REJECTED
+
+  ✗ SAVED SUMMARY IS NOT A VALID ARTIFACT — 1 problem(s):
+
+      line 41: circuit 'bv_n30' already appears on line 2 — duplicate identities collapse before they are counted
+

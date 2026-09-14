@@ -1,0 +1,1 @@
+{"fixture": "6 occurrence(s) of 10.9 -> 99.9 in the rendered HTML, then rebuilt through publish/build_paper.sh's own pandoc + Chromium path. PAPER.md and the raw data are untouched", "declared_reason_found": true}

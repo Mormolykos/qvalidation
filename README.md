@@ -37,11 +37,12 @@ a distribution whose exact support runs from **−17.68% to +109.17%**. Its 95% 
 reaches **below the +10% threshold**: the same real regression could have been reported
 as no regression at all.
 
-The two circuits in that issue with near-zero seed spread reproduce here to within
-**+0.29 pp** and **−0.63 pp**. Only the noisy one disagrees — which is what makes this
-seed variance rather than version drift. The issue's Benchpress revision and aggregation
-rule are not supplied, so these are numerical comparisons at our configuration, not a
-reproduction of its protocol.
+The two circuits in that issue with near-zero seed spread compare here to within
+**+0.29 pp** and **−0.63 pp**. Only the noisy one disagrees, which is **consistent with**
+seed variance rather than version drift — an observation about which circuits disagree,
+not a demonstration that version drift is absent. The issue's Benchpress revision and
+aggregation rule are not supplied, so these are numerical comparisons at our
+configuration, not a reproduction of its protocol.
 
 > ⚠ **This README is a summary. [`PAPER.md`](PAPER.md) is the authority**, and where the
 > two disagree the manuscript is right. Claims corrected in v3 and v4 are listed in
@@ -78,12 +79,12 @@ reproduction of its protocol.
 | ⚠ but **13 of 39** circuits are perfectly deterministic | median eligible error rate **0.0000** — all 13 are eligible, so 13 of the 26 | §52 |
 | **`bv_n140` real regression MISSED by the 3-run protocol** | **2.98%** of the time, 95% CI [1.72%, 4.99%] | §48 |
 | `bv_n140` true change, 1.4.3 → 2.0.0, 200 seeds/arm | **+31.0%**, 95% CI [+28.4%, +33.8%] | §48 |
-| what a single 3-run comparison of it can return | **−10.5% to +100.0%** | §48 |
+| what a single 3-run comparison of it can return | **−17.68% to +109.17%** (exact support) — ⚠ v3 corrected −10.5% to +100.0%, which were extrema of a finite *sample*, not support bounds | §48 |
 | #14402 compared, low-seed-spread circuits | `bv_n280` **+0.29 pp**, `knn_341` **−0.63 pp** — numerical comparison at our configuration, not a protocol reproduction | §48 |
 | decision instability, real change, forward direction | **5 of 51** circuits, Wilson [4.3%, 21.0%] | §48 |
 | the error is not a threshold artifact | nonzero at **every** cut from +2% to +25% | §49 |
 | ⚠ but it IS underpowering: error vs runs/version | k=1 16.1% → k=3 2.98% → **k=8 0.09%** | §49 |
-| Benchpress gyms passing `seed_transpiler` | **0 of 8**, source-verified | §33 |
+| Benchpress gyms inspected for a compiler seed | **2 of 8** — Qiskit passes none, BQSKit passes `seed=0`; the other six are **not assessed**. ⚠ v4 corrected "0 of 8", which asserted something about all eight | §33 |
 | Benchpress unseeded, `bv_n140-linear`, 20 runs | **17 distinct 2Q gate counts**, 244–340 | §27 |
 | the seed is the entropy source | cross-process control, seeded 324×6 vs unseeded 6 values | §28 |
 | **unpaired ambiguity band, heavy-hex** | **11.5–14.0 pp** across modelling choices | §42, §47 |

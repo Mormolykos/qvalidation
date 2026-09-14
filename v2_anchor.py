@@ -75,6 +75,9 @@ import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, ROOT)
+
+import validation_result as vr
 V2 = "17e08f3e92533ff8266b1b586e35f20da2923da8"
 ANCHOR = os.path.join(ROOT, "results", "raw", "V2_EVIDENCE_ANCHOR.json")
 # Everything under here is anchored. NOTE the composition, because calling all of it
@@ -223,27 +226,21 @@ def main():
         return
     fails, use_git = verify()
     if fails:
-        print(f"\n  ✗ {len(fails)} violation(s):\n")
-        for f in fails[:30]:
-            print(f"      {f}")
-        if len(fails) > 30:
-            print(f"      … and {len(fails) - 30} more")
-        print()
-        sys.exit(1)
+        vr.reject("EVIDENCE_MATCHES_V2" if use_git else "EVIDENCE_MATCHES_TRANSCRIPT",
+                  "TRUSTED HISTORICAL EVIDENCE ANCHOR VIOLATED", fails)
     # Two different statements, because two different things were checked (Astra V4-06).
     if use_git:
-        print("\n  ✓ HISTORICAL IDENTITY: the canonical content of the primary evidence "
-              "is\n    identical to the objects committed at v2. Establishing this "
-              "falsely would\n    require rewriting history at "
-              f"{V2[:12]}, which changes the commit id.\n")
-    else:
-        print("\n  ✓ the primary evidence matches the supplied transcript "
+        vr.accept("\n  ✓ HISTORICAL IDENTITY: the canonical content of the primary "
+                  "evidence is\n    identical to the objects committed at v2. "
+                  "Establishing this falsely would\n    require rewriting history at "
+                  f"{V2[:12]}, which changes the commit id.")
+    vr.accept("\n  ✓ the primary evidence matches the supplied transcript "
               f"{os.path.basename(ANCHOR)}.\n"
               "    HISTORICAL AUTHENTICITY IS NOT ESTABLISHED HERE. A transcript "
               "distributed\n    beside the data it describes cannot authenticate it: "
               "anyone who changed\n    both would pass this check. To establish "
               "identity, run this where the v2\n    git objects are reachable, or "
-              "compare the transcript against an externally\n    published hash of it.\n")
+              "compare the transcript against an externally\n    published hash of it.")
 
 
 if __name__ == "__main__":

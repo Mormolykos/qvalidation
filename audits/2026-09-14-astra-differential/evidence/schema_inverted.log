@@ -1,0 +1,11 @@
+
+  SAVED SUMMARY BOUND TO A REPLAY OF ITS OWN ANALYSIS
+  39 rows, 19 columns
+
+  schema: 18 declared fields, 2 closed value sets, REJECTED
+
+  ✗ SAVED SUMMARY IS NOT A VALID ARTIFACT — 2 problem(s):
+
+      bv_n30: risk interval is inverted — [0.476949, 0.310522]
+      bv_n30: saved risk 0.397783 lies outside its own interval [0.476949, 0.310522]
+

@@ -41,6 +41,8 @@ import sys
 ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, ROOT)
 
+
+import validation_result as vr
 RAW_DIR = os.path.join(ROOT, "results", "raw", "prereg")
 MANIFEST = os.path.join(ROOT, "results", "raw", "RAW_MANIFEST.json")
 SUMMARY = os.path.join(ROOT, "results", "summary", "prereg_heavy-hex.csv")
@@ -161,15 +163,10 @@ def main():
         fails += check_derived_consistency()
 
     if fails:
-        print(f"\n  ✗ {len(fails)} problem(s):\n")
-        for f in fails[:40]:
-            print(f"      {f}")
-        if len(fails) > 40:
-            print(f"      ... and {len(fails) - 40} more")
-        print()
-        sys.exit(1)
-    print("\n  ✓ raw evidence unedited, and the derived summary is reproducible "
-          "from it.\n")
+        vr.reject("RAW_SELF_CONSISTENT",
+                  "RAW EVIDENCE AND THE DERIVED SUMMARY DO NOT AGREE", fails, limit=40)
+    vr.accept("\n  ✓ raw evidence unedited, and the derived summary is reproducible "
+              "from it.")
 
 
 if __name__ == "__main__":

@@ -41,9 +41,10 @@ WHAT IT CHECKS — and what each stage does NOT establish (Astra V4, 2026-09-13)
     8 raw integrity  the 78 merged arms vs the CURRENT manifest, plus selected summary
                      fields vs a raw reconstruction. Self-consistency: an attacker who
                      updates the manifest too is caught by stage 10, not here.
-    9 mutation test  18 corruptions, each REJECTED -- not merely exited on -- by a named
-                     stage for a named reason. Evidence this verifier turns red; not a
-                     proof that no other corruption passes.
+    9 mutation test  22 corruptions, each REJECTED -- not merely exited on -- by a named
+                     stage under a named INVARIANT, read from that stage's terminal
+                     verdict line rather than scraped from its console text. Evidence
+                     this verifier turns red; not a proof that no other corruption passes.
    10 v2 anchor      canonical content of the raw evidence vs v2's GIT OBJECTS. Without
                      that history it falls back to a supplied transcript and says so:
                      that mode is agreement, not authenticity.
@@ -57,6 +58,26 @@ WHAT IT CHECKS — and what each stage does NOT establish (Astra V4, 2026-09-13)
    13 published pdf  the PDF's numeric content vs the manuscript's, both directions, plus
                      canonical rows in place and the version line. NOT semantic
                      equivalence: a human reading of the built PDF is still required.
+
+THE FOURTH ROUND (2026-09-14, Astra differential against 3643bbc)
+    Four of the ten repairs closed; six were partial, and one new build defect appeared.
+    The two that mattered:
+
+      the ORIGINAL false-abstract reproducer still passed. `manuscript_binding` excluded
+      a prose fraction from the scan when its TEXT matched the canonical table's, and the
+      table legitimately contains "7 / 26" — so the identical string anywhere in the
+      document was skipped. Identity of a text occurrence is its POSITION; it is now a
+      character range.
+
+      a layer could print its expected rejection and then crash, and still be scored as
+      a detection. Outcomes are no longer inferred from console text at all: every layer
+      ends by emitting a terminal verdict through `validation_result.py`, and anything
+      else — a crash before it, a crash after it, output continuing past it — is ERROR,
+      which is neither a pass nor a detection.
+
+    Also: a locked destination let the PDF build report success over yesterday's file
+    (`publish/finalize_pdf.py`), and a tag longer than 400 characters escaped the
+    manuscript's declared HTML domain.
 
 WHY THE WORDING CHANGED — the third failure (2026-09-13, Astra v4)
     Stages 1-13 all passed on two separately controlled corrupt states:

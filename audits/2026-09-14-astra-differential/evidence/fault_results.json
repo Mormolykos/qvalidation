@@ -1,0 +1,23 @@
+[
+  {
+    "case": "runtime",
+    "exit": 1,
+    "state": "ERROR",
+    "nan_required_reason_present": false,
+    "traceback": true
+  },
+  {
+    "case": "import",
+    "exit": 1,
+    "state": "ERROR",
+    "nan_required_reason_present": false,
+    "traceback": true
+  },
+  {
+    "case": "diagnostic_then_runtime",
+    "exit": 1,
+    "state": "REJECTED",
+    "nan_required_reason_present": true,
+    "traceback": true
+  }
+]

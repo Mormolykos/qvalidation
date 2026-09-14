@@ -1,0 +1,9 @@
+
+  SAVED SUMMARY BOUND TO A REPLAY OF ITS OWN ANALYSIS
+  39 rows, 19 columns
+
+  schema: 18 declared fields, 2 closed value sets, every cell inside its domain
+
+  ✓ the saved summary is a valid artifact: every cell inside its declared
+    domain, every row internally coherent. The replay was not run (--schema).
+

@@ -1,0 +1,12 @@
+
+  SAVED SUMMARY BOUND TO A REPLAY OF ITS OWN ANALYSIS
+  39 rows, 19 columns
+
+Traceback (most recent call last):
+  File "C:\Users\User\AppData\Local\Temp\astra-diff-3643bbc-2ddc746a\targeted\derived_binding.py", line 344, in <module>
+    main()
+  File "C:\Users\User\AppData\Local\Temp\astra-diff-3643bbc-2ddc746a\targeted\derived_binding.py", line 276, in main
+    fails = check_schema(header, rows)
+  File "C:\Users\User\AppData\Local\Temp\astra-diff-3643bbc-2ddc746a\targeted\derived_binding.py", line 235, in check_schema
+    if clo > chi:
+TypeError: '>' not supported between instances of 'NoneType' and 'float'

@@ -1,0 +1,14 @@
+
+  HISTORICAL EVIDENCE IDENTITY — anchored to v2 17e08f3e9253
+
+  authority: the SUPPLIED TRANSCRIPT V2_EVIDENCE_ANCHOR.json, which names commit 17e08f3e9253 — no git history is available here, so this run establishes agreement with that transcript and NOT the historical authenticity of the evidence
+  858 anchored evidence files compared against v2
+    = 78 primary measurement arms (39 circuits x 2) + 780 per-process fragments they were merged from
+
+  ✓ the primary evidence matches the supplied transcript V2_EVIDENCE_ANCHOR.json.
+    HISTORICAL AUTHENTICITY IS NOT ESTABLISHED HERE. A transcript distributed
+    beside the data it describes cannot authenticate it: anyone who changed
+    both would pass this check. To establish identity, run this where the v2
+    git objects are reachable, or compare the transcript against an externally
+    published hash of it.
+

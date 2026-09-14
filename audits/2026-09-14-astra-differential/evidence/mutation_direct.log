@@ -1,0 +1,17 @@
+
+  scratch: C:\Users\User\AppData\Local\Temp\qval-mutation-pfcbzhvy
+  the repository is never written to by this script
+
+  CONTROL  science=PASSED  integrity=PASSED  anchor=PASSED  derived=ERROR  rendered=PASSED  pdf=PASSED
+
+  id  mutation                                    science    integrity  anchor     derived    rendered   pdf        
+Traceback (most recent call last):
+  File "C:\Users\User\AppData\Local\Temp\astra-diff-3643bbc-2ddc746a\snapshot\mutation_test.py", line 571, in <module>
+    main()
+  File "C:\Users\User\AppData\Local\Temp\astra-diff-3643bbc-2ddc746a\snapshot\mutation_test.py", line 503, in main
+    what = fn(snap)
+  File "C:\Users\User\AppData\Local\Temp\astra-diff-3643bbc-2ddc746a\snapshot\mutation_test.py", line 138, in mut_A
+    rs = _rows(snap, ARM)
+  File "C:\Users\User\AppData\Local\Temp\astra-diff-3643bbc-2ddc746a\snapshot\mutation_test.py", line 127, in _rows
+    return [json.loads(l) for l in open(os.path.join(snap, path), encoding="utf-8")
+FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\User\\AppData\\Local\\Temp\\qval-mutation-pfcbzhvy\\mA\\results/raw/prereg/knn_n67_heavy-hex_q200.jsonl'

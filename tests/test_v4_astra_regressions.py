@@ -90,6 +90,60 @@ def test_duplicate_circuit_row_is_rejected(saved):
     assert "already appears" in reasons(fails)
 
 
+@pytest.mark.parametrize("field", ["n_seeds", "est_long_run_change_pct", "verdict",
+                                   "boundary", "threshold"])
+def test_a_blank_required_cell_is_rejected_not_crashed(saved, field):
+    """V4-01, round two (Astra, 3643bbc differential). A blank required cell reached the
+    self-consistency checks as None and raised TypeError on the first comparison. A crash
+    tells a reader nothing they can act on, and is not a detection."""
+    header, rows = saved
+    rows = [dict(r) for r in rows]
+    rows[0][field] = ""
+    fails = db.check_schema(header, rows)          # must not raise
+    assert fails, f"a blank {field} was accepted"
+    assert "required field is empty" in reasons(fails)
+
+
+def test_the_optional_risk_fields_may_be_blank_only_where_they_are_absent(saved):
+    """The control for the test above: the three UNRESOLVED circuits legitimately carry
+    no risk figures, and must not be rejected for it."""
+    header, rows = saved
+    assert db.check_schema(header, rows) == []
+    unresolved = [r for r in rows if r["verdict"] == "UNRESOLVED"]
+    assert len(unresolved) == 3
+    assert all(r["error_ci_lo"] == "" for r in unresolved)
+
+
+def test_an_extra_unlabelled_cell_is_rejected(saved):
+    """V4-01, round two. csv.DictReader files a surplus cell under the None key, where
+    no field-by-field check ever looks at it: the row is malformed and every declared
+    column still validates."""
+    header, rows = saved
+    rows = [dict(r) for r in rows]
+    rows[0][None] = ["9999"]
+    fails = db.check_schema(header, rows)
+    assert fails and "belongs to no column" in reasons(fails)
+
+
+def test_a_short_row_is_rejected(saved):
+    header, rows = saved
+    rows = [dict(r) for r in rows]
+    del rows[0]["verdict"]
+    rows[0]["verdict"] = db.MISSING
+    fails = db.check_schema(header, rows)
+    assert fails and "ends before column" in reasons(fails)
+
+
+def test_a_reordered_header_is_rejected(saved):
+    """Column ORDER is part of the contract: anything reading the artifact positionally
+    would silently transpose two columns."""
+    header, rows = saved
+    swapped = list(header)
+    swapped[0], swapped[1] = swapped[1], swapped[0]
+    fails = db.check_schema(swapped, rows)
+    assert fails and "column ORDER" in reasons(fails)
+
+
 def test_embedded_header_row_is_rejected(saved):
     header, rows = saved
     fails = db.check_schema(header, rows + [{k: k for k in rows[0]}])
@@ -193,6 +247,65 @@ def test_subscript_tags_are_inside_the_domain():
     assert mb.html_domain_violations('<sub class="x">A</sub>')
 
 
+def test_astras_original_false_abstract_reproducer_is_rejected(paper):
+    """V4-03, round two (Astra, 3643bbc differential) — the reproducer VERBATIM.
+
+    The repaired scan caught the word-number form ("Seven of 26") and that masked the
+    fact that the numeral form Astra actually ran still passed. `m.group(0) in tbl_span`
+    was a SUBSTRING test against the canonical table's text, and the table legitimately
+    contains "7 / 26", so every other occurrence of that string anywhere in the document
+    was skipped as though it were the table's own cell.
+    """
+    from raw_endpoint import reconstruct, endpoint
+    sentence = ("The primary risk interval excludes zero in only 7 / 26 eligible "
+                "circuits.")
+    doc = paper.replace("## Abstract", "## Abstract\n\n" + sentence, 1)
+    vis = mb.visible_text(doc)
+    cand = mb.find_endpoint_tables(mb.parse_tables(vis))
+    assert len(cand) == 1
+    t_lo, t_hi = cand[0][3]
+    hit = vis.index(sentence)
+    assert not (t_lo <= hit < t_hi), "the abstract is not inside the canonical table"
+    # the identical string really is in the table -- which is why a text test failed
+    assert "7 / 26" in "\n".join("|".join(r) for r in cand[0][1])
+
+    circuits = [c.strip() for c in open(os.path.join(ROOT, "_selected.txt")) if c.strip()]
+    elig, excl, ge5, ge10 = endpoint(reconstruct(circuits))
+    assert len(excl) == 12 and len(ge5) == 7 and len(elig) == 26
+
+
+def test_the_canonical_table_is_excluded_by_position_not_by_text(paper):
+    """The span is a character range, so an identical string elsewhere is still scanned."""
+    cand = mb.find_endpoint_tables(mb.parse_tables(mb.visible_text(paper)))
+    lo, hi = cand[0][3]
+    assert isinstance(lo, int) and isinstance(hi, int) and hi > lo
+    body = "\n".join("|".join(r) for r in cand[0][1])
+    assert "12 / 26" in body and mb.visible_text(paper)[lo:hi].count("12 / 26") >= 1
+
+
+@pytest.mark.parametrize("length", [500, 1200, 5000])
+def test_a_long_tag_does_not_escape_the_domain_check(paper, length):
+    """V4-03, round two. The scanner used `[^<>]{0,400}`, so a tag longer than 400
+    characters matched nothing and passed. A limit on how much an attacker may type is
+    not a domain, it is a budget."""
+    pad = "x" * length
+    doc = paper.replace("## Abstract", f'<div style="display:none" data-p="{pad}">'
+                                       "\n\n## Abstract", 1)
+    fails = mb.html_domain_violations(mb.visible_text(doc))
+    assert fails, f"a {length}-character tag escaped the domain check"
+    assert "outside the declared domain" in reasons(fails)
+
+
+def test_an_opened_tag_with_no_closing_bracket_is_rejected(paper):
+    """Mid-document it matches as a tag running to the next '>' anywhere; at end of text
+    nothing closes it at all. Both are outside the domain and both must be named."""
+    mid = paper.replace("## Abstract", '<div style="display:none"\n\n## Abstract', 1)
+    assert mb.html_domain_violations(mb.visible_text(mid))
+    trailing = paper + '\n<div style="display:none" data-x="y'
+    fails = mb.html_domain_violations(mb.visible_text(trailing))
+    assert fails and "never closed" in reasons(fails)
+
+
 def test_quantity_is_bound_to_the_endpoint_its_own_sentence_names():
     """V4-03. 7 of 26 is TRUE of 'risk >= 5%' and FALSE of 'excludes zero'. Checking a
     numerator against the set of true numerators cannot tell those apart; Astra put the
@@ -266,22 +379,109 @@ def test_a_missing_extractor_is_a_refusal_not_a_pass(monkeypatch):
 # ---------------------------------------------------------------- V4-07
 
 def test_a_crash_is_not_scored_as_a_detection():
-    """V4-07. `caught = {n for n, c in codes.items() if c}` credits any nonzero exit, so
+    """V4-07. `caught = {n for n, c in codes.items() if c}` credited any nonzero exit, so
     a fixture that broke an import would have counted as regression coverage."""
-    import mutation_test as mt
-    assert mt.classify(1, "  ✗ RAW EVIDENCE WAS EDITED\n") == mt.REJECTED
-    assert mt.classify(1, "Traceback (most recent call last):\n  ImportError") == mt.ERROR
-    assert mt.classify(1, "  no publish/paper.pdf — run build_paper.sh first") == mt.ERROR
-    assert mt.classify(0, "  ✓ fine") == mt.PASSED
+    import validation_result as v
+    ok = f"  ✗ RAW EVIDENCE WAS EDITED\n{v.SENTINEL} REJECTED RAW_SELF_CONSISTENT\n"
+    assert v.classify(1, ok, "") == (v.REJECTED, "RAW_SELF_CONSISTENT")
+    assert v.classify(1, "", "Traceback (most recent call last):\n ImportError")[0] == v.ERROR
+    assert v.classify(1, "  no publish/paper.pdf", "")[0] == v.ERROR
+    assert v.classify(0, f"  ✓ fine\n{v.SENTINEL} PASSED\n", "")[0] == v.PASSED
 
 
-def test_every_mutation_declares_the_reason_it_must_be_rejected_for():
+def test_the_expected_diagnostic_followed_by_a_crash_is_an_error(tmp_path):
+    """V4-07, round two (Astra, 3643bbc differential).
+
+    Round one replaced "any nonzero exit" with "nonzero exit and a ✗ in the output".
+    Astra then had a layer print its expected rejection diagnostic and raise afterwards:
+    still nonzero, still contained ✗, still scored REJECTED, and the declared reason was
+    present. A layer that fell over did not finish, so it cannot vouch for anything.
+
+    This runs a real subprocess doing exactly that, and asserts the classifier is not
+    fooled by it.
+    """
+    import subprocess
+    import validation_result as v
+    script = tmp_path / "diagnostic_then_crash.py"
+    script.write_text("\n".join([
+        "import sys",
+        f"sys.path.insert(0, r'{ROOT}')",
+        "import validation_result as vr",
+        "print('  \\u2717 SAVED SUMMARY IS NOT A VALID ARTIFACT')",
+        "print(\"      bv_n30.error_ci_lo: 'NaN' is not finite\")",
+        "print(vr.SENTINEL + ' REJECTED SAVED_SCHEMA')",
+        "raise RuntimeError('unrelated failure after the verdict was printed')",
+    ]), encoding="utf-8")
+    p = subprocess.run([sys.executable, str(script)], capture_output=True, text=True,
+                       encoding="utf-8", errors="replace")
+    assert p.returncode != 0
+    assert "✗" in p.stdout and "is not finite" in p.stdout          # the bait
+    assert f"{v.SENTINEL} REJECTED" in p.stdout                     # and the verdict
+    outcome, why = v.classify(p.returncode, p.stdout, p.stderr)
+    assert outcome == v.ERROR, (
+        "a layer that printed its verdict and then crashed was scored as a detection")
+    assert "traceback" in why.lower()
+
+
+def test_output_continuing_past_the_verdict_is_an_error():
+    """The sentinel must be TERMINAL. Anything after it means the routine did not end
+    where it said it did."""
+    import validation_result as v
+    out = f"  ✗ bad\n{v.SENTINEL} REJECTED SAVED_SCHEMA\nstill going\n"
+    assert v.classify(1, out, "")[0] == v.ERROR
+
+
+def test_a_verdict_disagreeing_with_the_exit_code_is_an_error():
+    import validation_result as v
+    assert v.classify(0, f"{v.SENTINEL} REJECTED X\n", "")[0] == v.ERROR
+    assert v.classify(1, f"{v.SENTINEL} PASSED\n", "")[0] == v.ERROR
+
+
+def test_a_stderr_warning_after_a_clean_pass_is_still_a_pass():
+    """stdout and stderr must stay SEPARATE: concatenating them lets an ordinary
+    warning land after the sentinel and read as a crash."""
+    import validation_result as v
+    assert v.classify(0, f"  ✓ ok\n{v.SENTINEL} PASSED\n",
+                      "DeprecationWarning: something\n")[0] == v.PASSED
+
+
+def test_every_layer_emits_a_terminal_verdict():
+    """A layer with no verdict line can never be scored, so the contract has to hold for
+    all of them, not just the ones a test happens to exercise."""
     import mutation_test as mt
+    for name, script in mt.LAYERS.items():
+        src = open(os.path.join(ROOT, script.split()[0]), encoding="utf-8").read()
+        assert "validation_result" in src, f"{name} ({script}) has no terminal verdict"
+        assert "vr.accept(" in src and "vr.reject(" in src, \
+            f"{name} ({script}) does not both accept and reject through the contract"
+
+
+def test_every_mutation_declares_an_invariant_and_a_reason():
+    """Both, because they answer different questions: the invariant is structural and
+    can only be produced by a completed validation routine; the fragment says which
+    defect under that invariant was seen."""
+    import mutation_test as mt
+    ids = [m[0] for m in mt.MUTATIONS]
+    assert len(ids) == len(set(ids)), "duplicate mutation id"
     for mid, label, fn, reasons_ in mt.MUTATIONS:
         assert reasons_, f"{mid} declares no required layer"
-        for layer, why in reasons_.items():
+        for layer, declared in reasons_.items():
             assert layer in mt.LAYERS, f"{mid} names unknown layer {layer}"
-            assert why and len(why) > 3, f"{mid}/{layer} has no usable reason string"
+            assert isinstance(declared, tuple) and len(declared) == 2, \
+                f"{mid}/{layer} must declare (invariant, message fragment)"
+            invariant, fragment = declared
+            assert invariant.isupper() or "_" in invariant, \
+                f"{mid}/{layer} invariant {invariant!r} is not an identifier"
+            assert len(fragment) > 3, f"{mid}/{layer} has no usable reason string"
+
+
+def test_the_astra_reproducers_are_all_present_as_fixtures():
+    """Every case Astra actually ran is a standing fixture, not a paraphrase of one."""
+    import mutation_test as mt
+    ids = {m[0] for m in mt.MUTATIONS}
+    for mid in mt.DEFEATED_V3 | mt.DEFEATED_V4 | mt.DEFEATED_V5:
+        assert mid in ids, f"mutation {mid} is declared defeated but is not defined"
+    assert {"W", "X", "Y", "Z"} <= ids, "the 3643bbc differential cases are missing"
 
 
 # ---------------------------------------------------------------- V4-09
@@ -294,3 +494,99 @@ def test_the_tie_band_is_documented_where_the_rule_is_stated():
     assert "TIE_EPS" in doc and "1e-9" in doc
     assert "without deviation" not in doc.lower()
     assert pa.TIE_EPS == 1e-9
+
+
+def test_the_manuscript_states_the_tolerance_where_it_states_the_rule(paper):
+    """V4-09, round two (Astra, 3643bbc differential). The code header disclosed the
+    guard; PAPER.md still gave the entirely-above/entirely-below rule unqualified, and
+    the manuscript is what a reader sees. This assertion exists so the disclosure cannot
+    quietly disappear again."""
+    import prereg_analysis as pa
+    i = paper.find("A circuit is `REGRESSION` if that interval lies")
+    assert i > 0, "the classification rule is no longer stated in these words"
+    window = paper[i:i + 2500]
+    assert "10⁻⁹" in window or "1e-9" in window or "1e-09" in window, \
+        "the classification rule is stated without its numerical tolerance"
+    assert f"{pa.TIE_EPS:g}".replace("1e-09", "10⁻⁹") or True
+    assert "UNRESOLVED" in window and "tolerance" in window.lower()
+
+
+# ---------------------------------------------------------------- NEW-BUILD-01
+
+def _exclusive_handle(path):
+    """A real Windows lock: CreateFileW with dwShareMode = 0, which is what a PDF viewer
+    holds. Python's own open() shares read and write, so it locks nothing."""
+    import ctypes
+    from ctypes import wintypes
+    k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    k32.CreateFileW.restype = wintypes.HANDLE
+    k32.CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                                ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD,
+                                wintypes.HANDLE]
+    h = k32.CreateFileW(str(path), 0x80000000, 0, None, 3, 0, None)   # GENERIC_READ
+    return k32, h
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows file-locking semantics")
+def test_a_locked_destination_never_reports_a_successful_build(tmp_path):
+    """NEW-BUILD-01 (Astra, 3643bbc differential).
+
+    Chromium printed straight to publish/paper.pdf. With that file locked it could not
+    write, said so on stderr, and exited 0 — so the build script announced success over
+    the top of the previous PDF and every downstream stage validated a stale artifact.
+    Success must mean an artifact exists, not that a command returned.
+    """
+    import shutil
+    import subprocess
+    real = os.path.join(ROOT, "publish", "paper.pdf")
+    if not os.path.isfile(real):
+        pytest.skip("no built PDF to use as a fixture")
+    dest = tmp_path / "dest.pdf"
+    shutil.copy(real, dest)
+    fresh = tmp_path / "fresh.pdf"
+    fresh.write_bytes(dest.read_bytes() + b"\n%% a genuinely different build\n")
+    before = dest.read_bytes()
+    assert fresh.read_bytes() != before
+
+    k32, h = _exclusive_handle(dest)
+    assert h != -1 and h is not None, "could not take an exclusive handle"
+    try:
+        p = subprocess.run(
+            [sys.executable, os.path.join(ROOT, "publish", "finalize_pdf.py"),
+             str(fresh), str(dest)], capture_output=True, text=True,
+            encoding="utf-8", errors="replace")
+    finally:
+        k32.CloseHandle(h)
+
+    assert p.returncode != 0, "a locked destination reported a successful build"
+    assert "Traceback" not in (p.stdout + p.stderr), \
+        "it failed, but by crashing rather than by explaining"
+    assert "COULD NOT PUBLISH" in (p.stdout + p.stderr)
+    assert dest.read_bytes() == before, "the old PDF was corrupted by a failed publish"
+    assert fresh.is_file(), "the fresh build was discarded and cannot be retried"
+
+    # and once the lock is gone, the same call must publish
+    p2 = subprocess.run(
+        [sys.executable, os.path.join(ROOT, "publish", "finalize_pdf.py"),
+         str(fresh), str(dest)], capture_output=True, text=True)
+    assert p2.returncode == 0
+    assert dest.read_bytes() != before
+
+
+@pytest.mark.parametrize("make,expect", [
+    (lambda p: p.write_bytes(b"%PDF-1.4\n" + b"x" * 100), "below the"),
+    (lambda p: p.write_bytes(b"not a pdf at all" + b"x" * 100_000), "%PDF-"),
+])
+def test_a_bad_build_output_is_never_published(tmp_path, make, expect):
+    import subprocess
+    fresh = tmp_path / "fresh.pdf"
+    make(fresh)
+    dest = tmp_path / "dest.pdf"
+    dest.write_bytes(b"previous build")
+    p = subprocess.run(
+        [sys.executable, os.path.join(ROOT, "publish", "finalize_pdf.py"),
+         str(fresh), str(dest)], capture_output=True, text=True,
+        encoding="utf-8", errors="replace")
+    assert p.returncode != 0
+    assert expect in (p.stdout + p.stderr)
+    assert dest.read_bytes() == b"previous build"

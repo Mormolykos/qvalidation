@@ -1,0 +1,82 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+{
+  "commands": [
+    {
+      "case": "abstract_original_build",
+      "exit": 0
+    },
+    {
+      "case": "abstract_original_pdf_check",
+      "exit": 0
+    },
+    {
+      "case": "long_html_build",
+      "exit": 0
+    },
+    {
+      "case": "long_html_pdf_check",
+      "exit": 0
+    },
+    {
+      "case": "missing_stylesheet",
+      "exit": 1
+    }
+  ],
+  "styling": {
+    "pages": 14,
+    "page_size_pt": [
+      0.0,
+      0.0,
+      594.9599609375,
+      841.9199829101562
+    ],
+    "most_common_font_sizes": [
+      [
+        10.5,
+        1033
+      ],
+      [
+        9.0,
+        122
+      ],
+      [
+        9.49,
+        92
+      ],
+      [
+        8.74,
+        16
+      ],
+      [
+        11.5,
+        15
+      ]
+    ],
+    "first_page_fonts": [
+      "AAAAAA+Georgia-Bold",
+      "BAAAAA+Georgia",
+      "CAAAAA+Georgia-Italic",
+      "DAAAAA+Consolas"
+    ]
+  },
+  "threshold": [
+    {
+      "A": 100,
+      "B": 110,
+      "verdict": "UNRESOLVED",
+      "tie_epsilon": 1e-09
+    },
+    {
+      "A": 10000000000,
+      "B": 11000000001,
+      "verdict": "UNRESOLVED",
+      "tie_epsilon": 1e-09
+    },
+    {
+      "A": 100000,
+      "B": 110001,
+      "verdict": "REGRESSION",
+      "tie_epsilon": 1e-09
+    }
+  ]
+}

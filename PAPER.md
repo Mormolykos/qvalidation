@@ -65,9 +65,9 @@ top of it.
 
 This paper is also the first output of a validation apparatus we are building, and it is
 written to expose that apparatus rather than only its result. The measurement pipeline,
-the pre-registration mechanism, the numeric inventory that re-checks every published
-figure against a fresh recomputation, the replication artifact, and the adversarial audit are all part of
-the contribution. **The Qiskit experiment is the demonstration case; the reusable object
+the pre-registration mechanism, the numeric inventory that re-checks **44 enumerated
+figures** against a fresh recomputation, the replication artifact, and the adversarial
+audit are all part of the contribution. **The Qiskit experiment is the demonstration case; the reusable object
 is the method for quantifying decision risk in a stochastic benchmark.** Nothing in the
 apparatus is specific to Qiskit: it requires only a benchmark whose observable is a
 scalar, a source of run-to-run variation that can be enumerated or sampled, and a
@@ -244,6 +244,22 @@ post-hoc in earlier exploratory work; it is reported separately in §4.4.
 **Analysis, fixed in advance.** θ interval by percentile bootstrap over seeds, resampled
 jointly across the paired arms, B = 4000. A circuit is `REGRESSION` if that interval lies
 entirely above *t*, `NO_REGRESSION` if entirely below, otherwise `UNRESOLVED` and excluded.
+
+**Numerical tolerance on that rule, stated because it is not literal strict ordering.**
+"Entirely above" is evaluated as *c*<sub>lo</sub> − *t* > ε with **ε = 10⁻⁹**, and
+"entirely below" symmetrically. The threshold is declared inclusive and an exact tie is
+`UNRESOLVED`, which floating-point arithmetic does not give for free: with arm means of
+100 and 110 the change is mathematically exactly +10%, but `110/100 − 1` evaluates to
+0.10000000000000009, which a literal comparison classifies as `REGRESSION`. The cost of
+the guard is stated rather than hidden: an interval endpoint that is strictly above or
+below the cut but within 10⁻⁹ of it is classified `UNRESOLVED`. This moves no result
+reported here — the closest interval endpoint to the threshold across all 39 circuits is
+2.3 × 10⁻³, some 2.3 million times the guard — and `tests/test_threshold_ties.py` asserts
+that margin, so a future data set which narrowed it would fail rather than pass in
+silence. ⚠ v4 correction (Astra V4-09): earlier versions stated the entirely-above /
+entirely-below rule without this qualification, while the implementation had carried the
+guard since v4. The decision event for the *k*-run rule in §3.2 is separate and remains
+an exact integer comparison with no tolerance.
 A circuit whose θ lies within 3 percentage points of *t* is flagged `BOUNDARY` and
 excluded. Risk interval by seed bootstrap, B = 400. The pre-registered primary endpoint is
 the proportion of non-boundary, resolved circuits whose risk interval excludes zero.
@@ -675,8 +691,9 @@ are reusable:
    only the compiler until an audit found it; the benchmark supplies the circuits, the
    backend, the topology and the observable, and is equally part of the measurement.
 2. **A pre-registration mechanism with a verifiable commit order.** Committing the
-   circuit list and the analysis code before the primary data exists makes the freeze
-   auditable. ⚠ v3 correction: it does not convert "we did not cherry-pick" into a fact.
+   circuit list and the analysis code before the first tracked commit of the primary data
+   makes the freeze auditable. ⚠ v3 correction: it does not convert "we did not
+   cherry-pick" into a fact.
    It records that the design was fixed before *this* data arrived, not that no earlier
    exploration informed it — and here it did (§3.3).
 3. **A numeric inventory, and a verifier that has been shown to reject us.** The

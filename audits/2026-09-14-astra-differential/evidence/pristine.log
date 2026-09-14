@@ -1,0 +1,65 @@
+
+  qvalidation — integrity check
+  python          3.10.10  (C:\Users\User\Desktop\research\qvalidation\envs\bp202\Scripts\python.exe)
+  BENCHPRESS_PATH C:\Users\User\Desktop\benchpress_test
+
+  check                 result     time
+  --------------------------------------
+  1 toolchain pin         PASS     0.3s
+  2 test suite            PASS    81.5s
+  3 inventory             PASS     6.7s
+  4 replication           PASS     0.2s
+  5 tautology proof       PASS     0.3s
+  6 paper claims          PASS    37.3s
+  7 raw -> endpoint       PASS    21.2s
+  8 raw integrity         PASS     3.4s
+  9 mutation test         FAIL   998.5s
+  10 v2 evidence anchor    FAIL    19.9s
+  11 derived binding      FAIL     9.1s
+  12 rendered manuscript    PASS     3.9s
+  13 published pdf        PASS     0.1s
+
+  ---- 9 mutation test output ----
+  S   ASTRA: fractional n_seeds and k †           pass       pass       pass       REJECT     pass       —          
+  T   ASTRA: a duplicated circuit row †           pass       pass       pass       REJECT     pass       —          
+Exception in thread Thread-223 (_readerthread):
+Traceback (most recent call last):
+  File "C:\Users\User\miniconda3\lib\threading.py", line 1016, in _bootstrap_inner
+    self.run()
+  File "C:\Users\User\miniconda3\lib\threading.py", line 953, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\User\miniconda3\lib\subprocess.py", line 1499, in _readerthread
+    buffer.append(fh.read())
+MemoryError
+git archive failed:
+
+  ---- 10 v2 evidence anchor output ----
+HISTORICAL EVIDENCE IDENTITY — anchored to v2 17e08f3e9253
+
+Traceback (most recent call last):
+  File "C:\Users\User\AppData\Local\Temp\astra-diff-3643bbc-2ddc746a\snapshot\v2_anchor.py", line 250, in <module>
+    main()
+  File "C:\Users\User\AppData\Local\Temp\astra-diff-3643bbc-2ddc746a\snapshot\v2_anchor.py", line 224, in main
+    fails, use_git = verify()
+  File "C:\Users\User\AppData\Local\Temp\astra-diff-3643bbc-2ddc746a\snapshot\v2_anchor.py", line 163, in verify
+    want = {p: hashlib.sha256(git("show", f"{V2}:{p}", binary=True)).hexdigest()
+  File "C:\Users\User\AppData\Local\Temp\astra-diff-3643bbc-2ddc746a\snapshot\v2_anchor.py", line 163, in <dictcomp>
+    want = {p: hashlib.sha256(git("show", f"{V2}:{p}", binary=True)).hexdigest()
+TypeError: object supporting the buffer API required
+
+  ---- 11 derived binding output ----
+  schema: 18 declared fields, 2 closed value sets, every cell inside its domain
+  replaying prereg_analysis.analyse for 39 circuits (original MC bootstrap, original seeds)
+Traceback (most recent call last):
+  File "C:\Users\User\AppData\Local\Temp\astra-diff-3643bbc-2ddc746a\snapshot\derived_binding.py", line 344, in <module>
+    main()
+  File "C:\Users\User\AppData\Local\Temp\astra-diff-3643bbc-2ddc746a\snapshot\derived_binding.py", line 303, in main
+    live = pa.analyse(c, 0.10, 3, rng)
+  File "C:\Users\User\AppData\Local\Temp\astra-diff-3643bbc-2ddc746a\snapshot\prereg_analysis.py", line 199, in analyse
+    pc = mc_rate(o[j], n[j], t, k, r2, BOOT_ERR_MC)
+  File "C:\Users\User\AppData\Local\Temp\astra-diff-3643bbc-2ddc746a\snapshot\deep.py", line 122, in mc_rate
+    sb = n[rng.integers(0, n.size, (m, k))].sum(axis=1) * q
+numpy._core._exceptions._ArrayMemoryError: Unable to allocate 9.16 MiB for an array with shape (400000, 3) and data type int64
+
+  3 of 13 checks FAILED. Report this output verbatim. Do not attempt a fix.
+

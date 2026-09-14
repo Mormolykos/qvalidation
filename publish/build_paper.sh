@@ -50,10 +50,25 @@ while read -r css; do
   echo "  stylesheet resolves: publish/$css"
 done
 
+# BUILD TO A UNIQUE TEMPORARY PATH, NEVER STRAIGHT TO THE DESTINATION.
+#
+# Chromium printed to $OUT directly. When $OUT was locked -- open in a viewer, held by
+# another process -- Chromium could not write it, exited 0 anyway, and this script
+# announced "built" over the top of yesterday's PDF. Every downstream check then
+# validated the stale file. Astra hit exactly that during the 3643bbc review.
+#
+# finalize_pdf.py inspects the fresh file, moves it into place, and re-reads the
+# destination to confirm it now IS that file. Success means an artifact exists, not that
+# a command returned.
+TMPPDF="publish/.paper.build.$$.pdf"
+trap 'rm -f "$TMPPDF"' EXIT
+
 "/c/Program Files/Google/Chrome/Application/chrome.exe" \
   --headless=new --disable-gpu --no-sandbox \
-  --print-to-pdf="$(pwd -W)/$OUT" \
+  --print-to-pdf="$(pwd -W)/$TMPPDF" \
   --print-to-pdf-no-header --no-pdf-header-footer \
   --virtual-time-budget=15000 \
   "file:///$(pwd -W)/publish/paper.html"
+
+python publish/finalize_pdf.py "$TMPPDF" "$OUT"
 echo "built $OUT"

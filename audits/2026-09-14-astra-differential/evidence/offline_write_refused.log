@@ -1,0 +1,1 @@
+refusing: git objects for v2 are not reachable, so an anchor written now would not be bound to v2

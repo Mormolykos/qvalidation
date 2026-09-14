@@ -1,0 +1,14 @@
+[
+  {
+    "Path": "\\\\infinitygear\\memory\\committed bytes",
+    "CookedValue": 96663875584.0
+  },
+  {
+    "Path": "\\\\infinitygear\\memory\\commit limit",
+    "CookedValue": 96795746304.0
+  },
+  {
+    "Path": "\\\\infinitygear\\memory\\% committed bytes in use",
+    "CookedValue": 99.86376392186241
+  }
+]

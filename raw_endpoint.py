@@ -67,6 +67,8 @@ import numpy as np
 ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, ROOT)
 
+
+import validation_result as vr
 from prereg_analysis import load_seeded, BOUNDARY_PP, TIE_EPS  # raw I/O + the frozen 3pp rule
 
 PAPER = os.path.join(ROOT, "PAPER.md")
@@ -274,15 +276,12 @@ def main():
         print(f"  written: {args.json}")
 
     if fails:
-        print("\n  ✗ RAW DATA AND MANUSCRIPT DISAGREE:\n")
-        for f in fails:
-            print(f"      {f}")
         print("\n  This is the check that the v2 apparatus did not have. Either the raw")
         print("  data changed, or the manuscript states a number the data does not"
-              " support.\n")
-        sys.exit(1)
+              " support.")
+        vr.reject("ENDPOINT_MATCHES_RAW", "RAW DATA AND MANUSCRIPT DISAGREE", fails)
 
-    print("\n  ✓ the manuscript's primary endpoint is what the raw data produces.\n")
+    vr.accept("\n  ✓ the manuscript's primary endpoint is what the raw data produces.")
 
 
 if __name__ == "__main__":
