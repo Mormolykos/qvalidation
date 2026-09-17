@@ -369,19 +369,19 @@ CHROME = [r"C:\Program Files\Google\Chrome\Application\chrome.exe",
           r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"]
 
 
-def mut_U(snap):
-    """ASTRA V4-02: the PDF a reader opens says 99.9 where the manuscript says 10.9.
+def _rebuild_pdf(snap, substitute=None):
+    """Render the snapshot's PAPER.md to publish/paper.pdf through the tracked path.
 
-    The substitution has to happen in the rendered HTML and then go through Chromium,
-    because the text in the PDF is stored as hex glyph codes -- there is no literal
-    "10.9" in the byte stream to patch. That is why this fixture rebuilds rather than
-    edits, and why it needs the same two tools publish/build_paper.sh needs.
+    `substitute` is an optional (old, new) pair applied to the rendered HTML before
+    Chromium runs, for mutations whose falsehood exists only in the PDF. The text in a
+    PDF is stored as hex glyph codes, so there is no literal string in the byte stream to
+    patch -- the substitution has to happen upstream of the render, which is why these
+    fixtures need the same two tools publish/build_paper.sh needs.
     """
     pandoc = shutil.which("pandoc")
     chrome = next((c for c in CHROME if os.path.isfile(c)), None)
     if not pandoc or not chrome:
-        raise Skip("needs pandoc and Chrome — the PDF stores text as glyph codes, so "
-                   "the false value can only be introduced by rebuilding")
+        raise Skip("needs pandoc and Chrome to rebuild the PDF")
     html = os.path.join(snap, "publish", "paper.html")
     pdf = os.path.join(snap, "publish", "paper.pdf")
     os.makedirs(os.path.dirname(html), exist_ok=True)
@@ -391,11 +391,14 @@ def mut_U(snap):
                        cwd=snap, capture_output=True, text=True)
     if r.returncode:
         raise Skip("pandoc failed: " + (r.stderr or "")[:150])
-    t = open(html, encoding="utf-8").read()
-    n = t.count("10.9")
-    if not n:
-        raise SystemExit("U: no 10.9 in the rendered HTML to substitute")
-    open(html, "w", encoding="utf-8").write(t.replace("10.9", "99.9"))
+    n = 0
+    if substitute:
+        old, new = substitute
+        t = open(html, encoding="utf-8").read()
+        n = t.count(old)
+        if not n:
+            raise SystemExit(f"no {old!r} in the rendered HTML to substitute")
+        open(html, "w", encoding="utf-8").write(t.replace(old, new))
     url = "file:///" + html.replace("\\", "/")
     r = subprocess.run([chrome, "--headless=new", "--disable-gpu", "--no-sandbox",
                         f"--user-data-dir={os.path.join(snap, '_chrome')}",
@@ -404,6 +407,12 @@ def mut_U(snap):
                        cwd=snap, capture_output=True, text=True, timeout=300)
     if not os.path.isfile(pdf) or os.path.getsize(pdf) < 10000:
         raise Skip("Chromium produced no PDF: " + (r.stderr or "")[:150])
+    return n
+
+
+def mut_U(snap):
+    """ASTRA V4-02: the PDF a reader opens says 99.9 where the manuscript says 10.9."""
+    n = _rebuild_pdf(snap, substitute=("10.9", "99.9"))
     return (f"{n} occurrence(s) of 10.9 -> 99.9 in the rendered HTML, then rebuilt "
             f"through publish/build_paper.sh's own pandoc + Chromium path. PAPER.md "
             f"and the raw data are untouched")
@@ -471,6 +480,41 @@ def mut_W(snap):
         t.replace("## Abstract", "## Abstract\n\n" + sentence, 1))
     return ("abstract asserts 7 / 26 for interval exclusion, in numerals, where the "
             "canonical table carries the identical string")
+
+
+def mut_AA(snap):
+    """ASTRA, post-4d50a2b: the false attribution with a harmless-looking prose prefix.
+
+    W is the same false claim without the prefix. Both are kept, because the pair is the
+    finding: the checker rejected W and passed this, which means detection depended on
+    the sentence's opening words rather than on what it asserts. "The audit finds that"
+    put the word `audit` — one of nine on a counterfactual keyword blacklist — inside the
+    attacker's own sentence, and bought a complete exemption from claim checking.
+    """
+    p = os.path.join(snap, "PAPER.md")
+    t = open(p, encoding="utf-8").read()
+    if "## Abstract" not in t:
+        raise SystemExit("AA: abstract heading not found")
+    sentence = ("The audit finds that the primary risk interval excludes zero in only "
+                "7 / 26 eligible circuits.")
+    open(p, "w", encoding="utf-8").write(
+        t.replace("## Abstract", "## Abstract\n\n" + sentence, 1))
+    return ("abstract asserts 7 / 26 for interval exclusion behind the prefix "
+            "\"The audit finds that\", which used to buy a blanket exemption")
+
+
+def mut_AB(snap):
+    """The same false attribution, checked in the REBUILT PDF rather than the source.
+
+    Equal numeric content cannot see this: the false sentence reuses numbers the
+    manuscript already carries, so both sides hold the same token set and the canonical
+    rows are intact. The PDF is what a reviewer opens, so the claim has to be read there.
+    """
+    mut_AA(snap)
+    _rebuild_pdf(snap)
+    return ("abstract asserts 7 / 26 for interval exclusion, then rendered through "
+            "publish/build_paper.sh's own pandoc + Chromium path — the falsehood is "
+            "in the PDF a reviewer opens, not only in the source")
 
 
 def mut_X(snap):
@@ -550,10 +594,15 @@ MUTATIONS = [
      {"derived": ("SAVED_SCHEMA", "required field is empty")}),
     ("Z", "ASTRA: an extra unlabelled CSV cell", mut_Z,
      {"derived": ("SAVED_SCHEMA", "belongs to no column")}),
+    ("AA", "ASTRA: false attribution behind a prose prefix", mut_AA,
+     {"rendered": ("VISIBLE_CLAIMS_MATCH_RAW", "attributes 7 of 26")}),
+    ("AB", "ASTRA: that false attribution in the rebuilt PDF", mut_AB,
+     {"pdf": ("PDF_MATCHES_MANUSCRIPT", "attributes 7 of 26")}),
 ]
 DEFEATED_V3 = {"F", "H", "K"}
 DEFEATED_V4 = {"P", "Q", "R", "S", "T", "U"}
 DEFEATED_V5 = {"W", "X", "Y", "Z"}
+DEFEATED_V6 = {"AA", "AB"}
 
 
 def main():
@@ -612,7 +661,8 @@ def main():
             caught = {n for n, s in state.items() if s == REJECTED}
             errored = {n for n, s in state.items() if s == ERROR}
             star = (" *" if mid in DEFEATED_V3 else " †" if mid in DEFEATED_V4 else
-                    " ‡" if mid in DEFEATED_V5 else "")
+                    " ‡" if mid in DEFEATED_V5 else
+                    " §" if mid in DEFEATED_V6 else "")
             cell = {None: "—", PASSED: "pass", REJECTED: "REJECT", ERROR: "error"}
             print(f"  {mid:<4}{(label + star)[:42]:<44}" +
                   "".join(f"{cell[state[n]]:<11}" for n in order))
@@ -645,7 +695,8 @@ def main():
             if not caught:
                 failures.append(f"{mid}: caught by NOTHING — this corruption would ship")
         print("\n  * defeated v3 (9/9 PASS)   † defeated v4 (Astra 2026-09-13)   "
-              "‡ defeated the v4 repairs (Astra differential, 3643bbc)\n")
+              "‡ defeated the v4 repairs (Astra differential, 3643bbc)\n"
+              "  § defeated the differential repairs (Astra, post-4d50a2b)\n")
         for r in results:
             print(f"    {r['id']}: {r['mutation']}")
             for n in sorted(r["reasons"]):

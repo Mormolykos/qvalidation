@@ -274,6 +274,97 @@ def test_astras_original_false_abstract_reproducer_is_rejected(paper):
     assert len(excl) == 12 and len(ge5) == 7 and len(elig) == 26
 
 
+ASTRA_PREFIXED = ("The audit finds that the primary risk interval excludes zero in only "
+                  "7 / 26 eligible circuits.")
+ASTRA_PLAIN = ("The primary risk interval excludes zero in only 7 / 26 eligible "
+               "circuits.")
+
+
+def _truth():
+    from raw_endpoint import reconstruct, endpoint
+    circuits = [c.strip() for c in open(os.path.join(ROOT, "_selected.txt")) if c.strip()]
+    elig, excl, ge5, ge10 = endpoint(reconstruct(circuits))
+    return {"excl": len(excl), "ge5": len(ge5), "ge10": len(ge10)}, len(elig)
+
+
+def _scan(doc):
+    """The claim scan as stage 12 runs it, on a supplied document."""
+    vis = mb.visible_text(doc)
+    cand = mb.find_endpoint_tables(mb.parse_tables(vis))
+    assert len(cand) == 1
+    lo, hi = cand[0][3]
+    truth, n_elig = _truth()
+    return mb.claim_failures(vis, truth, n_elig,
+                             (vis[lo:hi],) + mb.COUNTERFACTUAL_PASSAGES,
+                             lambda k: next(a for a, b in mb.ROWS.items() if b == k))
+
+
+@pytest.mark.parametrize("sentence,name", [(ASTRA_PREFIXED, "prefixed"),
+                                           (ASTRA_PLAIN, "plain")])
+def test_a_prose_prefix_does_not_buy_an_exemption(paper, sentence, name):
+    """BLOCKER 1 (Astra, post-4d50a2b).
+
+    The exemption was a keyword blacklist — "corrupt", "mutation", "attack", "audit",
+    "withdraw", "would", … — tested against the sentence containing the quantity. Any
+    sentence merely MENTIONING one of those was excused from claim checking entirely, so
+    "The audit finds that" was not a harmless prefix: the word `audit` was the payload,
+    and any of the nine would have served. The plain form is kept beside it because the
+    PAIR is the finding — detection depended on the opening words, not on the assertion.
+    """
+    fails, bound, spans = _scan(paper.replace("## Abstract",
+                                              "## Abstract\n\n" + sentence, 1))
+    assert fails, f"the {name} false attribution was accepted"
+    assert "attributes 7 of 26" in reasons(fails)
+    assert "risk > 0" in reasons(fails)
+
+
+def test_the_two_forms_are_rejected_identically(paper):
+    """Detection must not depend on sentence form at all, so the two reproducers must
+    produce the same finding."""
+    a = [f for f in _scan(paper.replace("## Abstract",
+                                        "## Abstract\n\n" + ASTRA_PREFIXED, 1))[0]
+         if "attributes" in f]
+    b = [f for f in _scan(paper.replace("## Abstract",
+                                        "## Abstract\n\n" + ASTRA_PLAIN, 1))[0]
+         if "attributes" in f]
+    assert len(a) == len(b) == 1
+
+
+def test_every_counterfactual_exemption_is_a_declared_passage(paper):
+    """The control. Each declared passage must be PRESENT — a stale pin is a loud
+    failure, not a silent widening — and the pristine manuscript must pass."""
+    assert mb.COUNTERFACTUAL_PASSAGES, "the exemption list is empty"
+    fails, bound, spans = _scan(paper)
+    assert fails == []
+    assert spans == 1 + len(mb.COUNTERFACTUAL_PASSAGES)
+    assert bound >= 2
+
+
+def test_a_stale_exemption_pin_fails_loudly():
+    """An exemption that no longer describes the document must be reported, not ignored."""
+    truth, n_elig = _truth()
+    fails, _, _ = mb.claim_failures("nothing relevant here", truth, n_elig,
+                                    ("a passage that is not present",), lambda k: k)
+    assert fails and "no longer describes it" in reasons(fails)
+
+
+def test_legitimate_table_occurrences_of_seven_of_26_still_pass(paper):
+    """The repair must not start rejecting the canonical table's own cells."""
+    vis = mb.visible_text(paper)
+    cand = mb.find_endpoint_tables(mb.parse_tables(vis))
+    lo, hi = cand[0][3]
+    assert "7 / 26" in vis[lo:hi], "the table really does contain the string"
+    fails, _, _ = _scan(paper)
+    assert fails == []
+
+
+def test_the_counterfactual_passage_is_still_exempt(paper):
+    """The §6.1 correction quotes 11/26, 6/26 and 3/26, none of them current. It must
+    remain exempt, or the repair has simply moved the false-positive problem."""
+    fails, _, _ = _scan(paper)
+    assert not any("11/26" in f or "6/26" in f or "3/26" in f for f in fails)
+
+
 def test_the_canonical_table_is_excluded_by_position_not_by_text(paper):
     """The span is a character range, so an identical string elsewhere is still scanned."""
     cand = mb.find_endpoint_tables(mb.parse_tables(mb.visible_text(paper)))
@@ -421,6 +512,55 @@ def test_the_expected_diagnostic_followed_by_a_crash_is_an_error(tmp_path):
     assert outcome == v.ERROR, (
         "a layer that printed its verdict and then crashed was scored as a detection")
     assert "traceback" in why.lower()
+
+
+def test_rejection_diagnostic_then_exit_23_is_an_error(tmp_path):
+    """BLOCKER 2 (Astra, post-4d50a2b) — the exact reproducer.
+
+    classify() accepted ANY nonzero status beside a REJECTED sentinel. Astra had a
+    validator print its rejection diagnostic and then exit 23: nonzero, sentinel present,
+    no traceback, scored REJECTED. "Nonzero" is a property shared by every abnormal death
+    there is. reject() exits exactly REJECT_EXIT, so that is what a rejection looks like.
+    """
+    import subprocess
+    import validation_result as v
+    script = tmp_path / "diagnostic_then_exit_23.py"
+    script.write_text("\n".join([
+        "import os, sys",
+        f"sys.path.insert(0, r'{ROOT}')",
+        "import validation_result as vr",
+        "print('  \\u2717 SAVED SUMMARY IS NOT A VALID ARTIFACT')",
+        "print(\"      bv_n30.error_ci_lo: 'NaN' is not finite\")",
+        "print(vr.SENTINEL + ' REJECTED SAVED_SCHEMA')",
+        "sys.stdout.flush()",
+        "os._exit(23)",
+    ]), encoding="utf-8")
+    p = subprocess.run([sys.executable, str(script)], capture_output=True, text=True,
+                       encoding="utf-8", errors="replace")
+    assert p.returncode == 23
+    assert f"{v.SENTINEL} REJECTED" in p.stdout        # the verdict really is there
+    assert "Traceback" not in p.stderr                 # and there is no crash to spot
+    outcome, why = v.classify(p.returncode, p.stdout, p.stderr)
+    assert outcome == v.ERROR, "exit 23 beside a rejection verdict was scored REJECTED"
+    assert "23" in why
+
+
+@pytest.mark.parametrize("code", [2, 3, 23, 42, 127, 137, -1, 255])
+def test_no_exit_status_but_the_contracts_own_counts_as_a_rejection(code):
+    """Generic, not a patch for 23. Only the status reject() itself produces qualifies."""
+    import validation_result as v
+    out = f"  ✗ bad\n{v.SENTINEL} REJECTED SAVED_SCHEMA\n"
+    assert v.classify(code, out, "")[0] == v.ERROR
+    assert v.classify(v.REJECT_EXIT, out, "") == (v.REJECTED, "SAVED_SCHEMA")
+
+
+def test_ordinary_rejections_and_passes_are_unaffected():
+    """The repair must not turn real detections into errors."""
+    import validation_result as v
+    for inv in ("SAVED_SCHEMA", "VISIBLE_CLAIMS_MATCH_RAW", "PDF_MATCHES_MANUSCRIPT"):
+        out = f"  ✗ something\n{v.SENTINEL} REJECTED {inv}\n"
+        assert v.classify(v.REJECT_EXIT, out, "") == (v.REJECTED, inv)
+    assert v.classify(v.PASS_EXIT, f"  ✓ ok\n{v.SENTINEL} PASSED\n", "")[0] == v.PASSED
 
 
 def test_output_continuing_past_the_verdict_is_an_error():

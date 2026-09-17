@@ -78,6 +78,40 @@ CLAIM_PHRASES = {
 }
 CLAIM_WINDOW = 160        # characters; a claim named further away than this is not "near"
 
+# PASSAGES WHERE THE MANUSCRIPT DELIBERATELY QUOTES NON-CURRENT ENDPOINT VALUES.
+#
+# WHY THIS IS A LIST AND NOT A RULE (Astra, post-4d50a2b)
+#     This used to be a keyword blacklist — "corrupt", "mutation", "attack", "audit",
+#     "withdraw", "would", … — tested against the sentence containing the quantity. Any
+#     sentence merely MENTIONING one of those words was excused from claim checking
+#     entirely. Astra prefixed the false attribution with "The audit finds that" and both
+#     stage 12 and stage 13 passed. The prefix was not harmless; the word `audit` WAS the
+#     payload, and any of the nine would have done.
+#
+#     A blacklist of contexts that excuse a claim is the same error as a blacklist of
+#     inputs that fail a parser (R19): it enumerates what the author thought of, and the
+#     attacker only has to think of one more. So the domain is declared instead:
+#
+#         EVERY endpoint quantity in the rendered text is a CURRENT CLAIM,
+#         except inside these passages, quoted here in full.
+#
+#     Each entry must be FOUND in the document or this check fails — a stale pin is a
+#     loud error, not a silent widening. Adding a new counterfactual passage is therefore
+#     a deliberate edit to this list, visible in the diff, and not something a sentence
+#     can arrange for itself.
+#
+#     An attacker editing PAPER.md can of course also edit this tuple. That is not what it
+#     defends against: it removes the ability to buy an exemption with PROSE, which is
+#     what the blacklist sold. Editing the checker is a code change, and the mutation
+#     suite runs against the committed checker.
+COUNTERFACTUAL_PASSAGES = (
+    # §6.1 — the v3 correction describing what the hostile audit's corruption did to the
+    # endpoint. Quotes 12/26 -> 11/26 and 7/26, 4/26 -> 6/26, 3/26, none of them current.
+    "Replacing every candidate gate count in one raw arm file with a constant changes "
+    "the true endpoint from 12/26 to 11/26 and the ≥5% and ≥10% counts from 7/26 and "
+    "4/26 to 6/26 and 3/26",
+)
+
 COMMENT = re.compile(r"<!--.*?-->", re.S)
 FENCE = re.compile(r"^[ \t]*(```+|~~~+).*?^[ \t]*\1[ \t]*$", re.S | re.M)
 FRACTION = re.compile(r"(\d+)\s*/\s*(\d+)")
@@ -122,6 +156,97 @@ def visible_text(raw):
     which callers must run first. Outside it, this function has no defensible meaning.
     """
     return COMMENT.sub("", strip_fences(raw))
+
+
+def flat(text):
+    """Whitespace collapsed, non-ASCII folded to a space.
+
+    The claim scan runs on THIS form for both the manuscript and the PDF's extracted
+    text, so the two are checked by identical computation rather than by two scanners
+    that happen to agree. A line break inside a sentence must not change what the
+    sentence claims, and neither must a glyph the PDF text layer drops: `pdftotext`
+    renders "risk ≥ 5%" as "risk 5%", so a comparison that keeps the ≥ finds nothing in
+    the PDF and silently scans the table's own rows as if they were prose.
+    """
+    return " ".join("".join(c if c.isascii() else " " for c in text).split())
+
+
+def claim_failures(text, truth, n_elig, exempt, label_of):
+    """Bind every endpoint quantity in `text` to the endpoint its own sentence names.
+
+    `exempt` is the declared set of passages whose quantities are NOT current claims —
+    the canonical table's own cells, plus COUNTERFACTUAL_PASSAGES. Membership is by
+    POSITION inside a located passage, never by matching text, and never by a keyword
+    appearing somewhere nearby.
+
+    Returns (failures, n_bound, n_exempt_spans). A declared passage that cannot be found
+    is a failure: pins go stale, and a pin nobody can see is how the next hole gets in.
+    """
+    norm = flat(text)
+    low = norm.lower()
+    fails, spans = [], []
+    for entry in exempt:
+        # An entry may be a string, or a tuple of ALTERNATIVE spellings of the same
+        # passage -- the canonical table keeps its pipes in Markdown and loses them in
+        # the PDF's extracted text, and that is one passage in two renderings, not two
+        # passages of which one is missing. At least one alternative must be found.
+        alternatives = (entry,) if isinstance(entry, str) else tuple(entry)
+        found = False
+        for passage in alternatives:
+            needle = flat(passage)
+            if not needle:
+                continue
+            i = norm.find(needle)
+            while i >= 0:
+                spans.append((i, i + len(needle)))
+                found = True
+                i = norm.find(needle, i + 1)
+        if not found:
+            shown = flat(alternatives[0])[:90]
+            fails.append(f"a declared exempt passage is not present in this document, so "
+                         f"the exemption list no longer describes it: “{shown}…”")
+
+    def exempted(pos):
+        return any(a <= pos < b for a, b in spans)
+
+    # Phrases are folded the same way the text is, so "≥ 5%" and the PDF's "5%" are one
+    # marker. The lookbehind stops a folded bare "5%" from matching inside a number such
+    # as "0.5%" or "46.15%".
+    marks = []
+    for key, phrases in CLAIM_PHRASES.items():
+        for p in {flat(p).lower() for p in phrases}:
+            if not p:
+                continue
+            marks += [(mm.start(), key)
+                      for mm in re.finditer(r"(?<![\d.])" + re.escape(p), low)]
+
+    bound = 0
+    for m in QUANTITY.finditer(norm):
+        tok, den = m.group(1), int(m.group(2))
+        if den != n_elig or exempted(m.start()):
+            continue
+        num = int(tok) if tok.isdigit() else WORD_NUM[tok.lower()]
+        near = [(abs(pos - m.start()), key) for pos, key in marks
+                if abs(pos - m.start()) <= CLAIM_WINDOW]
+        if not near:
+            continue
+        key = min(near)[1]
+        bound += 1
+        if num != truth[key]:
+            ctx = norm[max(0, m.start() - 40):m.end() + 120]
+            fails.append(f"visible prose attributes {num} of {den} to the "
+                         f"'{label_of(key)}' endpoint, which the raw data puts at "
+                         f"{truth[key]} of {den} — …{ctx.strip()[:150]}")
+
+    # A fraction over the eligible denominator that no endpoint supports at all.
+    for m in FRACTION.finditer(norm):
+        num, den = int(m.group(1)), int(m.group(2))
+        if den != n_elig or exempted(m.start()) or num in truth.values():
+            continue
+        ctx = norm[max(0, m.start() - 60):m.end() + 20]
+        fails.append(f"visible prose asserts {num}/{den}, which no endpoint supports "
+                     f"— …{ctx.strip()[-90:]}")
+    return fails, bound, len(spans)
 
 
 def html_domain_violations(text):
@@ -273,100 +398,25 @@ def main():
         if k not in seen:
             fails.append(f"canonical table is missing the '{k}' row")
 
-    # A contradicting fraction elsewhere in visible prose. The manuscript legitimately
-    # QUOTES numbers a corruption would produce -- §6.1 describes the audit that moved the
-    # endpoint to 11/26 -- so a paragraph that is explicitly about an attack or a
-    # withdrawal is exempt. The count of exemptions is printed: an exemption nobody can
-    # see is how the next hole gets in.
-    COUNTERFACTUAL = ("corrupt", "mutation", "attack", "audit", "withdraw", "would",
-                      "v3 correction", "earlier versions", "changes the true endpoint")
-
-    # WHERE the canonical table is, not WHAT IT SAYS (Astra, 3643bbc differential).
-    #
-    # This was `m.group(0) in tbl_span`, a SUBSTRING test against the table's text. The
-    # canonical table legitimately contains "7 / 26", so every other occurrence of that
-    # string anywhere in the manuscript was skipped as though it were the table's own
-    # cell. Astra put "The primary risk interval excludes zero in only 7 / 26 eligible
-    # circuits." in the abstract and both stage 12 and stage 13 returned 0 — the exact
-    # defect the claim-identity check was added to close, still open because the scan
-    # never reached it.
-    #
-    # Identity of a text occurrence is its POSITION. Only the canonical table's own
-    # character range is excluded; any other table's cells are scanned as prose, because
-    # a false claim smuggled into a second table is still a false claim.
-    t_lo, t_hi = tbl_range
-
-    def in_canonical_table(pos):
-        return t_lo <= pos < t_hi
-
-    paragraphs = [(mm.start(), mm.group(0)) for mm in re.finditer(r"[^\n]+(?:\n[^\n]+)*",
-                                                                  vis)]
-
-    def enclosing(pos):
-        best = ""
-        for start, text in paragraphs:
-            if start <= pos < start + len(text):
-                best = text
-        return best.lower()
-
-    exempt = 0
-    for m in FRACTION.finditer(vis):
-        num, den = int(m.group(1)), int(m.group(2))
-        if den != n_elig or in_canonical_table(m.start()) or num in truth.values():
-            continue
-        para = enclosing(m.start())
-        if any(w in para for w in COUNTERFACTUAL):
-            exempt += 1
-            continue
-        ctx = vis[max(0, m.start() - 60):m.end() + 20].replace("\n", " ")
-        fails.append(f"visible prose asserts {num}/{den}, which no endpoint supports "
-                     f"— …{ctx.strip()[-90:]}")
-
-    # CLAIM IDENTITY. The scan above asks whether a numerator is true of SOMETHING. That
-    # is not the question a reader asks. 7 of 26 is true of "risk >= 5%" and false of
-    # "excludes zero", so every quantity over the eligible denominator is bound to the
-    # endpoint its own sentence names -- the nearest claim phrase within CLAIM_WINDOW.
-    # A sentence naming no endpoint is not making one of these claims and is not checked
-    # against them: "13 of 26 eligible circuits have no spread at all" is a different
-    # true statement about the same 26 circuits.
-    #
-    # The counterfactual exemption is taken at SENTENCE level here, not paragraph level.
-    # The abstract is a single paragraph that legitimately contains the word "withdrawn",
-    # so a paragraph-level exemption hands an attacker the whole abstract -- which is
-    # precisely where Astra put the false attribution.
-    low = vis.lower()
-    marks = [(mm.start(), key) for key, phrases in CLAIM_PHRASES.items()
-             for p in phrases for mm in re.finditer(re.escape(p), low)]
-    ends = [mm.end() for mm in re.finditer(r"(?<=[.!?:])\s+|\n\n", vis)]
-
-    def sentence_at(pos):
-        lo = max([e for e in ends if e <= pos], default=0)
-        hi = min([e for e in ends if e > pos], default=len(vis))
-        return vis[lo:hi].lower()
-
-    bound = 0
-    for m in QUANTITY.finditer(vis):
-        tok, den = m.group(1), int(m.group(2))
-        if den != n_elig or in_canonical_table(m.start()):
-            continue
-        num = int(tok) if tok.isdigit() else WORD_NUM[tok.lower()]
-        if any(w in sentence_at(m.start()) for w in COUNTERFACTUAL):
-            continue
-        near = [(abs(pos - m.start()), key) for pos, key in marks
-                if abs(pos - m.start()) <= CLAIM_WINDOW]
-        if not near:
-            continue
-        key = min(near)[1]
-        bound += 1
-        if num != truth[key]:
-            ctx = vis[max(0, m.start() - 40):m.end() + 120].replace("\n", " ")
-            label = next(k for k, v in ROWS.items() if v == key)
-            fails.append(f"visible prose attributes {num} of {den} to the "
-                         f"'{label}' endpoint, which the raw data puts at "
-                         f"{truth[key]} of {den} — …{ctx.strip()[:150]}")
-    print(f"  prose scan: {exempt} endpoint-shaped fraction(s) exempted as explicitly "
-          f"counterfactual;\n              {bound} prose quantit(ies) bound to the "
-          f"endpoint their own sentence names")
+    # CLAIM IDENTITY, over the whole rendered text. 7 of 26 is true of "risk >= 5%" and
+    # false of "excludes zero", so every quantity over the eligible denominator is bound
+    # to the endpoint its own sentence names. What is NOT a current claim is declared, by
+    # passage, in COUNTERFACTUAL_PASSAGES -- see the note there for why a keyword
+    # blacklist had to go. The canonical table's own cells are exempt the same way, by
+    # their text rather than by a separate positional rule, so the manuscript and the PDF
+    # are checked by one function.
+    # The canonical table's own region, as it appears in THIS rendering. Markdown keeps
+    # the pipes; the PDF's extracted text does not, so pdf_binding passes its own form.
+    # The claim rule is shared; only the way the table is located differs.
+    exempt = (vis[tbl_range[0]:tbl_range[1]],) + COUNTERFACTUAL_PASSAGES
+    cfails, bound, n_spans = claim_failures(
+        vis, truth, n_elig, exempt,
+        lambda key: next(k for k, v in ROWS.items() if v == key))
+    fails += cfails
+    print(f"  prose scan: {n_spans} declared exempt passage(s) located "
+          f"(canonical table + {len(COUNTERFACTUAL_PASSAGES)} counterfactual);"
+          f"\n              {bound} prose quantit(ies) bound to the endpoint their own "
+          f"sentence names")
 
     if fails:
         vr.reject("VISIBLE_CLAIMS_MATCH_RAW",

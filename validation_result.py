@@ -20,10 +20,12 @@ THE CONTRACT
         ##QVALIDATION-RESULT## PASSED
         ##QVALIDATION-RESULT## REJECTED <invariant>
 
-    A reader of that output may conclude the layer reached a verdict if and only if that
-    line is the final non-empty line of stdout and stderr carries no traceback. Anything
-    else — a crash before it, a crash after it, a silent exit, output continuing past it
-    — is ERROR, which is neither a pass nor a detection and is never counted as either.
+    A reader of that output may conclude the layer reached a verdict if and only if ALL
+    THREE hold: that line is the final non-empty line of stdout, stderr carries no
+    traceback, and the process exited with the status this module's own accept()/reject()
+    produce. Anything else — a crash before it, a crash after it, a silent exit, output
+    continuing past it, an exit status the contract never emits — is ERROR, which is
+    neither a pass nor a detection and is never counted as either.
 
     The sentinel is printed immediately before `sys.exit`, so nothing but a `finally`
     block can run between the verdict and the process ending. A traceback raised after it
@@ -40,6 +42,23 @@ import sys
 SENTINEL = "##QVALIDATION-RESULT##"
 PASSED, REJECTED, ERROR = "PASSED", "REJECTED", "ERROR"
 
+# The exit statuses the contract itself produces. A verdict counts only when the process
+# ALSO terminated the way accept()/reject() terminate it.
+#
+# WHY EXACT AND NOT `!= 0` (Astra, post-4d50a2b)
+#     classify() accepted any nonzero status beside a REJECTED sentinel. Astra had a
+#     validator print its rejection diagnostic and then exit 23. Nonzero, sentinel
+#     present, no traceback — scored REJECTED, and a mutation was credited to a process
+#     that did not end through reject() at all.
+#
+#     "Nonzero" is a property shared by every abnormal death there is: an uncaught signal,
+#     os._exit in a finally block, a wrapper's own status, MemoryError under a handler
+#     that swallows the traceback, a missing tool. reject() exits exactly REJECT_EXIT, so
+#     that is what a rejection looks like. Anything else is ERROR, which is neither a pass
+#     nor a detection.
+PASS_EXIT = 0
+REJECT_EXIT = 1
+
 
 def accept(*lines):
     """The artifact satisfied every invariant this layer checks. Exits 0."""
@@ -47,7 +66,7 @@ def accept(*lines):
         print(line)
     print(f"\n{SENTINEL} {PASSED}")
     sys.stdout.flush()
-    sys.exit(0)
+    sys.exit(PASS_EXIT)
 
 
 def reject(invariant, headline, fails, limit=30):
@@ -63,7 +82,7 @@ def reject(invariant, headline, fails, limit=30):
         print(f"      … and {len(fails) - limit} more")
     print(f"\n{SENTINEL} {REJECTED} {invariant}")
     sys.stdout.flush()
-    sys.exit(1)
+    sys.exit(REJECT_EXIT)
 
 
 def classify(code, out, err):
@@ -81,8 +100,10 @@ def classify(code, out, err):
     parts = lines[-1].split(None, 2)
     verdict = parts[1] if len(parts) > 1 else ""
     invariant = parts[2] if len(parts) > 2 else ""
-    if verdict == PASSED and code == 0:
+    if verdict == PASSED and code == PASS_EXIT:
         return PASSED, ""
-    if verdict == REJECTED and code != 0:
+    if verdict == REJECTED and code == REJECT_EXIT:
         return REJECTED, invariant
-    return ERROR, f"verdict {verdict!r} disagrees with exit code {code}"
+    return ERROR, (f"verdict {verdict!r} with exit status {code}; the contract exits "
+                   f"{PASS_EXIT} on {PASSED} and {REJECT_EXIT} on {REJECTED}, so this "
+                   f"process did not terminate through accept() or reject()")

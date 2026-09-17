@@ -61,6 +61,7 @@ sys.path.insert(0, ROOT)
 import validation_result as vr
 PDF = os.path.join(ROOT, "publish", "paper.pdf")
 PAPER = os.path.join(ROOT, "PAPER.md")
+SELECTED = os.path.join(ROOT, "_selected.txt")
 
 # claims withdrawn on the record. None may appear as an assertion in the PDF.
 WITHDRAWN = [
@@ -201,6 +202,31 @@ def check(txt, src, echo=print):
                              f"expected “{want[:70]}” — its cells are missing, "
                              f"reordered, or split across different rows")
         echo(f"  canonical table: {placed}/{len(body)} rows found intact in the PDF")
+
+        # 2b. CLAIM IDENTITY IN THE PDF ITSELF (Astra, post-4d50a2b).
+        #
+        # Equal numeric content cannot see this: a false attribution reuses numbers the
+        # manuscript already contains, so both sides hold the same token set and the
+        # canonical rows are still intact. What is false is which endpoint a sentence
+        # assigns a number to, and that has to be read in the PDF's own text, because the
+        # PDF is what a reviewer opens. Same function as stage 12, same declared
+        # exemptions, different rendering.
+        from manuscript_binding import (claim_failures, ROWS,
+                                        COUNTERFACTUAL_PASSAGES)
+        from raw_endpoint import reconstruct, endpoint
+        circuits = [c.strip() for c in open(SELECTED, encoding="utf-8") if c.strip()]
+        elig, excl, ge5, ge10 = endpoint(reconstruct(circuits))
+        truth = {"excl": len(excl), "ge5": len(ge5), "ge10": len(ge10)}
+        # The canonical table in both renderings: extraction drops the pipes, but this
+        # same function is also run over Markdown source in tests, where they survive.
+        pdf_table = ("\n".join(" ".join(r) for r in body),
+                     "\n".join("| " + " | ".join(r) + " |" for r in body))
+        cfails, bound, spans = claim_failures(
+            txt, truth, len(elig), (pdf_table,) + COUNTERFACTUAL_PASSAGES,
+            lambda key: next(k for k, v in ROWS.items() if v == key))
+        fails += cfails
+        echo(f"  claim identity: {bound} quantit(ies) in the PDF bound to the endpoint "
+             f"their own sentence names ({spans} exempt passage(s) located)")
 
     # 2. no withdrawn claim asserted. Correction notes legitimately QUOTE them, so a hit
     #    is only a failure if PAPER.md does not also contain it inside a correction.
