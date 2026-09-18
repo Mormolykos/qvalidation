@@ -27,6 +27,19 @@ HISTORY, BECAUSE IT IS THE POINT
       S  n_seeds = 200.9, k = 3.9                  accepted     -> derived (V4-01)
       T  a duplicated circuit row                  accepted     -> derived (V4-01)
 
+    Three rounds of repair later the prose scan was defeated again, and AC-AH are those
+    cases. Every one of them turns on the same thing: the scan decided WHETHER a
+    reader-visible number was a claim before deciding whether it was true, and everything
+    it did not recognise it skipped in silence.
+
+      AE  "7 out of 26" instead of "7 / 26"     13/13 PASS   -> rendered (F-01)
+      AF  the same sentence in the built PDF    13/13 PASS   -> pdf     (F-01)
+      AC  an injected row inherits the table's  stage 12 = 0 -> rendered (F-02)
+          exemption by sitting inside it
+      AG  "13 of 26 … have no spread at all"    stages 6, 7  -> rendered (F-03)
+          set to any number                     and 12 green
+      AH  the 12/26, 7/26 and 4/26 enumeration  stage 12 = 0 -> rendered (F-03)
+
 A NONZERO EXIT IS NOT A CATCH (Astra V4-07)
     This file used to accept any nonzero return code as proof that a layer caught a
     mutation. It does not distinguish "the checker rejected the artifact" from "the
@@ -517,6 +530,98 @@ def mut_AB(snap):
             "in the PDF a reviewer opens, not only in the source")
 
 
+def _paper(snap, old, new, who):
+    p = os.path.join(snap, "PAPER.md")
+    t = open(p, encoding="utf-8").read()
+    if old not in t:
+        raise SystemExit(f"{who}: target text not found verbatim: {old[:60]!r}")
+    open(p, "w", encoding="utf-8").write(t.replace(old, new, 1))
+
+
+LAST_CANONICAL_ROW = "| risk ≥ 10% | 4 / 26 | 15.4% | [6.2, 33.5] |"
+
+
+def mut_AC(snap):
+    """ASTRA F-02, post-2842dc37: an injected table row, verbatim.
+
+    The exemption for the canonical table was the table's whole character range,
+    `vis[tbl_range[0]:tbl_range[1]]` — a range that GROWS with whatever is appended to
+    the table. So a row the checker could not name inherited the exemption of the rows it
+    could, and a false endpoint claim passed stage 12 by being physically inside a table.
+    Only rows whose identity this file recognises are exempt now; anything else in the
+    table is prose between pipes and is read as prose.
+    """
+    _paper(snap, LAST_CANONICAL_ROW, LAST_CANONICAL_ROW + "\n"
+           + "| Summary | the primary interval excludes zero in only 7 / 26 eligible "
+             "circuits | | |", "AC")
+    return ("an unrecognised 'Summary' row inside the canonical table asserts 7 / 26 "
+            "for interval exclusion — Astra's injected row, verbatim")
+
+
+def mut_AD(snap):
+    """The same class, a different row: the repair must not be specific to Astra's text.
+
+    Different label, different numerator, a spelled-out number, a different predicate
+    spelling. If AC were closed by anything narrower than "an unknown row is not exempt",
+    this one would still pass.
+    """
+    _paper(snap, LAST_CANONICAL_ROW, LAST_CANONICAL_ROW + "\n"
+           + "| Aside | nine of 26 eligible circuits reach the pre-registered endpoint "
+             "| | |", "AD")
+    return ("a second unrecognised row, differently worded, asserts nine of 26 for the "
+            "pre-registered endpoint")
+
+
+def mut_AE(snap):
+    """ASTRA F-01, post-2842dc37: the end-to-end reproducer, verbatim.
+
+    "7 out of 26" rather than "7 / 26". The scan's quantity pattern spelled its own
+    separator — `\\s*(?:/|of)\\s*` — so this was not a quantity at all and no claim was
+    ever attributed. Every stage passed and the sentence printed on page 1 of the PDF.
+    Numerator and denominator are found independently now and paired by nearness, so the
+    separator, in any spelling, is not part of the decision.
+    """
+    _paper(snap, "## Abstract", "## Abstract\n\n"
+           "The audit finds that the primary risk interval excludes zero in only 7 out "
+           "of 26 eligible circuits.", "AE")
+    return ("abstract asserts 7 out of 26 for interval exclusion — a separator the "
+            "quantity pattern did not spell, so nothing saw a quantity at all")
+
+
+def mut_AF(snap):
+    """That reproducer in the PDF a reviewer opens, through the real build path."""
+    mut_AE(snap)
+    _rebuild_pdf(snap)
+    return ("the 7-out-of-26 false attribution rendered through publish/build_paper.sh's "
+            "own pandoc + Chromium path")
+
+
+def mut_AG(snap):
+    """ASTRA F-03: a current claim over the eligible denominator that nothing checked.
+
+    §4.1 states how many eligible circuits compile deterministically. Astra changed 13 to
+    7 and stages 6, 7 and 12 stayed green: the number named a predicate the checker had
+    no identity for, so it was skipped in silence. The count is reconstructed from raw
+    now — both arms constant across every seed — and the claim is bound to it.
+    """
+    _paper(snap, "13 of 26 eligible circuits have no spread at all",
+           "7 of 26 eligible circuits have no spread at all", "AG")
+    return "the deterministic-compilation count 13 of 26 -> 7 of 26 in §4.1"
+
+
+def mut_AH(snap):
+    """ASTRA F-03: the endpoint enumeration, which named no predicate at all.
+
+    "the 12/26, 7/26 and 4/26 counts" is the endpoint written as an ordered triple. No
+    sentence around it names an endpoint, so under a scan that bound quantities to nearby
+    claim phrases all three were unchecked. Three adjacent quantities are one assertion
+    and are compared as one.
+    """
+    _paper(snap, "the 12/26,\n   7/26 and 4/26 counts",
+           "the 11/26,\n   7/26 and 4/26 counts", "AH")
+    return "the endpoint enumeration in §6.1 reads 11/26, 7/26 and 4/26"
+
+
 def mut_X(snap):
     """A tag longer than the scanner's old 400-character bound.
 
@@ -598,11 +703,52 @@ MUTATIONS = [
      {"rendered": ("VISIBLE_CLAIMS_MATCH_RAW", "attributes 7 of 26")}),
     ("AB", "ASTRA: that false attribution in the rebuilt PDF", mut_AB,
      {"pdf": ("PDF_MATCHES_MANUSCRIPT", "attributes 7 of 26")}),
+    ("AC", "ASTRA: an injected row inherits the table's exemption", mut_AC,
+     {"rendered": ("VISIBLE_CLAIMS_MATCH_RAW", "attributes 7 of 26")}),
+    ("AD", "a second unknown row, differently worded", mut_AD,
+     {"rendered": ("VISIBLE_CLAIMS_MATCH_RAW", "attributes 9 of 26")}),
+    ("AE", "ASTRA: 7 out of 26 — a separator the pattern did not spell", mut_AE,
+     {"rendered": ("VISIBLE_CLAIMS_MATCH_RAW", "attributes 7 of 26")}),
+    ("AF", "ASTRA: that separator attack in the rebuilt PDF", mut_AF,
+     {"pdf": ("PDF_MATCHES_MANUSCRIPT", "attributes 7 of 26")}),
+    ("AG", "ASTRA: the unchecked deterministic-compilation count", mut_AG,
+     {"rendered": ("VISIBLE_CLAIMS_MATCH_RAW", "no seed-to-seed spread")}),
+    ("AH", "ASTRA: the unchecked endpoint enumeration", mut_AH,
+     {"rendered": ("VISIBLE_CLAIMS_MATCH_RAW", "enumerates the endpoint as")}),
 ]
 DEFEATED_V3 = {"F", "H", "K"}
 DEFEATED_V4 = {"P", "Q", "R", "S", "T", "U"}
 DEFEATED_V5 = {"W", "X", "Y", "Z"}
 DEFEATED_V6 = {"AA", "AB"}
+DEFEATED_V7 = {"AC", "AE", "AF", "AG", "AH"}   # Astra, post-2842dc37 (AD is the pair)
+
+# WHAT EACH PRESERVED FIXTURE MUST STILL PUT IN THE MANUSCRIPT, id -> (layer, text).
+#
+# Astra F-06: the old guard asserted that these ids appeared in `MUTATIONS`, and then
+# looped over DEFEATED_V3 | V4 | V5 — which does not contain AA or AB. Deleting both from
+# the suite left every test green. A guard that checks a name against a list it forgot to
+# include is not a guard, so this one declares the HOSTILE CONTENT itself: the test runs
+# each fixture against a copy of the manuscript and requires the text below to be what
+# lands in it. A fixture that is renamed, unregistered, or quietly softened into a
+# paraphrase fails, and so does one that no longer reaches the layer named here.
+ASTRA_FIXTURES = {
+    "W": ("rendered", "The primary risk interval excludes zero in only 7 / 26 eligible "
+                      "circuits."),
+    "AA": ("rendered", "The audit finds that the primary risk interval excludes zero in "
+                       "only 7 / 26 eligible circuits."),
+    "AB": ("pdf", "The audit finds that the primary risk interval excludes zero in only "
+                  "7 / 26 eligible circuits."),
+    "AC": ("rendered", "| Summary | the primary interval excludes zero in only 7 / 26 "
+                       "eligible circuits | | |"),
+    "AD": ("rendered", "| Aside | nine of 26 eligible circuits reach the pre-registered "
+                       "endpoint | | |"),
+    "AE": ("rendered", "The audit finds that the primary risk interval excludes zero in "
+                       "only 7 out of 26 eligible circuits."),
+    "AF": ("pdf", "The audit finds that the primary risk interval excludes zero in only "
+                  "7 out of 26 eligible circuits."),
+    "AG": ("rendered", "7 of 26 eligible circuits have no spread at all"),
+    "AH": ("rendered", "the 11/26,\n   7/26 and 4/26 counts"),
+}
 
 
 def main():
@@ -662,7 +808,8 @@ def main():
             errored = {n for n, s in state.items() if s == ERROR}
             star = (" *" if mid in DEFEATED_V3 else " †" if mid in DEFEATED_V4 else
                     " ‡" if mid in DEFEATED_V5 else
-                    " §" if mid in DEFEATED_V6 else "")
+                    " §" if mid in DEFEATED_V6 else
+                    " ¶" if mid in DEFEATED_V7 else "")
             cell = {None: "—", PASSED: "pass", REJECTED: "REJECT", ERROR: "error"}
             print(f"  {mid:<4}{(label + star)[:42]:<44}" +
                   "".join(f"{cell[state[n]]:<11}" for n in order))
@@ -696,7 +843,8 @@ def main():
                 failures.append(f"{mid}: caught by NOTHING — this corruption would ship")
         print("\n  * defeated v3 (9/9 PASS)   † defeated v4 (Astra 2026-09-13)   "
               "‡ defeated the v4 repairs (Astra differential, 3643bbc)\n"
-              "  § defeated the differential repairs (Astra, post-4d50a2b)\n")
+              "  § defeated the differential repairs (Astra, post-4d50a2b)   "
+              "¶ defeated the claim scan (Astra, post-2842dc37)\n")
         for r in results:
             print(f"    {r['id']}: {r['mutation']}")
             for n in sorted(r["reasons"]):

@@ -388,3 +388,135 @@ Everything carried forward from Parts 1 and 2, plus:
 7. **A verifier only tests the attacks someone thought of.** Four audits have each ended
    with a green verifier that a hostile auditor then broke, and this one broke the
    repairs rather than the science. That is a narrowing, not a finish.
+
+---
+---
+
+# Part 4 — the independent adversarial audit of the claim scan
+
+Audit: an independent adversarial review against
+`2842dc37ae9d925f5154ec8b4b678dc04c94fe2e` — itself the repair of two release blockers
+raised against `4d50a2bd8a27213d27dd39e98401dafc5f014403`.
+
+**Verdict as delivered: one RELEASE BLOCKER, two MAJOR assurance defects, three MINOR.**
+No raw measurement changed. No reported scientific number changed. The endpoint is still
+`12/26, 7/26, 4/26` and the pre-registered raw tree is still
+`3114a270ccd78b0daaa2a1bc451dd15155d55c13`.
+
+**The manuscript was scientifically correct throughout. Every finding in this part is
+about the apparatus that is supposed to protect it.** The blocker was reproduced
+end-to-end: a false sentence inserted after `## Abstract`, the PDF rebuilt, all thirteen
+stages PASS, exit 0, and the falsehood printed on page 1 of the artifact a reviewer opens.
+
+---
+
+## One cause, five costumes
+
+Three consecutive repairs of the prose scan asked the same question first: **does this
+sentence look like a claim worth checking?** Each answered it from something the author of
+the sentence controls, and each SKIPPED IN SILENCE what it did not recognise:
+
+| the repair asked | so it was defeated by |
+|---|---|
+| does the sentence contain a counterfactual keyword? | writing `The audit finds that` in front of it |
+| does `n / 26` or `n of 26` appear? | writing `7 out of 26`, `7 in 26`, `7 ⁄ 26` (U+2044), `7 ∕ 26` (U+2215) |
+| is a known claim phrase within 160 characters? | saying `bounded away from zero`, or putting the phrase 200 characters away |
+| which claim phrase is NEAREST? | naming two endpoints so that the true one is nearer |
+| is the number inside the canonical table's character range? | appending a row, which makes the range longer |
+
+Five spellings of one defect: **the decision to check was taken from incidental evidence
+rather than from the thing itself.** It is the pattern this project has now been bitten by
+in five different places (`METHODOLOGY.md` R19), and the repair is the same one every
+time — declare the domain and refuse what falls outside it, instead of enumerating what
+to catch.
+
+The measurement the auditor made is the part worth keeping. Of fifteen quantities over the
+eligible denominator in the frozen manuscript: **2 bound, 9 explicitly exempt, 4 SILENTLY
+UNCHECKED.** One of the four was `13 of 26 eligible circuits have no spread at all`, which
+could be set to any number with stages 6, 7 and 12 all green.
+
+---
+
+## Findings
+
+| ID | Severity | Defect | Correction | New fixtures | Status |
+|---|---|---|---|---|---|
+| **F-01** | BLOCKING | endpoint claims evade binding through separator, vocabulary, distance and rebinding variants | inclusion inverted: a quantity is located by pairing an independently found numerator with the denominator, and **every** one must resolve to a declared claim identity or be REFUSED | mutations **AE**, **AF**; nine parametrised attacks including both Unicode slashes, the >160-character distance and the two-endpoint rebinding | **CLOSED** |
+| **F-02** | MAJOR | the table exemption was the table's character range, which grows with attacker content | only rows `canonical_key` can NAME are exempt, by their own row spans; an unrecognised row is prose between pipes | mutations **AC** (the injected row verbatim), **AD** (a differently worded row) | **CLOSED** |
+| **F-03** | MAJOR | four current `n/26` quantities silently unchecked | two new identities reconstructed from raw (`no_spread`, `side_stable`), and the endpoint enumeration checked as one ordered claim; unclassified is a rejection | mutations **AG**, **AH**; a disposition test that prints every quantity and requires `unclassified = 0` | **CLOSED** |
+| **F-04** | MINOR | the docstring claimed it bound *every* prose quantity while four went unchecked | the claim is now true, and is *proved* by the disposition test rather than asserted | `test_the_self_description_promises_what_the_disposition_test_proves` | **CLOSED** |
+| **F-05** | MINOR | `verify.py` said 22 corruptions, `README.md` said eighteen, the suite held 24 | the count is read from `len(MUTATIONS)` and printed at run time; neither file states one | — | **CLOSED** |
+| **F-06** | MINOR | the guard looped over sets that did not contain AA or AB, so deleting both left the tests green | the guard RUNS each preserved fixture and compares the hostile text it produces against `ASTRA_FIXTURES` | `test_removing_a_preserved_fixture_makes_the_guard_fail`, parametrised over all eight | **CLOSED** |
+
+---
+
+## What replaced lexical proximity
+
+    A QUANTITY OVER THE ELIGIBLE POPULATION is a reader-visible number standing as
+    numerator to the eligible-set denominator — either immediately before it across any
+    separator, or immediately after an explicit reference to the population.
+
+    EVERY such quantity gets exactly one disposition: bound to a declared CLAIM IDENTITY
+    and compared against that identity's value reconstructed from raw, or covered by a
+    pinned exemption passage quoted in full.
+
+    A quantity with neither is REFUSED — by name, with its surrounding text.
+
+Two consequences are worth stating, because they are what makes this different from the
+three repairs before it:
+
+1. **The predicate vocabulary carries no security weight.** An unrecognised predicate
+   fails closed, so enlarging a vocabulary list can only turn a refusal into a
+   comparison, never a comparison into a pass. The lists exist so the manuscript's own
+   prose can resolve, not to catch attacks.
+2. **Ambiguity is refused, not resolved.** A sentence naming two endpoints over one
+   number is rejected rather than bound to the nearer one. Nearest-marker arithmetic is
+   what let `excludes zero — that is, a decision risk ≥ 5% — in only 7 / 26` rebind
+   itself to the endpoint that made it true.
+
+Source and PDF run the same function over the same folded text, so a claim cannot be true
+in one rendering and unexamined in the other. Folding is also what erases the two Unicode
+slashes before anything looks at them.
+
+---
+
+## Two numbers the manuscript stated and nothing reconstructed
+
+Both are now produced by the same pass over raw that produces the endpoint, at no extra
+cost, and both agree with what §3 and §4.1 already said:
+
+| claim | reconstructed | manuscript |
+|---|---|---|
+| eligible circuits with both arms constant across every seed | 13 | `13 of 26 … have no spread at all` |
+| eligible circuits whose θ changes side of the threshold across 4,000 resamples | 0 | `none of the 26 … changed θ's side` |
+
+Nothing in the manuscript was edited to make these pass. Had either disagreed, the
+contradiction would have been reported instead of repaired.
+
+---
+
+## Preserved science — unchanged, reconfirmed a fifth time
+
+36 resolved / 3 unresolved / 26 eligible; **12/26, 7/26, 4/26**; ρ = −0.8329214038556598;
+ambiguity band ≈ 10.9 pp; k=20 risk 3.741473676562272%; 216/216 cross-machine.
+`results/raw/prereg` remains `3114a270ccd78b0daaa2a1bc451dd15155d55c13`.
+
+---
+
+## Open limitations — labelled, not closed
+
+Everything carried forward from Parts 1–3, plus:
+
+1. **The disposition inventory is complete for the scanner's definition of a quantity,
+   and that definition is a choice.** A number related to the eligible set by prose this
+   scanner does not read as a numerator–denominator pair is outside the domain, not
+   inside it and passing. The definition is stated in `manuscript_binding`'s docstring
+   and printed by the disposition test, so it can be argued with rather than assumed.
+2. **The PDF's exemptions are located by text, not by position**, because extracted text
+   has no table to parse. Each exempt passage is a COMPLETE canonical row, so a duplicate
+   asserts exactly what the original asserts — but this is weaker than the source-side
+   rule, and it is stated rather than hidden.
+3. **A verifier only tests the attacks someone thought of.** Five audits have now ended
+   with a green verifier that an adversarial reader then broke. Four of the five broke
+   the apparatus rather than the science. That is a narrowing, not a finish, and this
+   file is the record of what has been tried — never a certificate.

@@ -41,7 +41,11 @@ WHAT IT CHECKS — and what each stage does NOT establish (Astra V4, 2026-09-13)
     8 raw integrity  the 78 merged arms vs the CURRENT manifest, plus selected summary
                      fields vs a raw reconstruction. Self-consistency: an attacker who
                      updates the manifest too is caught by stage 10, not here.
-    9 mutation test  22 corruptions, each REJECTED -- not merely exited on -- by a named
+    9 mutation test  every corruption in `mutation_test.MUTATIONS` -- the count is read
+                     from that list and printed in the header at run time, never spelled
+                     out here, because a number typed into prose goes stale the next time
+                     the suite grows (Astra F-05) -- each REJECTED, not merely exited
+                     on, by a named
                      stage under a named INVARIANT, read from that stage's terminal
                      verdict line rather than scraped from its console text. Evidence
                      this verifier turns red; not a proof that no other corruption passes.
@@ -158,9 +162,14 @@ def run(label, cmd, needs_bp=True):
 
 def main():
     bp = os.environ.get("BENCHPRESS_PATH")
+    # Read, not written down. Astra F-05 found this file claiming 22 corruptions and
+    # README claiming eighteen while the suite held 24; a count that lives in prose is
+    # wrong from the next commit onwards.
+    from mutation_test import MUTATIONS
     print(f"\n  qvalidation — integrity check")
     print(f"  python          {sys.version.split()[0]}  ({PY})")
     print(f"  BENCHPRESS_PATH {bp or 'NOT SET'}")
+    print(f"  mutation suite  {len(MUTATIONS)} corruptions (stage 9)")
 
     if not bp or not os.path.isdir(bp):
         print("\n  FAIL: set BENCHPRESS_PATH to a Benchpress checkout at the pinned "

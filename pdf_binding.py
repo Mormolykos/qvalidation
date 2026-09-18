@@ -211,22 +211,25 @@ def check(txt, src, echo=print):
         # assigns a number to, and that has to be read in the PDF's own text, because the
         # PDF is what a reviewer opens. Same function as stage 12, same declared
         # exemptions, different rendering.
-        from manuscript_binding import (claim_failures, ROWS,
-                                        COUNTERFACTUAL_PASSAGES)
-        from raw_endpoint import reconstruct, endpoint
-        circuits = [c.strip() for c in open(SELECTED, encoding="utf-8") if c.strip()]
-        elig, excl, ge5, ge10 = endpoint(reconstruct(circuits))
-        truth = {"excl": len(excl), "ge5": len(ge5), "ge10": len(ge10)}
-        # The canonical table in both renderings: extraction drops the pipes, but this
-        # same function is also run over Markdown source in tests, where they survive.
-        pdf_table = ("\n".join(" ".join(r) for r in body),
-                     "\n".join("| " + " | ".join(r) + " |" for r in body))
-        cfails, bound, spans = claim_failures(
-            txt, truth, len(elig), (pdf_table,) + COUNTERFACTUAL_PASSAGES,
-            lambda key: next(k for k, v in ROWS.items() if v == key))
+        from manuscript_binding import (claim_failures, canonical_row_passages,
+                                        truth_from_raw, COUNTERFACTUAL_PASSAGES)
+        truth, n_elig = truth_from_raw()
+        # ROW BY ROW, not the table as one block (Astra F-02). A single passage spanning
+        # every body row would grow to cover an injected row, and an injected row is
+        # exactly the attack: `| Summary | the primary interval excludes zero in only
+        # 7 / 26 eligible circuits | | |` inherited the table's exemption by sitting
+        # inside it. Only rows this file can NAME are exempt; anything else in the table
+        # is prose between pipes and is read as prose.
+        #
+        # Each row in both renderings: extraction drops the pipes, and the same function
+        # is run over Markdown source in tests, where they survive.
+        rows = canonical_row_passages(body)
+        cfails, checked, exempt_n = claim_failures(
+            txt, truth, n_elig, tuple(rows) + COUNTERFACTUAL_PASSAGES)
         fails += cfails
-        echo(f"  claim identity: {bound} quantit(ies) in the PDF bound to the endpoint "
-             f"their own sentence names ({spans} exempt passage(s) located)")
+        echo(f"  claim domain: {checked} quantit(ies) in the PDF bound to a declared "
+             f"identity, {exempt_n} inside {len(rows)} canonical row(s) and "
+             f"{len(COUNTERFACTUAL_PASSAGES)} pinned passage(s)")
 
     # 2. no withdrawn claim asserted. Correction notes legitimately QUOTE them, so a hit
     #    is only a failure if PAPER.md does not also contain it inside a correction.

@@ -207,15 +207,20 @@ replication, tautology proof, paper claims, raw→endpoint, raw integrity, mutat
 v2 evidence anchor, derived binding, rendered manuscript, published PDF. Exit 0 means
 every stage passed. ⚠ v4 correction (Astra V4-04): this said "five read-only checks … in
 about 45 seconds", which was true of v2 and describes neither the coverage nor the cost
-of the current verifier — stage 9 alone rebuilds the repository eighteen times and stage
-11 replays a 400 × 400,000 bootstrap.
+of the current verifier — stage 9 alone rebuilds the repository once per corruption in
+`mutation_test.MUTATIONS` and stage 11 replays a 400 × 400,000 bootstrap.
 
 **What exit 0 does and does not mean.** Each stage's scope is stated in its own file
 header, and they are overlapping checks, not thirteen independent replications: several
 share the same raw loader, selection list and classification constants, so one defect can
 pass through more than one of them. `python mutation_test.py` is the evidence that they
-turn red — eighteen corruptions, each required to be rejected by a named stage for a
-named reason. Three of those corruptions defeated v3 and six defeated v4.
+turn red — every corruption in its suite required to be rejected by a named stage for a
+named reason, under the invariant that stage prints in its own terminal verdict. Three of
+those corruptions defeated v3, six defeated v4, four defeated the v4 repairs, two the
+differential repairs, and five the claim scan that followed. ⚠ v5 correction (Astra
+F-05): the two paragraphs above said "eighteen" while the suite held twenty-four. The
+count is now read from the suite and printed by `verify.py` at run time; a number typed
+into prose is wrong from the next commit onwards, so this file no longer states one.
 
 ### 4. Tests
 

@@ -143,6 +143,10 @@ def reconstruct(circuits, cross_check=False):
             continue
 
         theta = float(n.mean() / o.mean() - 1)
+        # Both arms constant across every seed: the circuit compiles deterministically,
+        # so its risk is zero BY ARITHMETIC and not by measurement. §4.1 states a count
+        # of these over the eligible set, and until now nothing reconstructed it.
+        no_spread = bool(o.min() == o.max() and n.min() == n.max())
         r1 = np.random.default_rng(RNG_TRUTH)
         ch = np.empty(BOOT_TRUTH)
         for i in range(BOOT_TRUTH):
@@ -151,6 +155,10 @@ def reconstruct(circuits, cross_check=False):
         c_lo, c_hi = (float(x) for x in np.percentile(ch, [2.5, 97.5]))
 
         t = float(THRESHOLD)
+        # Does any of the 4,000 resamples put theta on the other side of the threshold?
+        # §3 states that none of the eligible circuits does. Same stream, same array —
+        # this costs nothing beyond the comparison and makes that sentence checkable.
+        side_stable = bool(((ch > t) == (theta > t)).all())
         # same inclusive-threshold tie policy as prereg_analysis (Astra A12)
         verdict = ("REGRESSION" if (c_lo - t) > TIE_EPS else
                    "NO_REGRESSION" if (t - c_hi) > TIE_EPS else "UNRESOLVED")
@@ -159,7 +167,8 @@ def reconstruct(circuits, cross_check=False):
         row = {"circuit": c, "status": "OK", "n_seeds": m,
                "theta_pct": theta * 100, "ci_lo_pct": c_lo * 100,
                "ci_hi_pct": c_hi * 100, "verdict": verdict, "boundary": boundary,
-               "distance_pp": abs(theta - t) * 100}
+               "distance_pp": abs(theta - t) * 100,
+               "no_spread": no_spread, "side_stable": side_stable}
 
         if verdict == "UNRESOLVED":
             row.update({"risk": None, "risk_lo": None, "risk_hi": None,

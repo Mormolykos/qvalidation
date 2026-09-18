@@ -280,23 +280,39 @@ ASTRA_PLAIN = ("The primary risk interval excludes zero in only 7 / 26 eligible 
                "circuits.")
 
 
+_TRUTH = {}
+
+
 def _truth():
-    from raw_endpoint import reconstruct, endpoint
-    circuits = [c.strip() for c in open(os.path.join(ROOT, "_selected.txt")) if c.strip()]
-    elig, excl, ge5, ge10 = endpoint(reconstruct(circuits))
-    return {"excl": len(excl), "ge5": len(ge5), "ge10": len(ge10)}, len(elig)
+    """Reconstructed from raw once per session — twenty seconds, not once per test."""
+    if not _TRUTH:
+        truth, n_elig = mb.truth_from_raw()
+        _TRUTH.update(truth=truth, n_elig=n_elig)
+    return _TRUTH["truth"], _TRUTH["n_elig"]
 
 
-def _scan(doc):
-    """The claim scan as stage 12 runs it, on a supplied document."""
+def _inventory(doc):
+    """The claim scan exactly as stage 12 runs it, on a supplied document.
+
+    Including how the exemptions are formed, because that is where F-02 lived: only the
+    rows whose identity `canonical_key` can name are exempt, and only by their own
+    character spans.
+    """
     vis = mb.visible_text(doc)
     cand = mb.find_endpoint_tables(mb.parse_tables(vis))
     assert len(cand) == 1
-    lo, hi = cand[0][3]
+    body, row_spans = cand[0][1], cand[0][4]
+    spans = [s for r, s in zip(body, row_spans) if mb.canonical_key(r)]
     truth, n_elig = _truth()
-    return mb.claim_failures(vis, truth, n_elig,
-                             (vis[lo:hi],) + mb.COUNTERFACTUAL_PASSAGES,
-                             lambda k: next(a for a, b in mb.ROWS.items() if b == k))
+    return mb.claim_inventory(vis, truth, n_elig, mb.COUNTERFACTUAL_PASSAGES, spans)
+
+
+def _scan(doc):
+    """(failures, quantities checked, quantities exempt) for a supplied document."""
+    found, fails = _inventory(doc)
+    return (fails,
+            sum(1 for q in found if q.disposition in ("bound", "enumeration")),
+            sum(1 for q in found if q.disposition == "exempt"))
 
 
 @pytest.mark.parametrize("sentence,name", [(ASTRA_PREFIXED, "prefixed"),
@@ -334,17 +350,17 @@ def test_every_counterfactual_exemption_is_a_declared_passage(paper):
     """The control. Each declared passage must be PRESENT — a stale pin is a loud
     failure, not a silent widening — and the pristine manuscript must pass."""
     assert mb.COUNTERFACTUAL_PASSAGES, "the exemption list is empty"
-    fails, bound, spans = _scan(paper)
+    fails, checked, exempt = _scan(paper)
     assert fails == []
-    assert spans == 1 + len(mb.COUNTERFACTUAL_PASSAGES)
-    assert bound >= 2
+    assert exempt == 3 + 6, "three canonical rows and the §6.1 correction's six figures"
+    assert checked >= 2
 
 
 def test_a_stale_exemption_pin_fails_loudly():
     """An exemption that no longer describes the document must be reported, not ignored."""
     truth, n_elig = _truth()
     fails, _, _ = mb.claim_failures("nothing relevant here", truth, n_elig,
-                                    ("a passage that is not present",), lambda k: k)
+                                    ("a passage that is not present",))
     assert fails and "no longer describes it" in reasons(fails)
 
 
@@ -372,6 +388,221 @@ def test_the_canonical_table_is_excluded_by_position_not_by_text(paper):
     assert isinstance(lo, int) and isinstance(hi, int) and hi > lo
     body = "\n".join("|".join(r) for r in cand[0][1])
     assert "12 / 26" in body and mb.visible_text(paper)[lo:hi].count("12 / 26") >= 1
+
+
+# ---------------------------------------------------------------- F-01 (post-2842dc37)
+#
+# The separator, the predicate spelling, the distance and the number of predicates in one
+# sentence were all attacker-controlled, and each of them decided whether a reader-visible
+# endpoint assertion was examined at all. They are Astra's cases verbatim.
+
+F01_ATTACKS = {
+    # the end-to-end reproducer, exactly as the report gives it
+    "out of": "The audit finds that the primary risk interval excludes zero in only "
+              "7 out of 26 eligible circuits.",
+    "in": "The primary risk interval excludes zero in only 7 in 26 eligible circuits.",
+    "of the": "The primary risk interval excludes zero in only 7 of the 26 eligible "
+              "circuits.",
+    "U+2044 fraction slash": "The primary risk interval excludes zero in only 7 ⁄ 26 "
+                             "eligible circuits.",
+    "U+2215 division slash": "The primary risk interval excludes zero in only 7 ∕ 26 "
+                             "eligible circuits.",
+    "strictly positive": "The decision risk is strictly positive in only 7 / 26 eligible "
+                         "circuits.",
+    "bounded away from zero": "The primary risk estimate is bounded away from zero in "
+                              "only 7 / 26 eligible circuits.",
+    "statistically significant": "The effect is statistically significant in only 7 / 26 "
+                                 "eligible circuits.",
+    # the claim phrase more than the old CLAIM_WINDOW = 160 characters from the quantity
+    "distance": "The primary risk interval excludes zero, a property we report "
+                "descriptively and do not attribute to any mechanism, and which the "
+                "pre-registration fixed in advance as the endpoint of record for this "
+                "study and for every study that follows it, in only 7 / 26 eligible "
+                "circuits.",
+}
+
+
+@pytest.mark.parametrize("name", sorted(F01_ATTACKS))
+def test_a_false_attribution_is_caught_however_it_is_spelled(paper, name):
+    """F-01. Every one of these passed all thirteen stages against 2842dc37."""
+    sentence = F01_ATTACKS[name]
+    fails, _, _ = _scan(paper.replace("## Abstract", "## Abstract\n\n" + sentence, 1))
+    assert fails, f"the {name!r} form was accepted"
+    assert "attributes 7 of 26" in reasons(fails)
+    assert "risk > 0" in reasons(fails)
+
+
+def test_the_distance_variant_really_is_beyond_the_old_window(paper):
+    """The point of that case is the distance, so the distance is asserted, not assumed."""
+    s = F01_ATTACKS["distance"]
+    assert s.index("7 / 26") - (s.index("excludes zero") + len("excludes zero")) > 160
+
+
+def test_one_sentence_naming_two_endpoints_is_refused_not_resolved(paper):
+    """F-01, the rebinding case. Nearest-marker arithmetic bound this to 'risk ≥ 5%',
+    which made it true. Two predicates reach the same number with nothing between them,
+    so which claim it belongs to is not decidable and the document is refused."""
+    sentence = ("The interval excludes zero — that is, a decision risk ≥ 5% "
+                "— in only 7 / 26 eligible circuits.")
+    fails, _, _ = _scan(paper.replace("## Abstract", "## Abstract\n\n" + sentence, 1))
+    assert fails and "more than one endpoint" in reasons(fails)
+    assert "risk > 0" in reasons(fails) and "risk ≥ 5%" in reasons(fails)
+
+
+def test_an_unrecognised_predicate_fails_closed(paper):
+    """The property that makes the vocabulary lists carry no security weight: a predicate
+    nobody listed is a REFUSAL, so enlarging a list can only turn a refusal into a
+    comparison, never a comparison into a pass."""
+    sentence = ("The primary risk interval sits entirely to the right of the origin in "
+                "7 / 26 eligible circuits.")
+    fails, _, _ = _scan(paper.replace("## Abstract", "## Abstract\n\n" + sentence, 1))
+    assert fails and "names no endpoint this file can identify" in reasons(fails)
+
+
+def test_a_number_over_the_denominator_with_no_predicate_at_all_is_refused(paper):
+    """A bare quantity is not a free pass: it is a reader-visible endpoint number this
+    file cannot classify, and it is refused rather than skipped."""
+    fails, _, _ = _scan(paper.replace(
+        "## Abstract", "## Abstract\n\nThe headline figure is 9 / 26 eligible circuits.",
+        1))
+    assert fails and "REFUSED rather than skipped" in reasons(fails)
+
+
+def test_a_predicate_in_a_neighbouring_sentence_does_not_govern(paper):
+    """The other half of the sentence rule. 'four carry at least 10%' in the abstract
+    must keep binding 'at least 10%' to `four` and not to 'Seven of 26' — a number
+    between a predicate and a quantity means the predicate belongs to that number."""
+    found, fails = _inventory(paper)
+    seven = [q for q in found if q.num == 7 and q.disposition == "bound"]
+    assert len(seven) == 1 and seven[0].identity == "ge5"
+    assert fails == []
+
+
+# ---------------------------------------------------------------- F-02 (post-2842dc37)
+
+INJECTED_ROWS = {
+    # Astra's row, verbatim
+    "summary": "| Summary | the primary interval excludes zero in only 7 / 26 eligible "
+               "circuits | | |",
+    # the same class, differently worded, so the repair cannot be specific to the above
+    "aside": "| Aside | nine of 26 eligible circuits reach the pre-registered endpoint "
+             "| | |",
+}
+
+
+@pytest.mark.parametrize("name", sorted(INJECTED_ROWS))
+def test_an_injected_row_does_not_inherit_the_tables_exemption(paper, name):
+    """F-02. The exemption was `vis[tbl_range[0]:tbl_range[1]]` — the table's whole
+    character range, which GROWS with whatever is appended to the table. An unrecognised
+    row was therefore exempt by location, and stage 12 passed."""
+    last = "| risk ≥ 10% | 4 / 26 | 15.4% | [6.2, 33.5] |"
+    doc = paper.replace(last, last + "\n" + INJECTED_ROWS[name], 1)
+    assert doc != paper
+    fails, _, _ = _scan(doc)
+    assert fails, f"the {name!r} row inherited the table's exemption"
+    assert "26" in reasons(fails)
+
+
+def test_only_rows_this_file_can_name_are_exempt(paper):
+    """The mechanism under the two tests above, stated directly."""
+    last = "| risk ≥ 10% | 4 / 26 | 15.4% | [6.2, 33.5] |"
+    doc = paper.replace(last, last + "\n" + INJECTED_ROWS["summary"], 1)
+    cand = mb.find_endpoint_tables(mb.parse_tables(mb.visible_text(doc)))
+    body = cand[0][1]
+    assert len(body) == 4, "the injected row is inside the canonical table"
+    named = [r for r in body if mb.canonical_key(r)]
+    assert len(named) == 3 and all(r[0] != "Summary" for r in named)
+
+
+def test_a_canonical_row_of_the_wrong_shape_is_not_exempted(paper):
+    """A surplus cell on a row this file DOES recognise would otherwise ride in under an
+    exemption earned by the cells around it."""
+    doc = paper.replace("| risk ≥ 5% | 7 / 26 | 26.9% | [13.7, 46.1] |",
+                        "| risk ≥ 5% | 7 / 26 | 26.9% | [13.7, 46.1] | 9 / 26 |", 1)
+    assert doc != paper
+    vis = mb.visible_text(doc)
+    cand = mb.find_endpoint_tables(mb.parse_tables(vis))
+    header, body, _, _, row_spans = cand[0]
+    wide = [r for r in body if len(r) != len(header)]
+    assert wide, "the mutated row is wider than the header"
+
+
+# ---------------------------------------------------------------- F-03 (post-2842dc37)
+
+def test_no_quantity_over_the_eligible_denominator_is_silently_unchecked(paper):
+    """F-03, and the proof behind the word "every" in manuscript_binding's docstring.
+
+    Astra measured the frozen manuscript: fifteen quantities over the eligible
+    denominator, two bound, nine exempt, FOUR SILENTLY UNCHECKED. The disposition of
+    every one is printed here, so the claim of coverage is auditable rather than
+    asserted, and the required final state is `silently unchecked = 0`.
+    """
+    found, fails = _inventory(paper)
+    tally = {}
+    for q in found:
+        tally[q.disposition] = tally.get(q.disposition, 0) + 1
+    report = "\n".join(f"    {q.num:>3}/{q.den}  {q.disposition:<12}{q.identity or '—'}"
+                       for q in found)
+    print(f"\n  disposition of every quantity over the eligible denominator:\n{report}\n"
+          f"    {tally}")
+    assert fails == []
+    assert tally.get("unclassified", 0) == 0 and tally.get("ambiguous", 0) == 0
+    assert set(tally) <= {"bound", "enumeration", "exempt"}
+    assert len(found) >= 15, "Astra counted fifteen; this scan must see at least those"
+
+
+def test_the_deterministic_compilation_count_is_bound_to_raw(paper):
+    """F-03's substantive example. Astra changed 13 to 7 and stages 6, 7 and 12 stayed
+    green, because the number named a predicate the scan had no identity for."""
+    doc = paper.replace("13 of 26 eligible circuits have no spread at all",
+                        "7 of 26 eligible circuits have no spread at all", 1)
+    assert doc != paper
+    fails, _, _ = _scan(doc)
+    assert fails and "no seed-to-seed spread" in reasons(fails)
+    assert "attributes 7 of 26" in reasons(fails)
+
+
+def test_the_denominator_first_form_is_a_quantity_too(paper):
+    """"Of the 26 eligible circuits, 13 compile deterministically" states its numerator
+    after its denominator and is as much a claim as "13 of 26" is."""
+    doc = paper.replace("Of the 26 eligible circuits, **13 compile",
+                        "Of the 26 eligible circuits, **7 compile", 1)
+    assert doc != paper
+    fails, _, _ = _scan(doc)
+    assert fails and "no seed-to-seed spread" in reasons(fails)
+
+
+@pytest.mark.parametrize("old,new", [("the 12/26,", "the 11/26,"),
+                                     ("7/26 and 4/26 counts", "9/26 and 4/26 counts"),
+                                     ("7/26 and 4/26 counts", "7/26 and 6/26 counts")])
+def test_the_endpoint_enumeration_is_one_checked_claim(paper, old, new):
+    """F-03. "the 12/26, 7/26 and 4/26 counts" names no predicate at all, so all three
+    were unchecked. Three adjacent quantities are the endpoint in canonical order."""
+    doc = paper.replace(old, new, 1)
+    assert doc != paper
+    fails, _, _ = _scan(doc)
+    assert fails and "enumerates the endpoint as" in reasons(fails)
+
+
+def test_the_two_counts_the_manuscript_states_come_from_raw():
+    """Both were added to the reconstruction rather than written down: 13 eligible
+    circuits with both arms constant across every seed, and none whose θ changes side of
+    the threshold across the 4,000 resamples."""
+    truth, n_elig = _truth()
+    assert n_elig == 26
+    assert truth["nospread"] == 13 and truth["sideflip"] == 0
+    assert truth["excl"] == 12 and truth["ge5"] == 7 and truth["ge10"] == 4
+
+
+def test_the_self_description_promises_what_the_disposition_test_proves():
+    """F-04. The docstring claimed it bound every prose quantity over the eligible
+    denominator while four went unchecked. It may only claim what is demonstrated."""
+    doc = mb.__doc__
+    assert "THE CLAIM DOMAIN" in doc
+    assert "refused" in doc.lower() and "skipped" in doc.lower()
+    assert "CLAIM_WINDOW" not in doc and not hasattr(mb, "CLAIM_WINDOW")
+    assert not hasattr(mb, "CLAIM_PHRASES"), \
+        "the phrase list was replaced by declared claim identities"
 
 
 @pytest.mark.parametrize("length", [500, 1200, 5000])
@@ -402,12 +633,46 @@ def test_quantity_is_bound_to_the_endpoint_its_own_sentence_names():
     numerator against the set of true numerators cannot tell those apart; Astra put the
     false attribution in the abstract, where a paragraph-level exemption for the word
     'withdrawn' had already excused the whole block."""
-    from manuscript_binding import CLAIM_PHRASES, WORD_NUM, QUANTITY
-    m = QUANTITY.search("Seven of 26 eligible circuits have a risk interval that "
-                        "excludes zero.")
-    assert m, "the word-numeral form must be recognised as a quantity"
-    assert WORD_NUM[m.group(1).lower()] == 7 and int(m.group(2)) == 26
-    assert "excludes zero" in CLAIM_PHRASES["excl"]
+    text = "Seven of 26 eligible circuits have a risk interval that excludes zero."
+    qs = mb.quantities(mb.flat(text), 26)
+    assert len(qs) == 1 and qs[0].num == 7 and qs[0].den == 26, \
+        "the word-numeral form must be recognised as a quantity"
+    assert "excludes zero" in mb.CLAIM_IDENTITIES["excl"][3]
+    _, fails = mb.claim_inventory(text, {"excl": 12, "ge5": 7, "ge10": 4,
+                                         "nospread": 13, "sideflip": 0}, 26)
+    assert fails and "attributes 7 of 26" in reasons(fails)
+
+
+@pytest.mark.parametrize("text,num", [
+    ("7 / 26 eligible circuits", 7),
+    ("7 out of 26 eligible circuits", 7),
+    ("7 in 26 eligible circuits", 7),
+    ("7 of the 26 eligible circuits", 7),
+    ("7 ⁄ 26 eligible circuits", 7),
+    ("7 ∕ 26 eligible circuits", 7),
+    ("Seven of 26 eligible circuits", 7),
+    ("none of the 26 eligible circuits", 0),
+    ("Of the 26 eligible circuits, 13 compile deterministically", 13),
+])
+def test_the_separator_is_not_part_of_the_decision(text, num):
+    """F-01. The old pattern spelled its own separator, so every spelling nobody thought
+    of was not a quantity at all. Numerator and denominator are found independently now."""
+    qs = mb.quantities(mb.flat(text), 26)
+    assert len(qs) == 1 and qs[0].num == num and qs[0].den == 26
+
+
+@pytest.mark.parametrize("text", [
+    "AMD64 Family 26, AuthenticAMD",            # a model number, not a denominator
+    "the effective sample size is far below 26 and no interval is informative",
+    "a descriptive count of these 26 circuits",  # the population, with no numerator
+    "reproduces bv_n140 at 22.59% against 26.28% from the contiguous run",
+    "machine 2 | CPU | AMD64 Family 26",         # a number between two numbers
+    "Version 5, 2026-09-17",                     # 26 is not a token inside 2026
+])
+def test_a_26_that_is_not_a_denominator_is_not_a_quantity(text):
+    """The other side of failing closed: if every 26 were a claim, the pristine
+    manuscript could not pass, and a checker that cries wolf gets switched off."""
+    assert mb.quantities(mb.flat(text), 26) == []
 
 
 # ---------------------------------------------------------------- V4-02
@@ -615,13 +880,92 @@ def test_every_mutation_declares_an_invariant_and_a_reason():
             assert len(fragment) > 3, f"{mid}/{layer} has no usable reason string"
 
 
+def _check_preserved_fixtures(mutations, tmp_path, monkeypatch):
+    """Astra's fixtures are DEFINED, REGISTERED, still hostile, and still aimed.
+
+    Four separate claims, because F-06 was a guard that made only the weakest of them.
+    Each fixture is RUN against a copy of the manuscript and the text it must produce is
+    compared against `ASTRA_FIXTURES` — a fixture softened into a paraphrase fails here,
+    and so does one that is quietly dropped from the executed suite.
+
+    Raises AssertionError, so the two tests below can call it with a pruned suite and
+    require it to complain.
+    """
+    import mutation_test as mt
+    monkeypatch.setattr(mt, "_rebuild_pdf", lambda *a, **k: 0)   # PDF rebuild, not content
+    registered = {m[0]: m for m in mutations}
+    for mid, (layer, must_contain) in mt.ASTRA_FIXTURES.items():
+        assert mid in registered, \
+            (f"{mid} is a preserved auditor reproducer and is NOT in the executed "
+             f"mutation suite — removing it removes the coverage it stands for")
+        _id, _label, fn, reasons_ = registered[mid]
+        assert layer in reasons_, \
+            f"{mid} no longer declares the {layer} layer it must be caught by"
+        snap = tmp_path / mid
+        snap.mkdir()
+        (snap / "PAPER.md").write_text(open(PAPER, encoding="utf-8").read(),
+                                       encoding="utf-8")
+        fn(str(snap))
+        got = (snap / "PAPER.md").read_text(encoding="utf-8")
+        assert must_contain in got, \
+            (f"{mid} no longer puts its hostile content in the manuscript: expected "
+             f"{must_contain[:70]!r}")
+
+
 def test_the_astra_reproducers_are_all_present_as_fixtures():
     """Every case Astra actually ran is a standing fixture, not a paraphrase of one."""
     import mutation_test as mt
     ids = {m[0] for m in mt.MUTATIONS}
-    for mid in mt.DEFEATED_V3 | mt.DEFEATED_V4 | mt.DEFEATED_V5:
+    for mid in (mt.DEFEATED_V3 | mt.DEFEATED_V4 | mt.DEFEATED_V5 | mt.DEFEATED_V6
+                | mt.DEFEATED_V7):
         assert mid in ids, f"mutation {mid} is declared defeated but is not defined"
     assert {"W", "X", "Y", "Z"} <= ids, "the 3643bbc differential cases are missing"
+    assert set(mt.ASTRA_FIXTURES) <= ids, "a preserved reproducer left the suite"
+
+
+def test_the_preserved_fixtures_are_registered_and_still_hostile(tmp_path, monkeypatch):
+    """The control: against the real suite the guard is satisfied."""
+    import mutation_test as mt
+    _check_preserved_fixtures(mt.MUTATIONS, tmp_path, monkeypatch)
+
+
+@pytest.mark.parametrize("dropped", ["AA", "AB", "AC", "AE", "AF", "AG", "AH", "W"])
+def test_removing_a_preserved_fixture_makes_the_guard_fail(dropped, tmp_path, monkeypatch):
+    """F-06, and Astra's exact reproducer: remove AA and AB from MUTATIONS and run the
+    supposed guard.
+
+    The old guard looped over DEFEATED_V3 | V4 | V5 — sets that do not contain AA or AB —
+    so deleting both left the tests green. A guard nobody can make fail is not evidence
+    that anything is preserved; this one is required to complain about every id it names.
+    """
+    import mutation_test as mt
+    pruned = [m for m in mt.MUTATIONS if m[0] != dropped]
+    assert len(pruned) == len(mt.MUTATIONS) - 1
+    with pytest.raises(AssertionError, match="NOT in the executed mutation suite"):
+        _check_preserved_fixtures(pruned, tmp_path, monkeypatch)
+
+
+def test_softening_a_fixture_into_a_paraphrase_makes_the_guard_fail(tmp_path, monkeypatch):
+    """The other way a reproducer is lost: the id survives and the attack does not."""
+    import mutation_test as mt
+
+    def toothless(snap):
+        p = os.path.join(snap, "PAPER.md")
+        t = open(p, encoding="utf-8").read()
+        open(p, "w", encoding="utf-8").write(
+            t.replace("## Abstract", "## Abstract\n\nSeven of 26 eligible circuits.", 1))
+        return "a paraphrase"
+
+    pruned = [(m[0], m[1], toothless, m[3]) if m[0] == "AA" else m for m in mt.MUTATIONS]
+    with pytest.raises(AssertionError, match="no longer puts its hostile content"):
+        _check_preserved_fixtures(pruned, tmp_path, monkeypatch)
+
+
+def test_every_mutation_that_edits_the_manuscript_declares_a_rendered_or_pdf_layer():
+    """A source-level fixture caught by no reader-facing layer is coverage of nothing."""
+    import mutation_test as mt
+    for mid, (layer, _text) in mt.ASTRA_FIXTURES.items():
+        assert layer in ("rendered", "pdf")
 
 
 # ---------------------------------------------------------------- V4-09
