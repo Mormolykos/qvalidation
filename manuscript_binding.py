@@ -86,9 +86,11 @@ WHAT THIS DOES
     8. Binds §4.2's four distribution statistics — median, p75, p90, max over the
        eligible circuits' risks — to values reconstructed from raw, read inside the one
        reader-visible unit that states them rather than found anywhere in the document.
-    9. Then stops reading, and asks `visible_surface` whether every reader-visible unit
-       of the page is REGISTERED. That check is what actually protects the manuscript;
-       1-8 are diagnostics that say WHICH claim is wrong when they can.
+    9. Then stops reading, and asks `visible_surface` whether every unit of the DECLARED
+       MARKDOWN SURFACE MODEL is REGISTERED. That check is what actually protects the
+       manuscript; 1-8 are diagnostics that say WHICH claim is wrong when they can. The
+       model is not the rendered page, and the two places they are known to come apart
+       are measured and named in `visible_surface`'s docstring.
 
 WHY 1-8 ARE NOT THE SECURITY BOUNDARY ANY MORE (independent audit of f125dfa, B1/B2)
     The claim domain above fails closed once a quantity exists. It has to instantiate one
@@ -892,9 +894,11 @@ def main():
     # THE CLOSED-WORLD SURFACE (independent audit, B1/B2). Everything above reads the
     # manuscript looking for assertions it can recognise, and four rounds of audit have
     # shown that recall is the part that keeps failing. This does not read anything: it
-    # asks whether every reader-visible unit of the page is registered, and refuses the
-    # ones that are not. A sentence does not have to contain a number, a slash, or any
-    # vocabulary this repository has heard of to be caught here.
+    # asks whether every unit of the declared Markdown surface model is registered, and
+    # refuses the ones that are not. A sentence does not have to contain a number, a
+    # slash, or any vocabulary this repository has heard of to be caught here. What it
+    # does have to be is a unit of that model — which is not the same thing as being on
+    # the page, and `visible_surface` names the two measured differences.
     sfails, tally, entries = vs.compare(doc_units, vs.load_ledger())
     # How big the NON_CLAIM judgement is, as a number rather than a promise. With no
     # surface failures the two sequences align one to one, so this counts the registered
@@ -902,7 +906,7 @@ def main():
     digits = 0 if sfails else sum(
         1 for u, e in zip(doc_units, entries)
         if e["disposition"] == "NON_CLAIM" and any(c.isdigit() for c in u["text"]))
-    print(f"\n  reader-visible surface: {len(doc_units)} unit(s) — "
+    print(f"\n  declared Markdown surface: {len(doc_units)} unit(s) — "
           f"{tally.get('BOUND', 0)} BOUND, {tally.get('CANONICAL', 0)} CANONICAL,"
           f"\n                          {tally.get('PINNED_EXEMPTION', 0)} "
           f"PINNED_EXEMPTION, {tally.get('NON_CLAIM', 0)} NON_CLAIM "
@@ -926,8 +930,15 @@ def main():
         vr.reject("VISIBLE_SURFACE_REGISTERED",
                   "THE READER-VISIBLE SURFACE IS NOT THE ONE THAT WAS REGISTERED",
                   sfails, limit=12)
-    vr.accept("  ✓ the table a reader sees states what the raw data produces, and every",
-              "    reader-visible unit of the page is registered with a disposition.")
+    vr.accept(
+        "  ✓ the canonical table parsed from this manuscript states what the raw data",
+        "    produces, and every unit of the DECLARED MARKDOWN SURFACE MODEL is",
+        "    registered with a disposition.",
+        "    NOT established here: that the model equals the rendered page. Two",
+        "    differences are measured and named in visible_surface — a literal",
+        "    <!-- --> inside a fenced block is stripped here though pandoc prints it,",
+        "    and indentation is normalised away, so an indented table keeps its",
+        "    identity while ceasing to be a table on the page.")
 
 
 if __name__ == "__main__":

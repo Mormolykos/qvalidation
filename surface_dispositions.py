@@ -1,4 +1,4 @@
-"""Assign a disposition to every reader-visible unit — at WRITE time only.
+"""Assign a disposition to every unit of the declared surface model — WRITE time only.
 
 This module runs when a human regenerates `manuscript_surface.json` and never during
 verification. That separation is the whole point of finding B2: a registry rebuilt from

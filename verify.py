@@ -1,4 +1,13 @@
-"""One command that says whether this repository is intact. Read-only.
+"""One command that runs every check this repository has, and says which passed.
+Read-only.
+
+WHAT EXIT 0 IS AND IS NOT
+    It is the conjunction of the thirteen stages below, each inside the scope its own
+    file header declares. It is NOT a proof that the manuscript is correct, that the
+    published PDF says what the source says in the order it says it, or that nothing
+    outside these stages' declared domains has moved. Four audits have each ended with
+    this command printing PASS on a repository an adversarial reader then broke, and the
+    stage headers are where the boundary of each check is written down.
 
 FOR A DELEGATED AGENT (Antigravity IDE, a CI job, a reviewer)
     Run this and report the PASS/FAIL table. Nothing else is needed, and nothing else
@@ -56,13 +65,14 @@ WHAT IT CHECKS — and what each stage does NOT establish (Astra V4, 2026-09-13)
                      coherence, and a replay of the original analysis. Same analysis code
                      and MC budget as the producer -- a binding, not an independent
                      recomputation.
-   12 rendered       the canonical table a reader sees, vs a reconstruction from raw, for
-                     a manuscript inside the declared raw-HTML domain; then every
-                     reader-visible unit of the page against the REGISTERED surface in
-                     `manuscript_surface.json`. A block nobody registered is refused
-                     before any recogniser reads it, so a false sentence does not have
-                     to contain a number to be caught. Outside the HTML domain it
-                     refuses rather than guessing at visibility.
+   12 rendered       the canonical table parsed from the manuscript, vs a reconstruction
+                     from raw, for a document inside the declared raw-HTML domain; then
+                     every unit of the DECLARED MARKDOWN SURFACE MODEL against the
+                     REGISTERED surface in `manuscript_surface.json`. A block nobody
+                     registered is refused before any recogniser reads it, so a false
+                     sentence does not have to contain a number to be caught. The model
+                     is not the rendered page: `visible_surface` names and measures the
+                     two places they are known to differ.
    13 published pdf  the PDF's numeric content vs the manuscript's, both directions, the
                      canonical rows in place, the version line, and every WORD of the
                      artifact against the registered surface in both directions. NOT
@@ -142,7 +152,8 @@ WHAT CHECK 6 DOES NOT PROVE (added 2026-09-08, and stated here so nobody assumes
 USAGE
     set BENCHPRESS_PATH, then:
         envs/bp202/Scripts/python.exe verify.py
-    Exit code 0 = everything intact. Non-zero = the number of failed checks.
+    Exit code 0 = every one of these checks passed, within the scope each declares.
+    Non-zero = the number of failed checks.
 """
 
 import os
@@ -223,7 +234,15 @@ def main():
         print(f"\n  {len(failed)} of {len(checks)} checks FAILED. Report this output "
               f"verbatim. Do not attempt a fix.\n")
     else:
-        print(f"\n  All {len(checks)} checks passed. The repository is intact.\n")
+        # NOT "the repository is intact" (independent audit of b5ba725). That sentence
+        # was read as a semantic proof, and these thirteen stages do not make one: each
+        # holds inside the domain its own file header declares, and stage 13 binds the
+        # PDF's word multiset without binding its word order. What passed is what is
+        # printed above, and nothing wider.
+        print(f"\n  All {len(checks)} checks passed, each within the scope its own file "
+              f"header\n  declares. That is what this run establishes and no more; a "
+              f"documented human\n  reading of the built PDF against PAPER.md remains a "
+              f"release requirement.\n")
     sys.exit(len(failed))
 
 

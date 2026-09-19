@@ -25,7 +25,7 @@ WHY THIS FILE EXISTS (independent adversarial audit of f125dfa, finding B1)
 
     So recall stops being a language problem. The question becomes closed-world:
 
-        IS EVERY READER-VISIBLE UNIT OF THIS FROZEN MANUSCRIPT REGISTERED?
+        IS EVERY UNIT OF THIS MANUSCRIPT'S DECLARED SURFACE MODEL REGISTERED?
 
     A unit's identity is the SHA-256 of its normalised text. The registry is a committed
     file, written deliberately by `--write` and reviewed as a diff, never rebuilt during
@@ -42,10 +42,37 @@ WHAT A UNIT IS
     makes the coverage measurement non-circular (finding B2). `quantities()` is not
     called here and must never be.
 
-    HTML comments are removed first and are the ONLY declared non-reader-visible syntax.
-    A comment is not on the page; whether raw HTML may hide anything else is decided by
+    HTML comments are removed first, and that removal is the model's one exclusion rule.
+    Whether raw HTML may hide anything else is decided by
     `manuscript_binding.html_domain_violations`, which rejects the document rather than
     interpreting it.
+
+WHERE THE MODEL AND THE RENDERED PAGE DISAGREE — measured, not supposed
+    The closed world is closed over THIS PARSE of the Markdown, not over what pandoc and
+    a browser put on paper. An independent audit of b5ba725 found two places where the
+    two come apart, and neither is fixed by hashing harder:
+
+    1. COMMENT STRIPPING RUNS BEFORE STRUCTURE. `COMMENT.sub("", raw)` is applied to the
+       whole document, so a literal `<!-- … -->` typed INSIDE a fenced code block is
+       removed here while pandoc renders it as visible text in a `<pre>`. Such a line is
+       therefore reader-visible and is NOT a unit of this model. Stage 13 rejects it —
+       the words reach the PDF and the registry does not carry them — so the pipeline
+       holds, but this file alone does not.
+
+    2. `normalise` DISCARDS INDENTATION AND LINE STRUCTURE. It is `" ".join(text.split())`,
+       and `units` decides "table row" from `line.strip().startswith("|")`. A unit's
+       identity therefore cannot distinguish a table from the same text indented into a
+       code block, nor see hard line breaks, list merge/split, setext promotion, NBSP,
+       U+2000, U+3000, U+0085, U+001C, CRLF↔LF or tab↔space. Indenting the canonical
+       table by four spaces leaves every hash identical while destroying the table on the
+       page. Whitespace cannot reorder words, so this family degrades PRESENTATION
+       without falsifying a number — but "the table a reader sees" is not what this model
+       checks, and it should not be described as though it were.
+
+    Zero-width characters, combining marks and backslash hard breaks DO change a unit's
+    identity and are caught. The honest statement of what this file establishes is:
+    every unit of the declared Markdown surface model is registered, and the model is
+    stated above so that the distance between it and the page can be argued about.
 
 WHAT THIS DOES NOT DEFEND AGAINST — say it plainly
     Someone who edits PAPER.md and regenerates this registry in the same commit. That is
@@ -282,7 +309,7 @@ def main():
         return
 
     fails, tally, entries = compare(doc, load_ledger())
-    print(f"\n  READER-VISIBLE SURFACE — {len(doc)} unit(s) parsed from PAPER.md")
+    print(f"\n  DECLARED MARKDOWN SURFACE — {len(doc)} unit(s) parsed from PAPER.md")
     for k in DISPOSITIONS:
         print(f"    {k:<18}{tally.get(k, 0)}")
     print(f"    {'UNKNOWN':<18}{tally.get('UNKNOWN', 0)}")

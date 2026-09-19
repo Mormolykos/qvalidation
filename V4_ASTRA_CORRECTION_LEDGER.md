@@ -715,3 +715,106 @@ Everything carried forward from Parts 1–4, plus:
    boundary rather than patching instances of it, which is a better kind of narrowing —
    and it is still a narrowing. This file is the record of what has been tried, never a
    certificate.
+
+---
+---
+
+# Part 6 — audit closure, and what the apparatus does not establish
+
+Frozen candidate audited: `b5ba725e5ddbc9ad97ab07e93e71a150e7e37cfa`.
+
+Independent hostile verdict, delivered in full:
+
+> `INDEPENDENT ADVERSARIAL AUDIT: NO RELEASE-BLOCKING DEFECT FOUND`
+
+The auditor re-ran and independently confirmed, rather than accepting the reported
+numbers: 13/13 verifier stages PASS; 44/44 mutation fixtures REJECTED with 0 NOT
+EXERCISED and 0 ERROR and all 51 declared reasons observed; the raw pre-registered tree
+`3114a270ccd78b0daaa2a1bc451dd15155d55c13`; the endpoint 12/26, 7/26, 4/26 reconstructed
+from raw; the four §4.2 statistics at 0.0000 / 6.9053 / 14.1700 / 17.3147; nine of nine
+release identities bound; the registry writer isolated from the verification path by an
+AST walk; and that denying the host pandoc turns a required PDF fixture into a visible
+NOT EXERCISED with exit 1 rather than a pass.
+
+It also attacked the registry directly — reordering, deletion, duplication, stale
+entries, hash alteration, text alteration, cross-mapping one unit to another's hash, and
+content edits inside `NON_CLAIM` units — and found all of them rejected.
+
+**This part is not a certificate.** The apparatus is not complete, not exhaustive and not
+perfect, and the three findings below are the reasons stated in the auditor's own terms.
+
+---
+
+## Three documented residual limitations — assurance, not science
+
+None of these makes a reported number wrong. Every attack that put false science on the
+*page* was rejected by some layer; the raw evidence, the endpoint and the manuscript's
+scientific prose are untouched by this round.
+
+**F1 — a literal `<!-- -->` inside a fenced code block is not a unit of the model.**
+`visible_surface.units()` runs `COMMENT.sub("", raw)` over the whole document before
+structure is parsed, so a comment typed inside a fence is stripped here while pandoc
+renders it as visible text in a `<pre>`. Stage 12 therefore returns 0 UNKNOWN on a
+document that has gained a reader-visible line. **Stage 13 rejects it** — twice, on the
+claim recogniser and on twelve word tokens the registry does not carry — so the pipeline
+holds and the artifact gate does not pass it. What was wrong was the *wording*: stage 12's
+success line and `README.md` said "every reader-visible unit", and the implementation
+establishes "every unit of the declared Markdown surface model". Both are narrowed in the
+release-preparation commit. The implementation was deliberately **not** expanded to
+preserve the stronger sentence.
+
+**F2 — whitespace transformations preserve unit identity while changing rendering.**
+`normalise` is `" ".join(text.split())` and `units` decides "table row" from
+`line.strip().startswith("|")`, so a unit's hash cannot distinguish a table from the same
+text indented into a code block. Indenting the canonical table's five lines by four
+spaces leaves the registry byte-identical, stages 12 and 13 both PASS, and the results
+table is destroyed on the page. The same blindness was confirmed for hard line breaks,
+list merge/split, setext promotion and demotion, NBSP, U+2000, U+3000, U+0085, U+001C,
+CRLF↔LF and tab↔space. Zero-width characters, combining marks and backslash hard breaks
+DO change a unit's identity and are caught. Because whitespace cannot reorder words, this
+family degrades presentation without falsifying a number — but "the table a reader sees"
+is not what the model checks, and it is no longer described as though it were.
+
+**F3 — the PDF word-multiset binding does not prove semantic word order.** Through the
+tracked `publish/build_paper.sh` (pandoc 3.9.0.2 + headless Chromium), the auditor
+produced a PDF stating `p75 = 25.2, max = 14.8` — a maximum smaller than its own 75th
+percentile — together with a reversal of which residual model fits better and of the
+direction of the additive-model shift, while `PAPER.md` and `manuscript_surface.json`
+stayed byte-identical to the frozen SHA. **Stage 13 returned PASSED**: 275 = 275 numeric
+tokens, 3/3 canonical rows intact, 7,723 = 7,723 words. Equality of multisets is a strong
+statement about content and a weak one about order. This was already declared in three
+places before the audit; the audit demonstrated it rather than discovering it.
+
+**The compensating control is a human, and only a human.** A documented reading of the
+built PDF against `PAPER.md` is a release requirement, it cannot be closed by any check in
+this repository, and no automated result in this ledger should be read as closing it.
+
+### Minor findings, recorded and not repaired in this commit
+
+- **F4** — `compare()` tallies `e["disposition"]` with `dict.get` instead of testing it
+  against the declared `DISPOSITIONS` set, so an out-of-domain label is counted rather
+  than refused and the printed buckets need not sum to the parsed unit count. The field is
+  read nowhere else (`registered_claims` reads `claims`), so this misreports the inventory
+  rather than weakening a check, and deleting the key entirely *is* rejected. It is
+  `METHODOLOGY.md` R19 in miniature — a declared domain that was never made a predicate —
+  and it is recorded here rather than fixed, because this commit is restricted to wording
+  and to this record.
+- **F5** — a passing run prints no scope narrowing beside its PASS table. Fixed in this
+  commit as part of item 1: the success line now states the scope instead of "the
+  repository is intact".
+- **F6** — `publish/paper.pdf` and `paper.html` are untracked, so the freeze pins the
+  build inputs and not the artifact. The rationale is stated in `pdf_binding.py`: Chromium
+  stamps a creation timestamp into every build, so byte-identical PDFs are not promised
+  and pinning one would be a reproducibility claim that fails on first check.
+
+---
+
+## The standing distinction
+
+| | |
+|---|---|
+| automated assurance | **passed** — 13/13 stages, 44/44 fixtures, 0 skipped, 0 ERROR, on `b5ba725` and re-confirmed on the release SHA |
+| final human artifact reading | **still required**, and not performed at the time of writing |
+
+The science is unchanged and was never in question in this round: raw tree
+`3114a270ccd78b0daaa2a1bc451dd15155d55c13`, endpoint **12/26, 7/26, 4/26**.

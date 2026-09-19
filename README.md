@@ -210,15 +210,25 @@ about 45 seconds", which was true of v2 and describes neither the coverage nor t
 of the current verifier — stage 9 alone rebuilds the repository once per corruption in
 `mutation_test.MUTATIONS` and stage 11 replays a 400 × 400,000 bootstrap.
 
-**The reader-visible surface is registered.** `manuscript_surface.json` lists every
-reader-visible unit of `PAPER.md` — heading, paragraph, table row, blockquote, code block
-— by the SHA-256 of its normalised text, with one disposition each: `BOUND`, `CANONICAL`,
-`PINNED_EXEMPTION` or `NON_CLAIM`. Stage 12 refuses any unit that is not in that list, and
-stage 13 requires every word of the built PDF to be a word the registry carries, in the
-same multiplicity. A false sentence therefore does not have to contain a number, a slash,
-or any vocabulary this repository has heard of to be caught. Regenerate the registry
-deliberately with `python visible_surface.py --write` and **review the diff** — it is the
-statement that nothing else on the page moved. ⚠ It does not defend against someone who
+**The declared Markdown surface is registered.** `manuscript_surface.json` lists every
+unit of a **declared surface model** of `PAPER.md` — heading, paragraph, table row,
+blockquote, code block, parsed as maximal runs of non-blank lines — by the SHA-256 of its
+normalised text, with one disposition each: `BOUND`, `CANONICAL`, `PINNED_EXEMPTION` or
+`NON_CLAIM`. Stage 12 refuses any unit that is not in that list, and stage 13 requires
+every word of the built PDF to be a word the registry carries, in the same multiplicity.
+A false sentence therefore does not have to contain a number, a slash, or any vocabulary
+this repository has heard of to be caught. Regenerate the registry deliberately with
+`python visible_surface.py --write` and **review the diff** — it is the statement that
+nothing else in the model moved.
+
+⚠ **The model is not the rendered page**, and the difference is measured rather than
+assumed. An independent audit of `b5ba725` found two places where they come apart: a
+literal `<!-- -->` typed inside a fenced code block is stripped as a comment here though
+pandoc prints it (stage 13 still rejects it, on the words that reach the PDF), and
+`normalise` discards indentation, so indenting the results table into a code block leaves
+every hash identical while destroying the table on the page. Both are recorded in
+`visible_surface.py` and in `V4_ASTRA_CORRECTION_LEDGER.md`; neither falsifies a number.
+⚠ Nor does the registry defend against someone who
 edits the manuscript and the registry in one commit; that is the same trust boundary
 `raw_integrity.py`'s manifest has.
 
