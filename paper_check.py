@@ -79,15 +79,21 @@ def check(label, value, fmt="{:.1f}", must_appear=True, near=None, window=140):
     """
     global OK
     s = fmt.format(value)
+    # A COMPLETE number, never a substring of a longer one (independent audit, B3).
+    # `"6.9" in PAPER` is satisfied by the canonical table's own "26.9%", so the check
+    # could pass while the figure it names is absent from the document entirely. The
+    # guards below are the same ones the claim scan uses: nothing to the left that makes
+    # this the tail of another number, nothing to the right that makes it the head of one.
+    token = re.compile(r"(?<![\d.])" + re.escape(s) + r"(?![\d.]*\d)")
     if near is None:
-        present, scope = s in PAPER, ""
+        present, scope = bool(token.search(PAPER)), ""
     else:
         i = PAPER.find(near)
         if i < 0:
             FAIL.append((label, f"anchor {near!r} missing from PAPER.md"))
             print(f"  FAIL  {label:<52s} anchor {near!r} not in PAPER.md")
             return
-        present = s in PAPER[i:i + window]
+        present = bool(token.search(PAPER[i:i + window]))
         scope = f"  [in row {near!r}]"
     if present == must_appear:
         OK += 1
@@ -168,7 +174,12 @@ def main():
     p = exact_rate_int(o, n, T, K)
     check("cc_n32 theta", th * 100, "{:.2f}")
     check("cc_n32 distance pp", abs(th - T) * 100, "{:.1f}")
-    check("cc_n32 risk pct", p * 100, "{:.2f}")
+    # v5 (independent audit, B3): a `{:.2f}` check for "0.37" used to stand here. The
+    # manuscript never writes 0.37 — it writes 0.374089, twice — and the check passed
+    # only because a bare substring test finds "0.37" inside "0.374089". Closing that
+    # hole turned this into the failure it always was. It is DELETED rather than
+    # repaired: the line below already binds the same computed value to the number the
+    # paper actually prints, at full precision, so nothing is lost with it gone.
     # v3 (audit F17): the "6 of 1728 triples" check is REMOVED, not repaired. There was
     # no 1728-triple sample; 0.00374089 * 1728 = 6.4643, and rounding that to 6 is what
     # manufactured the sentence. The exact probability is checked instead.

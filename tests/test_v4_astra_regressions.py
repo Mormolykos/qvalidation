@@ -529,7 +529,7 @@ def test_a_canonical_row_of_the_wrong_shape_is_not_exempted(paper):
 
 # ---------------------------------------------------------------- F-03 (post-2842dc37)
 
-def test_no_quantity_over_the_eligible_denominator_is_silently_unchecked(paper):
+def test_the_quantity_recogniser_classifies_everything_it_finds(paper):
     """F-03, and the proof behind the word "every" in manuscript_binding's docstring.
 
     Astra measured the frozen manuscript: fifteen quantities over the eligible
@@ -548,7 +548,13 @@ def test_no_quantity_over_the_eligible_denominator_is_silently_unchecked(paper):
     assert fails == []
     assert tally.get("unclassified", 0) == 0 and tally.get("ambiguous", 0) == 0
     assert set(tally) <= {"bound", "enumeration", "exempt"}
-    assert len(found) >= 15, "Astra counted fifteen; this scan must see at least those"
+    # NO COMPLETENESS CLAIM IS MADE HERE (independent audit, B2). This used to assert
+    # `len(found) >= 15` and call the result full coverage, which measured the recogniser
+    # with the recogniser: an assertion it never instantiated cannot appear in `found`,
+    # so the count is unchanged by the very attacks that defeat it. Coverage is
+    # established against the independent reader-visible universe in the B2 section
+    # below, and this test now claims only what it can see: everything DETECTED was
+    # classified.
 
 
 def test_the_deterministic_compilation_count_is_bound_to_raw(paper):
@@ -696,9 +702,16 @@ def test_a_number_the_source_states_and_the_pdf_drops_is_rejected(paper):
 
 
 def test_the_source_text_itself_satisfies_its_own_binding(paper):
-    """The control for the two above: PAPER.md's own visible text must pass, or the
-    rejections prove only that the comparison is over-strict."""
-    assert pb.check(mb.visible_text(paper), paper, echo=lambda *a, **k: None) == []
+    """The control for the two above: a faithful rendering of the registered page must
+    pass, or the rejections prove only that the comparison is over-strict.
+
+    The stand-in for the PDF is the REGISTERED surface's own text, not
+    `visible_text(paper)`: stage 13 now binds the artifact to the registry, and
+    `visible_text` blanks fenced code blocks, which a real PDF renders.
+    """
+    import visible_surface as vs_
+    rendered = "\n\n".join(e["text"] for e in vs_.load_ledger()["units"])
+    assert pb.check(rendered, paper, echo=lambda *a, **k: None) == []
 
 
 def test_canonical_rows_must_appear_together_not_merely_somewhere(paper):
@@ -917,7 +930,7 @@ def test_the_astra_reproducers_are_all_present_as_fixtures():
     import mutation_test as mt
     ids = {m[0] for m in mt.MUTATIONS}
     for mid in (mt.DEFEATED_V3 | mt.DEFEATED_V4 | mt.DEFEATED_V5 | mt.DEFEATED_V6
-                | mt.DEFEATED_V7):
+                | mt.DEFEATED_V7 | mt.DEFEATED_V8):
         assert mid in ids, f"mutation {mid} is declared defeated but is not defined"
     assert {"W", "X", "Y", "Z"} <= ids, "the 3643bbc differential cases are missing"
     assert set(mt.ASTRA_FIXTURES) <= ids, "a preserved reproducer left the suite"
@@ -929,7 +942,9 @@ def test_the_preserved_fixtures_are_registered_and_still_hostile(tmp_path, monke
     _check_preserved_fixtures(mt.MUTATIONS, tmp_path, monkeypatch)
 
 
-@pytest.mark.parametrize("dropped", ["AA", "AB", "AC", "AE", "AF", "AG", "AH", "W"])
+@pytest.mark.parametrize("dropped", ["AA", "AB", "AC", "AE", "AF", "AG", "AH", "W",
+                                     "AJ", "AK", "AL", "AN", "AP", "AR", "AT",
+                                     "AU", "AV"])
 def test_removing_a_preserved_fixture_makes_the_guard_fail(dropped, tmp_path, monkeypatch):
     """F-06, and Astra's exact reproducer: remove AA and AB from MUTATIONS and run the
     supposed guard.
@@ -1074,3 +1089,342 @@ def test_a_bad_build_output_is_never_published(tmp_path, make, expect):
     assert p.returncode != 0
     assert expect in (p.stdout + p.stderr)
     assert dest.read_bytes() == b"previous build"
+
+
+# =================================================================== B1 (post-f125dfa)
+#
+# The independent adversarial audit wrote nine false reader-visible statements that the
+# claim scan never instantiated as claims. Not one is a classification failure: the
+# classifier fails closed, and was never asked. These are the auditor's sentences
+# verbatim, and what refuses them is that nobody registered them — no recogniser reads a
+# word of them.
+
+import json                                                            # noqa: E402
+import subprocess                                                      # noqa: E402
+
+import visible_surface as vs                                           # noqa: E402
+
+AUDIT_BYPASSES = {
+    # the strongest reproducer: word-numbers on BOTH sides of the fraction
+    "A1b word numerator and denominator":
+        "Seven of the twenty-six eligible circuits have an interval that excludes zero.",
+    "A3b numerator seven words away":
+        "Of the 26 eligible circuits in the pre-registered set, only seven have an "
+        "interval that excludes zero.",
+    "B1 split across a relative clause":
+        "The study resolves 26 eligible circuits, of which only seven have an interval "
+        "that excludes zero.",
+    "A2b a percentage, no denominator":
+        "The primary risk interval excludes zero in just 27% of eligible circuits.",
+    "A4 full-width digits":
+        "The primary risk interval excludes zero in only ７ / ２６ eligible "
+        "circuits.",
+    "A5 a cross-reference inside the quantity":
+        "The primary risk interval excludes zero in only seven (see §4.1) of the 26 "
+        "eligible circuits.",
+    "B8 Markdown emphasis around the numeral":
+        "The primary risk interval excludes zero in only __7__ / 26 eligible circuits.",
+    "B3 a qualitative quantifier":
+        "Barely a quarter of the 26 eligible circuits have an interval that excludes "
+        "zero.",
+}
+T8_ROW = "| Summary | seven of the twenty-six eligible circuits exclude zero | | |"
+LAST_CANONICAL_ROW = "| risk ≥ 10% | 4 / 26 | 15.4% | [6.2, 33.5] |"
+
+
+def _surface(doc):
+    """The closed-world check exactly as stage 12 runs it, on a supplied document."""
+    return vs.compare(vs.units(doc), vs.load_ledger())[0]
+
+
+def _into_abstract(paper, sentence):
+    out = paper.replace("## Abstract", "## Abstract\n\n" + sentence, 1)
+    assert out != paper
+    return out
+
+
+@pytest.mark.parametrize("name", sorted(AUDIT_BYPASSES))
+def test_an_unregistered_reader_visible_unit_is_refused(paper, name):
+    """B1. Each of these returned 13/13 PASS and exit 0 against f125dfa."""
+    fails = _surface(_into_abstract(paper, AUDIT_BYPASSES[name]))
+    assert fails, f"{name!r} is still outside the validator's universe"
+    assert "NOT REGISTERED in the manuscript surface" in reasons(fails)
+
+
+def test_the_injected_table_row_in_word_numbers_is_refused(paper):
+    """B1/T8. The row check has no label to recognise and the claim scan has no digits
+    to read, so the row was invisible to both."""
+    doc = paper.replace(LAST_CANONICAL_ROW, LAST_CANONICAL_ROW + "\n" + T8_ROW, 1)
+    assert doc != paper
+    fails = _surface(doc)
+    assert fails and "NOT REGISTERED in the manuscript surface" in reasons(fails)
+    assert "table_row" in reasons(fails)
+
+
+@pytest.mark.parametrize("name", sorted(AUDIT_BYPASSES))
+def test_the_claim_recogniser_still_cannot_see_these(paper, name):
+    """The finding, kept as a standing fact rather than a memory.
+
+    These are NOT caught by understanding them better. The recogniser is as blind to
+    them today as it was at f125dfa, and that is the point: recall was moved off the
+    security boundary instead of being widened again. If a later change makes this test
+    fail, the recogniser grew — which is not forbidden, but it is not what protects the
+    page, and this test is here so nobody mistakes the one for the other.
+    """
+    doc = _into_abstract(paper, AUDIT_BYPASSES[name])
+    fails, _checked, _exempt = _scan(doc)
+    assert fails == [], (f"{name!r} is now visible to the claim scan — fine, but the "
+                         f"registry is still what refuses it")
+
+
+def test_the_registry_is_not_rebuilt_during_verification():
+    """B1/B2. A registry regenerated from the document it protects proves only that the
+    document equals itself. The write path is a separate module, reached from one branch
+    of one CLI flag, and nothing on the verification path imports it."""
+    src = open(os.path.join(ROOT, "visible_surface.py"), encoding="utf-8").read()
+    where = [ln for ln in src.splitlines() if "surface_dispositions" in ln]
+    assert len(where) == 1 and where[0].strip().startswith("from surface_dispositions")
+    body = src.split("if args.write:")[1].split("return")[0]
+    assert "surface_dispositions" in body, "the import must sit inside --write"
+    for mod in ("manuscript_binding.py", "pdf_binding.py"):
+        text = open(os.path.join(ROOT, mod), encoding="utf-8").read()
+        assert "surface_dispositions" not in text, f"{mod} can rebuild the registry"
+
+
+def test_the_surface_parser_knows_nothing_about_claims():
+    """B2. The universe must not be established by the machinery being tested. This is a
+    structural fact about the file, so it is asserted as one."""
+    import ast
+    src = open(os.path.join(ROOT, "visible_surface.py"), encoding="utf-8").read()
+    forbidden = {"quantities", "CLAIM_IDENTITIES", "WORD_NUM", "NUM_TOKEN",
+                 "claim_inventory", "DISTRIBUTION_STATS", "manuscript_binding"}
+    # the NAMES the code touches, not the words the prose uses -- the docstring says
+    # "`quantities()` is not called here", and a grep cannot tell that from a call
+    used = set()
+    for node in ast.walk(ast.parse(src)):
+        if isinstance(node, ast.Name):
+            used.add(node.id)
+        elif isinstance(node, ast.Attribute):
+            used.add(node.attr)
+        elif isinstance(node, (ast.Import, ast.ImportFrom)):
+            used.add(getattr(node, "module", "") or "")
+            used |= {a.name for a in node.names}
+    assert not (used & forbidden), f"the surface parser reaches for {used & forbidden}"
+
+
+# =================================================================== B2 (post-f125dfa)
+
+def test_the_reader_visible_universe_is_completely_registered(paper):
+    """B2. Coverage measured against a universe the claim recogniser did not produce.
+
+    The old disposition test started from `quantities()` and proved every object it
+    returned had been classified — which is true of an empty set. The universe here is
+    the Markdown block structure of the page; `test_the_surface_parser_knows_nothing_
+    about_claims` is what makes that claim checkable rather than asserted.
+    """
+    doc_units = vs.units(paper)
+    fails, tally, entries = vs.compare(doc_units, vs.load_ledger())
+    print(f"\n  protected visible units = {len(doc_units)}")
+    for k in vs.DISPOSITIONS:
+        print(f"    {k:<18}{tally.get(k, 0)}")
+    print(f"    {'UNKNOWN':<18}{tally.get('UNKNOWN', 0)}")
+    assert fails == []
+    assert tally["UNKNOWN"] == 0
+    assert sum(tally.get(k, 0) for k in vs.DISPOSITIONS) == len(doc_units)
+    assert tally["BOUND"] and tally["CANONICAL"] and tally["PINNED_EXEMPTION"]
+
+
+def test_every_release_critical_identity_has_a_registered_home(paper):
+    """The other half of coverage: nothing declared has fallen off the page."""
+    entries = vs.load_ledger()["units"]
+    homes = vs.registered_claims(entries)
+    unbound = [k for k in mb.RELEASE_IDENTITIES if k not in homes]
+    print(f"\n  release-critical quantitative identities = "
+          f"{len(mb.RELEASE_IDENTITIES)}")
+    print(f"    bound   = {len(mb.RELEASE_IDENTITIES) - len(unbound)}")
+    print(f"    unbound = {len(unbound)}")
+    assert unbound == []
+    assert len(mb.RELEASE_IDENTITIES) == 9
+
+
+NEGATIVE_CONTROLS = {
+    "no ASCII digit anywhere":
+        "A minority of the eligible circuits carry a risk interval that is "
+        "distinguishable from nothing at all.",
+    "no slash and no digit":
+        "Barely a quarter of them exclude zero, and the deterministic ones do not.",
+    "no recognised predicate vocabulary":
+        "The headline figure of this study sits entirely to the right of the origin for "
+        "seven circuits.",
+}
+
+
+@pytest.mark.parametrize("name", sorted(NEGATIVE_CONTROLS))
+def test_an_arbitrary_sentence_changes_the_universe_and_is_refused(paper, name):
+    """B2's required negative controls. The inventory itself must move."""
+    sentence = NEGATIVE_CONTROLS[name]
+    assert not any(c.isdigit() for c in sentence) or "/" not in sentence
+    doc = _into_abstract(paper, sentence)
+    before, after = vs.units(paper), vs.units(doc)
+    assert len(after) == len(before) + 1, "the universe did not change"
+    fails = _surface(doc)
+    assert fails and "NOT REGISTERED in the manuscript surface" in reasons(fails)
+
+
+def test_the_headline_reproducer_moves_the_inventory_before_anything_reads_it(paper):
+    """B2, named explicitly in the brief: this exact sentence must change the surface
+    inventory and fail there, not in a lexical recogniser."""
+    doc = _into_abstract(paper, AUDIT_BYPASSES["A1b word numerator and denominator"])
+    assert len(vs.units(doc)) == len(vs.units(paper)) + 1
+    assert _surface(doc)
+    assert _scan(doc)[0] == [], "the claim recogniser is not what caught it"
+
+
+def test_editing_a_unit_in_place_changes_its_identity(paper):
+    """Insertion is one way in; alteration is the other. A unit that is edited is a unit
+    the registry does not know, whatever the edit was."""
+    doc = paper.replace("### 4.2 Magnitude", "### 4.2 Magnitude (seven of twenty-six)", 1)
+    assert doc != paper and len(vs.units(doc)) == len(vs.units(paper))
+    fails = _surface(doc)
+    assert fails and "heading" in reasons(fails)
+
+
+def test_a_registry_entry_must_hash_its_own_text():
+    """The registry is self-verifying, so hand-editing one entry's text is caught."""
+    ledger = json.loads(json.dumps(vs.load_ledger()))
+    ledger["units"][5]["text"] = ledger["units"][5]["text"] + " and one more thing"
+    fails, _tally, _entries = vs.compare(vs.units(open(PAPER, encoding="utf-8").read()),
+                                         ledger)
+    assert fails and "does not hash its own text" in reasons(fails)
+
+
+def test_a_missing_registry_is_a_refusal_not_a_pass():
+    """No registry means nothing is known about the page, which is not the same as
+    nothing being wrong with it."""
+    fails, _tally, _entries = vs.compare(vs.units("# x\n\nhello\n"), None)
+    assert fails and "never been registered" in reasons(fails)
+
+
+# =================================================================== B3 (post-f125dfa)
+
+_STATS = {}
+
+
+def _stats():
+    """Reconstructed once per session: `reconstruct` is twenty seconds a call."""
+    if not _STATS:
+        _STATS.update(mb.distribution_from_raw())
+    return dict(_STATS)
+
+
+def test_the_distribution_statistics_are_reconstructed_from_raw():
+    """B3. Four scientific assertions over the eligible population that had no
+    disposition: they carry no `n / 26`, so the claim scan never saw them."""
+    stats = _stats()
+    print(f"\n  median {stats['dist_median']:.4f}  p75 {stats['dist_p75']:.4f}  "
+          f"p90 {stats['dist_p90']:.4f}  max {stats['dist_max']:.4f}")
+    assert round(stats["dist_median"], 1) == 0.0
+    assert round(stats["dist_p75"], 1) == 6.9
+    assert round(stats["dist_p90"], 1) == 14.2
+    assert round(stats["dist_max"], 1) == 17.3
+
+
+DISTRIBUTION = "**median 0**, p75 = 6.9%, p90 = 14.2%, max = 17.3%."
+
+DISTRIBUTION_ATTACKS = {
+    # the auditor's A8 reproducer
+    "A8 permutation": "**median 0**, p75 = 14.2%, p90 = 17.3%, max = 17.3%.",
+    "p75 and p90 swapped": "**median 0**, p75 = 14.2%, p90 = 6.9%, max = 17.3%.",
+    # 26.9 is the canonical table's own proportion -- and the substring that satisfied a
+    # presence check for 6.9
+    "p75 replaced by 26.9": "**median 0**, p75 = 26.9%, p90 = 14.2%, max = 17.3%.",
+    "max replaced by 46.2": "**median 0**, p75 = 6.9%, p90 = 14.2%, max = 46.2%.",
+    "median replaced by 15.4": "**median 15.4**, p75 = 6.9%, p90 = 14.2%, max = 17.3%.",
+}
+
+
+@pytest.mark.parametrize("name", sorted(DISTRIBUTION_ATTACKS))
+def test_a_false_distribution_statistic_is_bound_and_rejected(paper, name):
+    """Every replacement value here already appears elsewhere in the manuscript, so the
+    document's numeric token set stays compatible and nothing downstream notices."""
+    doc = paper.replace(DISTRIBUTION, DISTRIBUTION_ATTACKS[name], 1)
+    assert doc != paper
+    stats = _stats()
+    fails, bound = mb.distribution_failures(vs.units(doc), stats)
+    assert fails, f"{name!r} was accepted"
+    assert "which the raw data puts at" in reasons(fails)
+
+
+def test_the_pristine_distribution_sentence_binds(paper):
+    """The control."""
+    fails, bound = mb.distribution_failures(vs.units(paper), _stats())
+    assert fails == [] and bound == 4
+
+
+def test_six_point_nine_is_not_satisfied_by_twenty_six_point_nine():
+    """B3, named in the brief. `"6.9" in PAPER` is true of the canonical table's own
+    "26.9%", so a presence check could pass while the figure was absent entirely."""
+    import re
+    haystack = "| risk ≥ 5% | 7 / 26 | 26.9% | [13.7, 46.1] |"
+    assert "6.9" in haystack, "the substring really is there"
+    token = re.compile(r"(?<![\d.])" + re.escape("6.9") + r"(?![\d.]*\d)")
+    assert not token.search(haystack), "the token form must not match inside 26.9"
+    assert token.search("p75 = 6.9%, p90")
+
+
+def test_paper_check_uses_the_token_form_not_a_substring():
+    """The same repair where the audit found it."""
+    src = open(os.path.join(ROOT, "paper_check.py"), encoding="utf-8").read()
+    assert "present, scope = s in PAPER" not in src
+    assert "present = s in PAPER[i:i + window]" not in src
+    assert "token = re.compile(" in src
+
+
+def test_the_distribution_must_be_stated_exactly_once(paper):
+    """Zero means the claim has left the page; two means the document says it twice and
+    which one a reader believes is not decidable."""
+    stats = _stats()
+    doubled = paper.replace(DISTRIBUTION, DISTRIBUTION + "\n\n" + DISTRIBUTION, 1)
+    fails, _bound = mb.distribution_failures(vs.units(doubled), stats)
+    assert fails and "exactly one must" in reasons(fails)
+    gone = paper.replace(DISTRIBUTION, "The distribution is described in §4.2.", 1)
+    fails, _bound = mb.distribution_failures(vs.units(gone), stats)
+    assert fails and "exactly one must" in reasons(fails)
+
+
+# ============================================ the mutation execution contract
+
+def test_a_required_fixture_that_cannot_be_built_fails_the_suite():
+    """A fixture that was never built did not test anything, so the suite cannot certify
+    anything — but it exited 0 while printing that it had not run, which is the V4-07
+    defect in its third costume. Missing pandoc must never leave stage 9 green.
+
+    This runs the real suite with the tools hidden, so it tests the contract rather than
+    a description of it.
+    """
+    code = (
+        "import sys; sys.path.insert(0, r'%s');"
+        "import mutation_test as mt;"
+        "mt.shutil.which = lambda *a, **k: None;"
+        "mt.CHROME = [];"
+        "sys.argv = ['mutation_test.py', '--only', 'AK'];"
+        "mt.main()" % ROOT)
+    p = subprocess.run([sys.executable, "-c", code], cwd=ROOT, capture_output=True,
+                       text=True, timeout=900)
+    assert p.returncode != 0, "a skipped required mutation left the suite green"
+    assert "NOT EXERCISED" in p.stdout
+    assert "execution\n    failure" in p.stdout or "execution failure" in p.stdout
+    # and it must NOT be scored as a detection
+    assert "REJECTED" not in p.stdout.split("NOT EXERCISED")[1][:400]
+
+
+def test_a_skipped_fixture_is_never_counted_as_a_rejection():
+    """The classification half of the same contract, stated where it is decided."""
+    src = open(os.path.join(ROOT, "mutation_test.py"), encoding="utf-8").read()
+    body = src.split("if skipped:")[1].split("if failures:")[0]
+    code = "\n".join(ln for ln in body.splitlines() if not ln.strip().startswith("#"))
+    assert "failures.append" in code, "a skipped fixture must fail the suite"
+    # the CODE, not the comment that explains why: the block says out loud that a skip
+    # never becomes a REJECTED, and the assertion has to be about what it does
+    assert "REJECTED" not in code, "a skipped fixture must not be scored as a detection"
+    assert "results.append" not in code, "a skipped fixture must not join the results"

@@ -1,0 +1,1073 @@
+{
+ "source": "PAPER.md",
+ "units": [
+  {
+   "uid": "d4ea412dd84162b2",
+   "kind": "heading",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "# Finite-sample decision risk in unseeded quantum compiler benchmarking"
+  },
+  {
+   "uid": "f221071c0c40246d",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "**Panagiotis Gkilis** · BedVibe Studios, Oslo, Norway · <bedvibe@bedvibe.studio> ORCID 0009-0007-3805-170X"
+  },
+  {
+   "uid": "8f1348b08584a7c8",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "*Version 4, 2026-09-13. Not submitted. All data and code:* `qvalidation` *repository.*"
+  },
+  {
+   "uid": "cb3f91d54eee30e5",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "---"
+  },
+  {
+   "uid": "266c21b810ae6575",
+   "kind": "heading",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "## Abstract"
+  },
+  {
+   "uid": "252d70f880f994bd",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "Quantum compiler benchmarks are used to accept or reject changes to production transpilers, but the compilers they measure are stochastic. We show that at the pinned revision of IBM's Benchpress benchmark suite, its Qiskit gym compiles without passing `seed_transpiler`, so every gate count it reports is one draw from an unmeasured distribution — while the BQSKit gym in the same repository does seed its compiler. We quantify the consequence as **finite-sample decision risk**: the probability that a regression verdict computed from *k* runs per version disagrees with the verdict implied by the same measurement's long-run mean."
+  },
+  {
+   "uid": "db43520669556422",
+   "kind": "block",
+   "disposition": "BOUND",
+   "claims": [
+    "ge5"
+   ],
+   "text": "In a pre-registered study of 39 QASMBench circuits (28–420 qubits) transpiled to a heavy-hex lattice under Qiskit 1.4.3 and 2.0.0, using 200 distinct transpiler seeds per arm — the smallest 200 of 400 draws, so lower order statistics rather than an IID full-range sample (§3.4) — across ten operating-system processes, we find that circuits whose compilation is deterministic carry zero risk by construction, while among the 23 resolved circuits whose compilation is stochastic the risk falls with distance from the decision boundary — an association we report descriptively and do not attribute — thresholding can induce a relationship of this kind, but the quantitative claim that it *largely* does was withdrawn in v3 with the synthetic null that supported it, and is not reinstated (§4.1). Seven of 26 eligible circuits carry a risk of at least 5% and four carry at least 10% under a +10% threshold. The median circuit admits an **ambiguity band of 10.9 percentage points** — the total width of the interval over which the three-run rule's call probability runs from 5% to 95%. The band is constructed from the measured residuals of **this** version pair and is not independent of it."
+  },
+  {
+   "uid": "0a341bfe19f813ff",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "Two of the three circuits named in Qiskit issue #14402 are affected. On a matched `linear` topology we reproduce that issue's two low-variance figures to within 0.63 and 0.29 percentage points, and show that its remaining figure (+46.14% on `bv_n140`) sits at the 87.8th percentile of the distribution a three-run comparison produces **at our configuration**, whose exact support runs from −17.68% to +109.17%. The issue's historical Benchpress revision and aggregation rule are not supplied, so these are numerical comparisons at our configuration, not a reproduction of its protocol, and the distribution above is ours rather than the one its protocol would have produced."
+  },
+  {
+   "uid": "b3e72557ff2e0121",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "We do not claim a suite-level failure rate; our sample is underpowered for one. We claim that finite-sample decision risk is measurable and reproducible on a benchmark suite used to evaluate a production compiler, under an explicitly hypothetical +10% threshold and aggregation policy that the suite itself does not define. We identify no compiler mechanism, and we show no published decision to have been wrong."
+  },
+  {
+   "uid": "cb3f91d54eee30e5",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "---"
+  },
+  {
+   "uid": "e569d07d3d78b385",
+   "kind": "heading",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "## 1. Introduction"
+  },
+  {
+   "uid": "3fe285b9f2e95333",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "Compiler benchmarks answer a binary question: is this change a regression? For classical compilers the measurement is nearly deterministic and the question is nearly settled by one run. For quantum compilers it is not. Routing a circuit onto a constrained qubit topology is NP-hard, and production transpilers use stochastic heuristics — Qiskit's SABRE among them. The same circuit, the same compiler and the same target produce different gate counts on different runs."
+  },
+  {
+   "uid": "9663d7b8dd3de7c7",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "This is well known. What has not been measured is what it costs the decisions built on top of it."
+  },
+  {
+   "uid": "adda033c7e92c916",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "This paper is also the first output of a validation apparatus we are building, and it is written to expose that apparatus rather than only its result. The measurement pipeline, the pre-registration mechanism, the numeric inventory that re-checks **44 enumerated figures** against a fresh recomputation, the replication artifact, and the adversarial audit are all part of the contribution. **The Qiskit experiment is the demonstration case; the reusable object is the method for quantifying decision risk in a stochastic benchmark.** Nothing in the apparatus is specific to Qiskit: it requires only a benchmark whose observable is a scalar, a source of run-to-run variation that can be enumerated or sampled, and a decision rule."
+  },
+  {
+   "uid": "13d600bc67e8a192",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "Our contribution is threefold. First, a source-level finding: **at the pinned revision, the Qiskit gym of IBM's Benchpress suite compiles without passing `seed_transpiler`**, and the inspected QASMBench gate-count path does not aggregate repeated transpilation counts before returning the measured circuit count (§2.1), so a reported figure is one sample and the choice of estimator is left entirely to the reader. This is a claim about one gym at one revision and not about the suite as a whole: the sibling BQSKit gym does seed its compiler, and the remaining six gyms are not assessed here (§2.1). Second, a definition and measurement: **finite-sample decision risk**, the probability that a *k*-run verdict disagrees with the long-run verdict of the same measurement. Third, a pre-registered experiment that measures this risk on 39 circuits and reports what predicts it — while declining to call that association a compiler mechanism (§4.1)."
+  },
+  {
+   "uid": "4b9e3c20a22f99bd",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "We are deliberately narrow about what follows. We do not claim any published decision was wrong, we do not attribute anything to a specific commit, and we withdraw — in §5 — a suite-level rate that an earlier draft of this work reported."
+  },
+  {
+   "uid": "6c835410e0b28ae9",
+   "kind": "heading",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "## 2. Background"
+  },
+  {
+   "uid": "9ded318f892706a9",
+   "kind": "heading",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "### 2.1 Benchpress"
+  },
+  {
+   "uid": "a60cbcfcf48704d6",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "Benchpress (Nation et al., *Nature Computational Science*, 2025; doi:10.1038/s43588-025-00792-y) compiles a corpus of circuits against abstract topologies and records circuit properties. Its 2-qubit gate observable is, verbatim from `benchpress/qiskit_gym/utils/io.py`:"
+  },
+  {
+   "uid": "66017e310a7c48dc",
+   "kind": "code",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "```python benchmark.extra_info[\"output_gate_count_2q\"] = circuit.count_ops().get(two_qubit_gate, 0) ```"
+  },
+  {
+   "uid": "916cf732b46da995",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "Two properties matter here, both established by reading the source at commit `b695f30e83a32bac05b9b4d8e98d37ba9aae5236`:"
+  },
+  {
+   "uid": "1bee5a51da8915b1",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "1. **The Qiskit gym compiles unseeded — and a sibling gym does not.** At commit `b695f30e`, the Qiskit-based gyms call `generate_preset_pass_manager( optimization_level=..., backend=...)` with no `seed_transpiler` anywhere. Circuit-*construction* seeds are pinned (`seed=12345`, 14 occurrences); the compilation seed is not."
+  },
+  {
+   "uid": "2df54052d6fd9659",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "⚠ We state this for the Qiskit gym only. `seed_transpiler` and `generate_preset_pass_manager` are **Qiskit-specific APIs**; the other six gyms cannot call them and use their own interfaces — TKET, for instance, calls `backend.default_compilation_pass(optimisation_level=...)`. More importantly, the ⚠ v4 correction (Astra A11), two scope limits on this paragraph. The unseeded finding is about the **ordinary preset-pass-manager path**; the separate qiskit-transpiler-service gym calls `TranspilerService` and is a different compilation path, not covered by it. And the BQSKit statement below is about the **inspected files**, not about every BQSKit path in the suite. The **BQSKit gym explicitly seeds its compiler**: `bqskit_gym/device_transpile/test_summit.py:179` calls `compile(circuit, model=BACKEND, optimization_level=..., compiler=compiler, seed=0)`. **Whether the remaining SDKs compile deterministically is not assessed here.** This is a claim about one revision of one repository, not a permanent property of Benchpress. 2. **No aggregation of repeated gate-count measurements exists on the inspected path.** The gate count is read from one returned circuit: no mean, no minimum, no best-of-*k*. ⚠ v3 correction: the earlier wording \"no aggregation exists anywhere\" and \"no run-count option\" was too broad. Benchpress drives its workouts with pytest-benchmark and sets `--benchmark-min-rounds=1`; that framework does support repetition and aggregation, of **timings**. No gate-count aggregation is implemented, which is the claim the argument needs."
+  },
+  {
+   "uid": "0e5b34fdfd9998a9",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "Consequently the aggregation is the user's choice, and different users may choose differently."
+  },
+  {
+   "uid": "e148eaf43fe7ab96",
+   "kind": "heading",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "### 2.2 Qiskit issue #14402"
+  },
+  {
+   "uid": "f47541b1f1025348",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "In May 2025 the lead author of Benchpress reported large 2-qubit gate count increases between Qiskit 1.4.3 and 2.0, writing: *\"This was verified by running Benchpress several times for each version to get statistics. E.g. over the full test suite the values returned for 3 runs was:\"*. Per-test figures are described as *\"the avg. percent increase in 2Q gate counts\"*; the basis of that average is not stated. The largest reported cases are `bv_n140-linear` **+46.142%**, `bv_n280-linear` **+44.245%** and `knn_341-linear` **+44.060%**. ⚠ v4 correction: v1–v3 rounded the third of these to +41%, which is not what the issue reports; the error propagated into §4.4's comparison table and reversed the sign of one difference."
+  },
+  {
+   "uid": "f1688b653ff4f047",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "We take *k* = 3 from this report. It is an external choice, not ours, and Benchpress itself offers no such parameter."
+  },
+  {
+   "uid": "8db6d2b5b832d267",
+   "kind": "heading",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "## 3. Methods"
+  },
+  {
+   "uid": "a40cc60582d08d49",
+   "kind": "heading",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "### 3.1 Estimand"
+  },
+  {
+   "uid": "ae54ae61b689e030",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "For circuit *c*, topology *T* and compiler versions *A* (baseline) and *B* (candidate), let *X<sub>A</sub>(s)*, *X<sub>B</sub>(s)* be the 2-qubit gate counts produced with `seed_transpiler = s`. ⚠ v4 correction: v1–v3 called these \"deterministic functions of *s*\". Not all relevant randomness is controlled — `FlexibleBackend` draws backend error rates unseeded on every construction — so the defensible statement is that **repeating a fixed seed reproduced the same count in every control we ran**: across processes with differing `PYTHONHASHSEED`, across an independently reconstructed environment, and across two machines with different CPU vendors (§3.4). Backend randomness was probed in a 0-of-24 control, which is a limited negative result and not proof that it never matters. Define the **reference change**"
+  },
+  {
+   "uid": "f932cc31fa34767b",
+   "kind": "blockquote",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "> θ = E<sub>s</sub>[X<sub>B</sub>(s)] / E<sub>s</sub>[X<sub>A</sub>(s)] − 1"
+  },
+  {
+   "uid": "72a53ea039781c68",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "estimated by the ratio of arm means. The protocol draws *k* seeds per arm independently and flags a regression when (mean<sub>B</sub> − mean<sub>A</sub>)/mean<sub>A</sub> ≥ *t*. **Finite-sample decision risk** is the probability, over the protocol's own draw space, that its verdict differs from the verdict implied by θ."
+  },
+  {
+   "uid": "414a5c9bbdea08d5",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "**θ is an estimated long-run mean of the same stochastic process, not external ground truth.** The quantity is therefore the procedure's finite-sample error relative to its own asymptote. This is weaker than an external criterion, and no external criterion exists: the \"true\" gate count of a stochastic compiler is not defined independently of the compiler. We use the phrase *decision risk*, never *wrong answer*."
+  },
+  {
+   "uid": "0f9abc5eb468f021",
+   "kind": "heading",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "### 3.2 Decision rule, computed exactly"
+  },
+  {
+   "uid": "80a58524087f35ed",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "Gate counts are integers, so the rule is exactly decidable. With arm sums *S<sub>A</sub>*, *S<sub>B</sub>* over *k* draws and *t = p/q* in lowest terms,"
+  },
+  {
+   "uid": "b9e27138aa71c4d3",
+   "kind": "blockquote",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "> (S<sub>B</sub> − S<sub>A</sub>)/S<sub>A</sub> ≥ p/q ⟺ q·S<sub>B</sub> ≥ (q+p)·S<sub>A</sub>"
+  },
+  {
+   "uid": "d9a0e2880aa50456",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "which involves no floating point. This matters: the natural float form `b ≥ a(1+t)` is *not* the same expression as `(b−a)/a ≥ t`, and disagreed with it in 84 of 900 randomised cases during development. The integer form was verified against exact-integer brute force over 900 cases with zero disagreements. Risk is then computed by enumerating all 200³ = 8,000,000 sum-triples per arm for *k* ≤ 3, and by Monte Carlo above that."
+  },
+  {
+   "uid": "c8edef83f25c22d1",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "Two conventions are stated explicitly. **Draws are enumerated with replacement**, so the tuple (s, s, s) is included; a maintainer running *k* distinct seeds corresponds to enumeration *without* replacement. We computed both: on the pre-registered data the per-circuit risk differs by at most 0.0011 and the count of circuits at risk ≥ 5% is unchanged at 7. **Equality at the threshold counts as a regression call**, consistent with the ≥ in the decision rule. The integer path is unguarded against a zero baseline sum, which is undefined; no circuit in this study has a zero 2-qubit gate count, so the branch is never exercised."
+  },
+  {
+   "uid": "ad527dd55f503816",
+   "kind": "heading",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "### 3.3 Pre-registration"
+  },
+  {
+   "uid": "8743605c188146a0",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "The circuit list, protocol, analysis code and falsification criteria were committed before **the first tracked commit of the primary 39-circuit raw data**. ⚠ v4 correction (Astra V4-05): earlier versions of this sentence said \"before the primary raw data existed\", which asserts more than a commit log can support — see the correction below, which this sentence now matches instead of contradicting."
+  },
+  {
+   "uid": "9e8d635ac3a9bf36",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "⚠ v3 correction. Earlier versions said \"before any measurement existed\" and called the absence of cherry-picking \"a checkable fact\". Both overstate the record. A census and exploratory results **preceded** the pre-registration: commit `c426338`, earlier the same day, already identifies heavy-hex as the worst case, and the ≤10 s selection rule is computed from that pre-existing census. What the commit order supports is a **frozen follow-up design after exploration** — the circuit list and the `bv_n140` exclusion were fixed before the primary data was added and did not change afterwards — not blindness to earlier outcomes. Git records the order in which files were committed locally; it does not record when their outputs were first looked at, and local timestamps are not independent evidence of that. ⚠ v4 correction (Astra A09): git establishes the order in which files were COMMITTED and nothing more. It does not establish when an output was first seen, nor that no uncommitted data existed, nor that local clock times are truthful. The defensible statement is that the analysis code and circuit list were **committed before the first tracked commit of the primary raw data**, and that per the author's process records the analysis was intended to be blind. Commit order is verifiable (`git log --diff-filter=A -- prereg_analysis.py results/raw/prereg`):"
+  },
+  {
+   "uid": "f1694be8df13971a",
+   "kind": "table_row",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "| commit | timestamp | content |"
+  },
+  {
+   "uid": "23cca02b74f38646",
+   "kind": "table_row",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "|---|---|---|"
+  },
+  {
+   "uid": "dff66f151712444b",
+   "kind": "table_row",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "| `a36a34a` | 2026-09-03 23:51:08 | pre-registration |"
+  },
+  {
+   "uid": "a025c37cabc1c126",
+   "kind": "table_row",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "| `fbc573d` | 2026-09-03 23:52:38 | analysis code and circuit list |"
+  },
+  {
+   "uid": "3ac04772a9eb4cec",
+   "kind": "table_row",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "| `30224a0` | 2026-09-04 09:13:07 | raw data, unanalysed |"
+  },
+  {
+   "uid": "54b9ef996c6806b5",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "**Selection was on compute cost only:** every `qasmbench-large` circuit whose 12-seed heavy-hex runtime in a pre-existing census was ≤ 10 s. ⚠ v3 correction: earlier versions said runtime \"is independent of both θ and the risk\". That is not established and is withdrawn. The defensible statement is procedural — **the implemented selection rule uses runtime, and consulted neither θ nor risk** — with the caveat that exploratory results existed before the rule was frozen (§3.3). This yielded **39 circuits, 28–420 qubits**. One circuit, `bv_n140`, was excluded from the primary analysis because it had been selected post-hoc in earlier exploratory work; it is reported separately in §4.4."
+  },
+  {
+   "uid": "4afeca3bcbecd259",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "**Analysis, fixed in advance.** θ interval by percentile bootstrap over seeds, resampled jointly across the paired arms, B = 4000. A circuit is `REGRESSION` if that interval lies entirely above *t*, `NO_REGRESSION` if entirely below, otherwise `UNRESOLVED` and excluded."
+  },
+  {
+   "uid": "06d31d2e7c3d796a",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "**Numerical tolerance on that rule, stated because it is not literal strict ordering.** \"Entirely above\" is evaluated as *c*<sub>lo</sub> − *t* > ε with **ε = 10⁻⁹**, and \"entirely below\" symmetrically. The threshold is declared inclusive and an exact tie is `UNRESOLVED`, which floating-point arithmetic does not give for free: with arm means of 100 and 110 the change is mathematically exactly +10%, but `110/100 − 1` evaluates to 0.10000000000000009, which a literal comparison classifies as `REGRESSION`. The cost of the guard is stated rather than hidden: an interval endpoint that is strictly above or below the cut but within 10⁻⁹ of it is classified `UNRESOLVED`. This moves no result reported here — the closest interval endpoint to the threshold across all 39 circuits is 2.3 × 10⁻³, some 2.3 million times the guard — and `tests/test_threshold_ties.py` asserts that margin, so a future data set which narrowed it would fail rather than pass in silence. ⚠ v4 correction (Astra V4-09): earlier versions stated the entirely-above / entirely-below rule without this qualification, while the implementation had carried the guard since v4. The decision event for the *k*-run rule in §3.2 is separate and remains an exact integer comparison with no tolerance. A circuit whose θ lies within 3 percentage points of *t* is flagged `BOUNDARY` and excluded. Risk interval by seed bootstrap, B = 400. The pre-registered primary endpoint is the proportion of non-boundary, resolved circuits whose risk interval excludes zero."
+  },
+  {
+   "uid": "4e55e95f2d9a54b2",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "⚠ **v3 correction — what the risk interval conditions on.** Each replicate jointly resamples the seed-indexed arms and recomputes P(call). It does **not** recompute θ's side of the threshold, the reference verdict, the `UNRESOLVED` classification, or `BOUNDARY` eligibility, and it does not switch between P(call) and 1 − P(call) if θ crosses. These are therefore **conditional bootstrap intervals for P(call) given the observed classification**, not calibrated confidence intervals for long-run decision risk, and earlier versions read them as the latter."
+  },
+  {
+   "uid": "6b5862a653af7ac9",
+   "kind": "block",
+   "disposition": "BOUND",
+   "claims": [
+    "sideflip"
+   ],
+   "text": "Two things follow. First, a stability result that does hold: across 4,000 resamples, none of the 26 eligible circuits changed θ's side of the threshold. Eligibility is materially less stable — `knn_n67` crossed the 3 pp boundary in 22.0% of resamples, `swap_test_n83` in 27.4%, `adder_n118` in 8.6%. Second, a limit that is easy to state and was not stated: coverage is not guaranteed. With arm A ≡ 100 and B equal to 100 with probability 0.99 or 2100 with probability 0.01, the population θ is +20% and the true three-run false-negative risk is 0.99³ = 97.03%; yet with probability 0.99²⁰⁰ = 13.4% every one of 200 observed draws is 100, and this procedure then reports a non-boundary `NO_REGRESSION` with interval [0, 0]. Nominal 95% coverage is at most 86.6% in that construction. **We do not claim the measured compiler populations have such a tail**; the example shows only that a sample of 200 does not by itself answer the coverage question."
+  },
+  {
+   "uid": "c7cef34b0a0620af",
+   "kind": "heading",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "### 3.4 Measurement and controls"
+  },
+  {
+   "uid": "bbfe20491dd0963e",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "Qiskit **1.4.3 → 2.0.0**, forward, topology `heavy-hex`, Benchpress pinned at `b695f30e` with module and all 58 circuit hashes recorded. **200 distinct seeds per arm**, realised range 663,193 – 1,105,794,431, zero consecutive pairs, split across **ten OS processes per arm** with differing `PYTHONHASHSEED`. **15,600 transpilations.**"
+  },
+  {
+   "uid": "a8cbda9fbe64917f",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "⚠ **v3 correction — the seed law.** Earlier versions described these as \"200 independent transpiler seeds\" drawn from 7 … 2³¹. **They are not an IID sample from that range.** The generator draws **400** integers, deduplicates, sorts, and keeps the **smallest 200** (`scatter.py`: `sorted(set(rng.integers(7, 2**31 - 1, n * 2)))[:n]`). The retained values are therefore dependent lower order statistics."
+  },
+  {
+   "uid": "46d2f5911445877e",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "The signature is visible in the data and is not subtle: **6 of the 200 realised seeds lie above the midpoint of the nominal range, where roughly 100 would be expected** under the claimed uniform draw, and their mean sits at **0.2462** of the range rather than 0.5."
+  },
+  {
+   "uid": "dde51f93142aeb82",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "What this does and does not affect. Every reported per-seed measurement stands: the arms are correctly paired, the seeds are distinct, and the risk calculations are exact functions of the recorded values. ⚠ v4 correction (Astra V4-05): earlier versions added \"each count was reproduced from its seed in the controls described above\", which reads as a claim about all 15,600 observations. The controls are finite and are listed below — **144** counts (6 circuits × 12 seeds × 2 versions) reproduced from clean, and **216** per-seed gate counts matched across two machines. Every count *those controls compared* was reproduced exactly; the remaining observations were not re-measured, and the backend randomness noted there applies throughout. What is **not** supported is any claim that the empirical distributions represent the seed space a user would encounter, or that they estimate the behaviour of unseeded operation over the full range. Restoring that would require a rerun under a correctly specified sampling law, which we have not done. The results in §4 are therefore statements about **these** recorded distributions."
+  },
+  {
+   "uid": "9438fd96e6933a27",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "Controls, each of which could have invalidated the study:"
+  },
+  {
+   "uid": "92fa231b3db18c6b",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "- **Backend randomness.** `FlexibleBackend` draws error rates unseeded, differently on every construction, and the two arms build backends separately. At optimization level 2 the layout passes score with error rates. Tested with four verified-distinct draws × six circuits × four seeds: **0 of 24 cases changed the observable.** - **Observable identity.** `two_q_gate_type` is `cz` in all three Qiskit versions and on all four topologies; transpiled output contains no other 2-qubit gate. - **Backend identity.** Coupling map identical across versions (278 edges, hash `ef616023`), as are the basis gates. - **Seed independence.** Lag-1 autocorrelation of consecutive seeds between −0.22 and +0.11; contiguous and scattered seed sets give matching spreads. - **Determinism.** A fixed seed reproduces the same **2-qubit gate count** across separate OS processes with differing `PYTHONHASHSEED`, across an independently reconstructed clone and environment, and **across two physical machines with different CPU vendors**. The six-circuit replication artifact reproduces **144 of 144** per-seed values from a clean state on both."
+  },
+  {
+   "uid": "577176ece868c71c",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "⚠ v3 correction: earlier versions said \"bit-identically\". The cross-machine records contain gate counts, seeds, versions and topology — **no output QASM hash, operation sequence, layout or final mapping**. Their hashes identify the *input* circuit. What is established is agreement on every compared integer, not identity of the compiled circuits."
+  },
+  {
+   "uid": "297c6dfc2d1012f7",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "The cross-machine check's protocol was committed before the first tracked commit of any second-machine result (`crossmachine/PREREGISTRATION.md`; the commit order is checkable, and establishes commit order only — §3.3) and inherits the frozen six-circuit, twelve-seed selection wholesale, so it introduces no selection freedom. It covers **all three Qiskit versions**, including the 1.4.3 → 2.0.0 pair the primary study uses. **All 216 per-seed gate counts are identical**:"
+  },
+  {
+   "uid": "5f5f6f269a609209",
+   "kind": "table_row",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "| | machine 1 | machine 2 |"
+  },
+  {
+   "uid": "23cca02b74f38646",
+   "kind": "table_row",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "|---|---|---|"
+  },
+  {
+   "uid": "7d274fe494dedfa5",
+   "kind": "table_row",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "| CPU | AMD64 Family 26, `AuthenticAMD` | Intel64 Family 6, `GenuineIntel` |"
+  },
+  {
+   "uid": "be03045bda16f994",
+   "kind": "table_row",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "| cores | 16 | 8 |"
+  },
+  {
+   "uid": "79d3ebf7fb33635f",
+   "kind": "table_row",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "| Python | 3.10.10 | 3.10.21 |"
+  },
+  {
+   "uid": "5b6822301e7fa721",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "The differing Python patch version was not controlled and cuts in the same direction: more uncontrolled variation, still identical integers."
+  },
+  {
+   "uid": "eb29c060faef2981",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "⚠ **What this does not establish.** ⚠ v4 correction: the cross-machine measurement records do **not** contain a rustworkx version or build — that field was added to the recorder only afterwards. The statement that both machines ran **rustworkx 0.18.1** is a retrospective author assertion, not contemporaneous evidence, and is labelled as such here. Either way the limitation stands and is the stronger reading: because the graph library was not independently recorded, this result cannot separate *\"the CPU does not matter\"* from *\"the graph library was identical, so the CPU never had the opportunity to matter\"*. Settling it needs a run that records the build and varies it. The primary 200-seed study itself was executed on **one machine**; only this six-circuit determinism control is cross-machine. - **Selection bias.** ⚠ v3 correction. The published comparison used 40 circuits against 12, wrongly including the excluded `bv_n140`, and gave p = 0.7676. The correct groups — the **39** selected against the **13** complete-census circuits that carry the 12-run data this test needs — give medians **0.1115** and **0.1260**, Mann-Whitney **p = 0.4560**. Six further census circuits lack complete 12-run data and enter neither group. Neither the old nor the corrected test establishes independence: failing to reject a null is not evidence for it, and neither test examines θ or risk directly."
+  },
+  {
+   "uid": "dc67df38b009cdec",
+   "kind": "heading",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "## 4. Results"
+  },
+  {
+   "uid": "988d55d123bb3998",
+   "kind": "heading",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "### 4.1 What predicts the risk — and why it is not a mechanism"
+  },
+  {
+   "uid": "92df6658758b4746",
+   "kind": "block",
+   "disposition": "BOUND",
+   "claims": [
+    "nospread"
+   ],
+   "text": "Of the 26 eligible circuits, **13 compile deterministically** — every seed gives the same gate count in both arms. Their risk is zero *by arithmetic*, not by measurement, and we do not report this as evidence."
+  },
+  {
+   "uid": "26527459b3ddbbe2",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "Among the **23 resolved circuits whose compilation is stochastic** (note the denominator: 23 of the 36 *resolved* circuits, of which 13 are also non-boundary and therefore *eligible*), risk falls with distance from the decision boundary:"
+  },
+  {
+   "uid": "54f14a79b1d0f916",
+   "kind": "blockquote",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "> **Spearman ρ = −0.833 between distance from θ to the threshold and the risk > (p < 0.001, n = 23).**"
+  },
+  {
+   "uid": "ba35be9ffb46fb9d",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "⚠ **This is not a discovered mechanism, and we do not claim it as one.** It is an association measured on 23 circuits, and nothing more."
+  },
+  {
+   "uid": "52aae853c2c698c4",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "⚠ **Correction, v3.** v1 and v2 asserted that risk is a monotone decreasing function of"
+  },
+  {
+   "uid": "d6ffb5c901b9a708",
+   "kind": "table_row",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "|θ − t| *for any distribution, by the definition of the decision rule*. **That statement"
+  },
+  {
+   "uid": "97140864f278997b",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "is false and is withdrawn.** A hostile audit supplied an explicit counterexample: with arm A identically 100 and t = +10%, the three-run rule calls when S_B ≥ 330. If B is identically 109 then θ = +9%, distance 1 pp, and risk is **0**. If instead B is 200 with probability 0.3 and 29 with probability 0.7 then θ = −19.7%, distance 29.7 pp, and a call occurs exactly when at least two of three draws are high — risk **21.6%**. Risk rises from 0 to 21.6% as distance rises from 1 pp to 29.7 pp. The ordering is not universal, and a location-shift argument at fixed shape does not establish a distribution-free theorem."
+  },
+  {
+   "uid": "b9bd0ef9f5174e86",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "Our own data violate it too: `adder_n118` sits 3.5301 pp from the cut with risk 12.6743%, while `bv_n280` is *further* away at 5.1102 pp with *higher* risk 17.3147%."
+  },
+  {
+   "uid": "b69dbca076423ef3",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "The measured ρ = −0.833 is unaffected by this withdrawal and reproduces independently (−0.8329 to four decimals). What is withdrawn is the claim that its sign and magnitude are a distribution-free property of the decision rule."
+  },
+  {
+   "uid": "b87c98d3cbd1f71b",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "⚠ **The synthetic-null figures previously reported here — mean −0.661 over 30 trials, 5 of 30 reaching −0.833 or stronger — are withdrawn.** The audit searched the pinned snapshot and found no generator, parameters, RNG state or trial record that reproduces them, and neither `model_check.py` nor the `followup` scripts implement such a null. We have not regenerated a replacement: producing a fresh simulation now and presenting it as the original evidence would be worse than withdrawing the number. Absent that generator we make no quantitative claim about how much of the association the decision rule induces."
+  },
+  {
+   "uid": "a7111741734e7b54",
+   "kind": "block",
+   "disposition": "BOUND",
+   "claims": [
+    "nospread"
+   ],
+   "text": "What *is* empirical is the **scale** of the seed-induced spreads that make the risk non-negligible at a given distance — reported as ambiguity bands in §4.3 — and the fact that 13 of 26 eligible circuits have no spread at all. The apparent clustering of outcomes by algorithm family — `adder`, `knn`, `cc`, `swap_test`, `bv`, `qft` affected; `cat`, `ghz`, `ising`, `wstate` not — is a consequence: the latter families compile deterministically on this topology and therefore cannot err."
+  },
+  {
+   "uid": "c8726ff564d21341",
+   "kind": "heading",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "### 4.2 Magnitude"
+  },
+  {
+   "uid": "3cc783b3587044c0",
+   "kind": "table_row",
+   "disposition": "CANONICAL",
+   "claims": [],
+   "text": "| criterion | circuits | proportion | Wilson 95% CI |"
+  },
+  {
+   "uid": "b4ce127a1063d190",
+   "kind": "table_row",
+   "disposition": "CANONICAL",
+   "claims": [],
+   "text": "|---|---:|---:|---|"
+  },
+  {
+   "uid": "abb10fba81b6c2c5",
+   "kind": "table_row",
+   "disposition": "CANONICAL",
+   "claims": [
+    "excl"
+   ],
+   "text": "| risk > 0 (pre-registered endpoint) | 12 / 26 | 46.2% | [28.8, 64.5] |"
+  },
+  {
+   "uid": "722b1328913c3224",
+   "kind": "table_row",
+   "disposition": "CANONICAL",
+   "claims": [
+    "ge5"
+   ],
+   "text": "| risk ≥ 5% | 7 / 26 | 26.9% | [13.7, 46.1] |"
+  },
+  {
+   "uid": "0d139663d9f3e3d6",
+   "kind": "table_row",
+   "disposition": "CANONICAL",
+   "claims": [
+    "ge10"
+   ],
+   "text": "| risk ≥ 10% | 4 / 26 | 15.4% | [6.2, 33.5] |"
+  },
+  {
+   "uid": "92ab72fe70e284cb",
+   "kind": "block",
+   "disposition": "BOUND",
+   "claims": [
+    "dist_max",
+    "dist_median",
+    "dist_p75",
+    "dist_p90"
+   ],
+   "text": "The pre-registered endpoint's Wilson interval **assumes independent circuits and is therefore too narrow**; a cluster bootstrap treating algorithm family as the resampling unit gives [17.4%, 81.0%]. With eleven families this is uninformative, and we accordingly **do not advance a suite-level rate** (§5.1). The distribution over eligible circuits has **median 0**, p75 = 6.9%, p90 = 14.2%, max = 17.3%."
+  },
+  {
+   "uid": "f8e6b43b38bb337a",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "The highest-risk eligible circuits:"
+  },
+  {
+   "uid": "18c072b8fbefe02a",
+   "kind": "table_row",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "| circuit | θ | 95% CI | risk | 95% CI |"
+  },
+  {
+   "uid": "890ccb087b3315fb",
+   "kind": "table_row",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "|---|---:|---|---:|---|"
+  },
+  {
+   "uid": "2bec40e544321aff",
+   "kind": "table_row",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "| `bv_n280` | +4.89% | [+3.67, +6.11] | 17.31% | [11.60, 23.69] |"
+  },
+  {
+   "uid": "2f0a8016c56099b2",
+   "kind": "table_row",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "| `knn_n67` | +6.67% | [+5.83, +7.51] | 16.70% | [10.83, 23.81] |"
+  },
+  {
+   "uid": "1332aad2a3f79f36",
+   "kind": "table_row",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "| `swap_test_n83` | +6.76% | [+6.02, +7.50] | 15.67% | [10.19, 22.75] |"
+  },
+  {
+   "uid": "53b980ce94b949f8",
+   "kind": "table_row",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "| `adder_n118` | +6.47% | [+5.70, +7.21] | 12.67% | [8.16, 19.25] |"
+  },
+  {
+   "uid": "5da683a99bca11da",
+   "kind": "table_row",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "| `knn_341` | +6.20% | [+5.69, +6.71] | 4.68% | [2.70, 7.68] |"
+  },
+  {
+   "uid": "1e1b88e74047852a",
+   "kind": "heading",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "### 4.3 The ambiguity band — free of θ, not free of the version pair"
+  },
+  {
+   "uid": "63b58dee446d4589",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "The risk in §4.2 depends on where θ happens to sit. The **ambiguity band** does not: it is the width of the interval of true change over which P(call) runs from 0.05 to 0.95, and contains no θ and no direction."
+  },
+  {
+   "uid": "c9785abbfaba9349",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "⚠ **It is not, however, version-pair-free, and an earlier draft of this paper wrongly called it that.** The band is computed by sweeping a synthetic change over the *measured per-seed residual* of the 1.4.3 → 2.0.0 pair, so its shape is inherited from that pair even though its location is not. It is also computed under a **multiplicative** residual model. ⚠ v3 correction: earlier versions said an additive model \"fits better on 29 of 39 circuits\". Recomputation gives **23 additive, 3 multiplicative and 13 ties**. Recomputing the band additively moves the median from **10.87 pp to 10.73 pp**, and only 1 of the 23 resolved stochastic circuits is wider under the additive model. Both figures are computed with the synthetic candidate **truncated to integers**, matching the observable; without truncation they are 10.869 pp and 10.680 pp. The ~11 pp scale survives every one of these constructions, but the conventions are modelling choices and are stated here rather than buried."
+  },
+  {
+   "uid": "6a42b88daaa7041c",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "⚠ A second v3 correction, to the horizontal axis. The sweep parameter is *not* exactly the ratio-of-means change θ. Normalising the candidate arm by m = mean(B/A) makes the realised ratio-of-means multiplier C·r with C = (mean B / mean A) / m, not r. For `cc_n64`, C = 0.99104 and its 25.134 pp parameter width is 24.909 pp in mean-change units; the median converted to mean-change units is 10.852 pp. The difference is small at the headline, but the parameter is not identically θ and earlier versions implied it was."
+  },
+  {
+   "uid": "a0d1a65dab903ebf",
+   "kind": "blockquote",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "> **Among the 23 stochastic circuits, the median ambiguity band is 10.9 percentage > points** (p75 = 14.8, max = 25.2)."
+  },
+  {
+   "uid": "1cb2a733093060c6",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "Under the stated empirical residual model, this version pair, k = 3 and the +10% threshold, the median 5%-to-95% transition width across the 23 resolved stochastic circuits is approximately **10.9 percentage points**. ⚠ v4 correction: earlier versions called such a window \"unresolvable\". It is not an impossibility — it is the width over which this detector's call probability runs from 5% to 95%, so verdicts inside it are substantially decided by the draw rather than by the change. The endpoints need not be symmetric about the threshold. We claim this for the circuits, topology, SDK and version pair measured here; extending it to other version pairs requires measuring their residuals."
+  },
+  {
+   "uid": "684963196d0342cd",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "This also disposes of the objection that the effect is mere threshold proximity. `cc_n32` has θ = −8.28%, **18.3 percentage points below** the +10% threshold, and is nonetheless called a regression with probability **0.374089%** — computed exactly as 239,417,152,405 / 64,000,000,000,000 over the full draw space, not estimated from a sample. Its ambiguity band is 24.5 points. A single-run comparison of the same circuit can return +49.5%."
+  },
+  {
+   "uid": "429af0eb529ebfdb",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "⚠ v3 correction, two defects in one sentence. Earlier versions said this risk \"rests on 6 of 1728 sampled triple-pairs\". **No such sample exists**: 1728 is the triple count and 0.00374089 × 1728 = 6.464, which a checker rounded to 6. The effective-count framing is withdrawn. Earlier versions also attached the interval [−9.13, −6.05] to θ; that interval targets mean(B/A − 1), a different estimand from the ratio of arm means reported here. The bootstrap interval for the declared estimand is **[−9.79%, −6.77%]**. Neither correction changes the fact that this circuit's empirical risk is non-zero."
+  },
+  {
+   "uid": "014085e7f1b14928",
+   "kind": "heading",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "### 4.4 Issue #14402"
+  },
+  {
+   "uid": "9de92c2e6add5139",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "Two of the three circuits named in #14402 fall in the blind pre-registered sample, chosen by the cost rule: `bv_n280` (risk 17.31%) and `knn_341` (risk 4.68%). The third, `bv_n140`, was measured separately at 400 seeds across 21 processes: θ = +5.374% [+4.272, +6.495] on heavy-hex, risk **24.4%** [19.5, 31.1]. **It is not part of the pre-registered endpoint.**"
+  },
+  {
+   "uid": "2b16fa7b6480b982",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "We reproduce the issue's reported figures where seed spread is small, and fail to where it is large — the pattern our own account predicts."
+  },
+  {
+   "uid": "e957928cce5a5325",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "⚠ v3 correction: earlier versions added that this \"is not a Benchpress version difference, which would not be selective\". **That inference is invalid and is withdrawn.** A version change can alter one circuit and leave others untouched, so selectivity excludes nothing. No controlled comparison of the historical and pinned Benchpress revisions was run, and none of the issue's revision, circuit hashes, configuration or aggregation rule is available to us. Attributing the mismatch would require that experiment; we do not attribute it."
+  },
+  {
+   "uid": "7e7dae202d733ff6",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "All three \"ours\" values below are **`linear` topology, 12 seeds per arm, Qiskit 1.4.3 → 2.0.0, optimization level 2, ratio of arm means** — not the heavy-hex primary study:"
+  },
+  {
+   "uid": "d64c43948e98321e",
+   "kind": "table_row",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "| circuit | issue | ours | difference | seed spread |"
+  },
+  {
+   "uid": "18094bb05dd7d97b",
+   "kind": "table_row",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "|---|---:|---:|---:|---:|"
+  },
+  {
+   "uid": "a307126264098a7b",
+   "kind": "table_row",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "| `bv_n280` | +44.245% | +44.533% | +0.29 pp | 0.6% |"
+  },
+  {
+   "uid": "a7d93d40851731d9",
+   "kind": "table_row",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "| `knn_341` | +44.060% | +43.426% | −0.63 pp | 1.0% |"
+  },
+  {
+   "uid": "4b2058724dda613d",
+   "kind": "table_row",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "| `bv_n140` | +46.142% | +35.207% | −10.94 pp | 44.4% |"
+  },
+  {
+   "uid": "9c302630e0276d96",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "⚠ v3 correction: earlier versions quoted the issue as reporting +44.0%, **+41.0%** and +46.1%, giving differences of +0.5, **+2.4** and −10.9 pp. The issue's actual figures are those above; the `knn_341` value was misquoted and its difference has the wrong sign. The corrected differences are +0.29, −0.63 and −10.94 pp."
+  },
+  {
+   "uid": "aa4a647d5569796b",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "On `linear`, `bv_n140`'s reference change is +31.0% [+28.4, +33.8] at 200 seeds per arm. A single three-run comparison of that circuit — three runs per version, the aggregation the issue reports, simulated **at our configuration** rather than under its own unavailable revision and aggregation rule — has exact support running from **−17.68% to +109.17%**, with a 95% range of [+9.28%, +57.31%]. The issue's +46.14% sits at the **87.8th** percentile of that distribution, and the same range extends below the +10% threshold. ⚠ v3 correction: earlier versions reported −10.5% to +100.0%, which were extrema of a finite *sample*, not the support bounds. Sampling with replacement permits repeating the minimum or maximum draw three times, so the true support is wider."
+  },
+  {
+   "uid": "57c233ea08ea76dc",
+   "kind": "heading",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "### 4.5 Sensitivity"
+  },
+  {
+   "uid": "74087c0290b38001",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "**Threshold.** Some risk remains at every cut tested, which is the claim this section supports. ⚠ v3 correction: the percentages previously tabulated here were **not** the pre-registered endpoint. `followup.py` counts circuits whose Monte-Carlo risk estimate exceeds zero, not those whose bootstrap lower bound exceeds zero, and it uses a different θ-bootstrap stream and budget. At the 20% cut its 300,000-pair Monte Carlo reports 18 of 39 and misses six circuits with genuinely positive risk; the exact point-positive count is **24 of 39**, and a 400-resample exact-inner interval analysis gives **22 of 39**. The weak conclusion survives — risk does not vanish at any tested threshold — but the figures are a different statistic from the endpoint and the Monte Carlo has a detection floor."
+  },
+  {
+   "uid": "981fa0722d19f2e4",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "**Runs per version.** On `bv_n140`/heavy-hex, pooled over 400 seeds (Monte Carlo, 4 × 50M samples per point; spread across seeds ≤ 0.012 pp):"
+  },
+  {
+   "uid": "56fa57c206981aa2",
+   "kind": "table_row",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "| *k* | 1 | 3 | 5 | 8 | 10 | 20 |"
+  },
+  {
+   "uid": "ae3688746eb0373d",
+   "kind": "table_row",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "|---|---:|---:|---:|---:|---:|---:|"
+  },
+  {
+   "uid": "2061da9ea13ec2e3",
+   "kind": "table_row",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "| risk | 34.58% | 24.38% | 18.56% | 12.94% | 10.36% | **3.74%** |"
+  },
+  {
+   "uid": "7566df0324d470b8",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "Monte-Carlo standard error ≤ 0.02 pp per entry; the final digit of each is not significant and should not be quoted alone."
+  },
+  {
+   "uid": "bf75dca64faf6bab",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "**Twenty runs per version — 20 × 2 versions × ~2 h per suite run, so on the order of 80 compute hours — still leaves 3.74%.** ⚠ v3 correction: earlier versions said 40 hours, which halves the arithmetic; 40 hours would be wall-clock on two machines running concurrently, not the compute total. The ~2 h per-run figure is the issue's, and we could not independently confirm it. By contrast, one `seed_transpiler` argument removes the **seed-attributable** sampling variance at *k* = 1. ⚠ v4 correction (Astra V4-05): earlier versions said it removes the sampling variance, unqualified. The backend is constructed without a seed on the same path, and we probed that at 24 cases and found no effect on the observable — a limited negative result, not a demonstration that no other source of variance remains."
+  },
+  {
+   "uid": "75f81920143f1a61",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "**Aggregation.** Under minimum-of-3 rather than mean-of-3, all eight tested circuits still err and every rate roughly doubles (`bv_n280` 17.3% → 28.4%). Best-of-*k* practice does not remove the problem."
+  },
+  {
+   "uid": "4c9774d27919fb06",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "**Sampling design.** A disjoint set of 200 scattered seeds across ten fresh processes reproduces `bv_n140`/heavy-hex at 22.59% [16.37, 30.61] against 26.28% [18.45, 34.20] from the contiguous single-process set; each point falls inside the other's interval."
+  },
+  {
+   "uid": "db73b6e584af9a63",
+   "kind": "heading",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "## 5. Threats to validity"
+  },
+  {
+   "uid": "8889096b3430fb91",
+   "kind": "heading",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "### 5.1 What we withdraw"
+  },
+  {
+   "uid": "68d55f24173913b5",
+   "kind": "block",
+   "disposition": "BOUND",
+   "claims": [
+    "excl"
+   ],
+   "text": "An earlier draft of this work reported a suite-level rate. **We withdraw it.** With eleven algorithm families and near-perfect within-family homogeneity, the effective sample size is far below 26 and no interval we can compute is informative about a population of circuits. The pre-registered 12/26 stands as a *descriptive count of these 26 circuits*."
+  },
+  {
+   "uid": "e5b5273236fe0411",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "We also withdraw a reported correlation of ρ = +0.876 between \"compilation is stochastic\" and risk. Circuits with both arms constant have zero risk by arithmetic, so a correlation computed over a sample containing them measures a definition, and Spearman with 13 ties at zero is the wrong statistic. Only the ρ = −0.833 among stochastic circuits is empirical."
+  },
+  {
+   "uid": "e6405444b5a5fc90",
+   "kind": "heading",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "### 5.2 Limitations"
+  },
+  {
+   "uid": "cf0a9545a8007602",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "1. **One SDK, one version pair, one topology, one machine.** The 200-seed measurements were all produced on a single machine; only the six-circuit determinism control was repeated on a second one, and both ran the same rustworkx build (§3.4). No other SDK was measured. Source inspection covers two of the eight gyms: the Qiskit gym passes no compiler seed, and the BQSKit gym passes `seed=0`. The remaining six use their own compilation interfaces and are **not assessed here** (§2.1). 2. **θ is a plug-in estimate** from 200 seeds, not an external criterion (§3.1) — and those 200 are the smallest of 400 draws, so they do not represent the full seed range (§3.4). Every result here is conditional on the recorded distributions. 3. **The threshold is ours.** Benchpress defines none; #14402 states no formal cut. 4. **Selection favours fast circuits**, which correlates with small, though the sample spans 28–420 qubits. The variance test in §3.4 fails to reject; that is not evidence of independence, and exploratory results preceded the freeze (§3.3). 5. **The boundary exclusion defines a restricted estimand.** Including boundary circuits raises the endpoint to 22/36; we report the pre-registered figure. 6. **`cc_n32`'s risk is small and exactly computed**, 0.374089% over the full draw space. The \"6 of 1728 triples\" framing in v1–v2 is withdrawn: no such sample exists (§4.4). 7. **Pairing is not a universal remedy, and a fixed seed is not a guarantee.** Passing `seed_transpiler` was worse on three of four circuits exhibiting false negatives, and paired mean-of-3 risk remains 17.28% on `bv_n280` and 17.52% on `knn_n67`. A fixed seed makes a verdict repeatable, not correct (§6). 8. **No causal attribution.** The 1.4.3 → 2.0.0 comparison spans two major releases and we isolate no mechanism within the compiler."
+  },
+  {
+   "uid": "841bce690a7b3c6b",
+   "kind": "heading",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "### 5.3 Adversarial review"
+  },
+  {
+   "uid": "3fcd7ab8ce03a024",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "The result was attacked in three rounds by two independent language models acting as hostile reviewers, and by a first-principles audit. That audit returned **zero invalidating findings, three rewordings — two of which are §5.1 — and two limitations**. A later independent audit of the *code* rather than the claims found six implementation defects, none of which changed a reported number; they are recorded in `SETTLED.json` as S17–S22."
+  },
+  {
+   "uid": "21e105baaa1be305",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "`inventory.py --check` compares all **44** recorded figures against a fresh recomputation: **32 are re-derived from the raw per-seed measurements (`RAW-RECOMPUTED`), and 12 — the sec 43 k-sweep — are re-read from a derived summary table (`DERIVED-READ`)**, each row labelled with which tier it belongs to. ⚠ v4 correction: v1–v3 said 41/29/12, which was stale once the primary endpoint was registered here in v3. Re-deriving the k-sweep from raw means enumerating 12⁵ mean tuples per bisection step, roughly half an hour per topology, which is not affordable inside a check that has to run in under a minute. **We therefore do not claim that every reported number is re-derived from raw data**, and the tool says so in its own documentation. The repository records every withdrawn claim, including four from earlier phases of the work."
+  },
+  {
+   "uid": "275a8d5d1bd50a11",
+   "kind": "heading",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "## 6. Conclusion"
+  },
+  {
+   "uid": "0a1f353e63080ad4",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "Unseeded stochastic compilation makes regression verdicts probabilistic, and the probability is measurable. On a benchmark used to evaluate a production quantum compiler, a three-run comparison's call probability runs from 5% to 95% across a window of roughly eleven percentage points of true change for the median stochastic circuit — so within that window the verdict is substantially decided by the draw. ⚠ v3 correction: earlier versions said such a change \"cannot be resolved\", which states an impossibility the construction does not support; the band is a transition region of a particular detector's call probability, not a confidence interval or a theorem, and its endpoints need not be symmetric about the threshold. The two circuits from the motivating bug report that we could evaluate blind both carry non-zero risk. Adding runs reduces the risk slowly — on the demonstrated circuit, twenty runs per version still leaves 3.74% — while setting a seed removes this source of sampling variance outright. We report the measured k-sweep rather than fitting a scaling law: a log-log fit to those six points has slope −0.70, and six points on one circuit do not establish an exponent."
+  },
+  {
+   "uid": "c6a88395b136b9a1",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "Fixing the seed removes the variation attributable to `seed_transpiler`. ⚠ v3 correction: it does **not** guarantee a correct verdict, and earlier versions came close to saying so. A fixed seed makes the answer repeatable, including when that answer disagrees with the long-run mean — on `bv_n280`, the recorded seed 663193 gives A = 1040 against B = 1157, a +11.25% call against a measured θ of +4.89%. Frozen, reproducible, and the wrong side of the threshold. Pairing seeds across arms does not remove the primary risks either: the paired mean-of-3 risk is 17.28% on `bv_n280` and 17.52% on `knn_n67`. Backend error rates are drawn separately and remain unseeded."
+  },
+  {
+   "uid": "756b823ebb80e171",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "The measurement problem is not exotic — it is the ordinary consequence of treating a stochastic measurement as a scalar. We suggest that benchmark suites for stochastic compilers should either fix seeds **and report that the verdict is conditional on them**, or report the distribution and the decision risk alongside any verdict."
+  },
+  {
+   "uid": "ddb584c32cf34ef1",
+   "kind": "heading",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "### 6.1 The apparatus, and what it would take to generalise it"
+  },
+  {
+   "uid": "a93e52a3b7d3db7a",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "What we built is not specific to Qiskit. Given a benchmark with a scalar observable, a enumerable source of run-to-run variation, and a decision rule, the same pipeline yields a decision-risk estimate and an ambiguity band. Four components carried the weight and are reusable:"
+  },
+  {
+   "uid": "1930d807c53bc3fd",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "1. **Toolchain pinning that includes the benchmark itself.** Our provenance records named only the compiler until an audit found it; the benchmark supplies the circuits, the backend, the topology and the observable, and is equally part of the measurement. 2. **A pre-registration mechanism with a verifiable commit order.** Committing the circuit list and the analysis code before the first tracked commit of the primary data makes the freeze auditable. ⚠ v3 correction: it does not convert \"we did not cherry-pick\" into a fact. It records that the design was fixed before *this* data arrived, not that no earlier exploration informed it — and here it did (§3.3). 3. **A numeric inventory, and a verifier that has been shown to reject us.** The inventory carries **44** recorded values with their numerator, denominator, sampling unit, interval, method, and a function that recomputes each — **32** recomputed from raw data and **12** re-read from derived k-sweep CSVs. ⚠ v4 correction (Astra V4-05): earlier versions said \"every published figure\". They do not cover every figure, every interval, or any prose, and the distinction between a raw recomputation and a re-read of a derived file matters; `python inventory.py --check` prints the 44/32/12 split."
+  },
+  {
+   "uid": "02490bcb9152cdaa",
+   "kind": "block",
+   "disposition": "PINNED_EXEMPTION",
+   "claims": [],
+   "text": "⚠ v3 correction, and the most important one in this paper. v1 and v2 claimed that \"a single command re-checks the whole paper\" and that \"a stale or altered source fails the check\". **Both were false, and a hostile audit proved it.** Replacing every candidate gate count in one raw arm file with a constant changes the true endpoint from 12/26 to 11/26 and the ≥5% and ≥10% counts from 7/26 and 4/26 to 6/26 and 3/26 — and `verify.py` still reported **6/6 PASS**. The cause was structural: the primary numbers were read from a derived summary CSV, and a summary cannot notice that the raw data beneath it changed."
+  },
+  {
+   "uid": "fd8b5d95fb51a096",
+   "kind": "block",
+   "disposition": "BOUND",
+   "claims": [
+    "excl",
+    "ge10",
+    "ge5"
+   ],
+   "text": "The verification chain now begins at the raw per-seed observations and reconstructs θ, the verdict, boundary status, eligibility, the risk and its interval, the 12/26, 7/26 and 4/26 counts, and finally the literals printed here — reading no summary table, and using a risk estimator written independently of the one under test. Raw evidence is additionally hashed against a committed manifest, and the derived summary is required to be reproducible **from** raw rather than trusted."
+  },
+  {
+   "uid": "4af7455c182057a5",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "The claim we now make is narrower and is itself tested: `mutation_test.py` corrupts data in throwaway snapshots at three different layers and **requires** the relevant stage to fail. A verifier that only ever agrees with its authors is worthless; the evidence that this one can turn red is a test we run, not an assurance we offer. 4. **Adversarial review as a required stage, not an optional one.** Four rounds of hostile review plus two first-principles audits removed five claims from this work and corrected many more, including the verification claim in item 3 — which survived three earlier rounds before an auditor thought to corrupt the data instead of the prose."
+  },
+  {
+   "uid": "f38634241c6ed6f4",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "The obvious next step is more algorithm families and more SDKs; the sample here is underpowered for population-level statements precisely because the outcome is homogeneous within families. That is an experiment, not an analysis, and we do not pre-empt it."
+  },
+  {
+   "uid": "0fa995df9a9df0f1",
+   "kind": "heading",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "## Data and code availability"
+  },
+  {
+   "uid": "2223a78e86736c5c",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "All raw per-seed measurements, analysis code, the pre-registration, the defect record and the complete research log are in the `qvalidation` repository. `verify.py` re-runs the toolchain pin check, test suite, numeric inventory, replication artifact and a proof of a withdrawn analytical claim. `inventory.py --check` compares all 44 recorded numbers against a fresh recomputation, 32 of them re-derived from the raw per-seed files and 12 re-read from a summary table, each row labelled with which."
+  },
+  {
+   "uid": "65b72d86eeeb214a",
+   "kind": "heading",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "## References"
+  },
+  {
+   "uid": "89fcb17af4e39cee",
+   "kind": "block",
+   "disposition": "NON_CLAIM",
+   "claims": [],
+   "text": "1. Nation, P. D. et al. Benchmarking the performance of quantum computing software. *Nature Computational Science* (2025). doi:10.1038/s43588-025-00792-y 2. Qiskit issue #14402, *Significant increase in 2Q gate counts for many Benchpress tests when going from Qiskit 1.4 to 2.0*. https://github.com/Qiskit/qiskit/issues/14402 3. Li, G., Ding, Y. & Xie, Y. Tackling the qubit mapping problem for NISQ-era quantum devices. *ASPLOS* (2019). — SABRE 4. Pati, A. & Simmhan, Y. On the reproducibility of quantum circuit transpilation. arXiv:2605.07876"
+  }
+ ]
+}

@@ -231,6 +231,48 @@ def check(txt, src, echo=print):
              f"identity, {exempt_n} inside {len(rows)} canonical row(s) and "
              f"{len(COUNTERFACTUAL_PASSAGES)} pinned passage(s)")
 
+    # 2c. THE PDF's OWN CLOSED WORLD (independent audit, B1).
+    #
+    # Numeric-token equality binds the PDF to the manuscript, and the manuscript's
+    # reader-visible surface is registered — but an attacker who edits PAPER.md gets a
+    # PDF that faithfully renders the edit, so binding the artifact to the source it was
+    # built from proves only that the build works. The false sentence Astra put on page 1
+    # contains no digits at all, so nothing numeric moved.
+    #
+    # So the PDF is bound to the REGISTRY instead, one layer further back, by the same
+    # question stage 12 asks of the source: is every word on this page a word the frozen
+    # page carries? Equality of word multisets, in both directions, under the declared
+    # rendering normalisation in `visible_surface`. A sentence added to the artifact
+    # brings words or repetitions the registry does not have; a sentence dropped from it
+    # takes some away.
+    import visible_surface as vs
+    ledger = vs.load_ledger()
+    if ledger is None:
+        fails.append("the manuscript surface registry is missing, so the PDF cannot be "
+                     "bound to the frozen page — only to the source it was built from, "
+                     "which is the binding that does not establish anything")
+    else:
+        want = vs.registry_words(ledger["units"])
+        have = vs.rendered_words(txt)
+        added, lost = have - want, want - have
+        echo(f"  registered page: {sum(have.values()):,} word tokens in the PDF, "
+             f"{sum(want.values()):,} in the registry")
+        for w, n in sorted(added.items())[:12]:
+            ctx = next((m for m in re.finditer(rf"\b{re.escape(w)}\b", txt, re.I)), None)
+            where = txt[max(0, ctx.start() - 70):ctx.end() + 50].replace("\n", " ") \
+                if ctx else ""
+            fails.append(f"the PDF carries the word “{w}” {n} time(s) that the registered "
+                         f"manuscript surface does not — a reader is being shown text "
+                         f"that is not on the frozen page"
+                         + (f" — …{where.strip()}" if where else ""))
+        for w, n in sorted(lost.items())[:12]:
+            fails.append(f"the registered manuscript surface carries the word “{w}” "
+                         f"{n} time(s) that no page of the PDF does — the artifact is "
+                         f"not a rendering of the frozen page")
+        if len(added) > 12 or len(lost) > 12:
+            fails.append(f"… {max(0, len(added) - 12)} further added and "
+                         f"{max(0, len(lost) - 12)} further missing word(s) not listed")
+
     # 2. no withdrawn claim asserted. Correction notes legitimately QUOTE them, so a hit
     #    is only a failure if PAPER.md does not also contain it inside a correction.
     for w in WITHDRAWN:
@@ -270,13 +312,15 @@ def main():
     if fails:
         vr.reject("PDF_MATCHES_MANUSCRIPT", "PDF AND MANUSCRIPT DISAGREE", fails)
     vr.accept(
-        "\n  ✓ the PDF's numeric content equals the manuscript's in both directions,",
-        "    the canonical rows appear intact, the version line agrees, and no",
-        "    withdrawn claim is asserted.",
+        "\n  ✓ every word on this PDF is a word the REGISTERED manuscript surface",
+        "    carries, in the same multiplicity, and every word the registry carries",
+        "    reaches a page. The numeric content matches in both directions, the",
+        "    canonical rows appear intact, the version line agrees, and no withdrawn",
+        "    claim is asserted.",
         "    NOT established here: that each number sits in the sentence that means",
-        "    it, prose equivalence, or layout. A documented human reading of the",
-        "    built PDF against PAPER.md is still required before release.",
-        "    (byte-identical PDFs are not promised)")
+        "    it, that the words are in the same ORDER as the registry, or layout.",
+        "    A documented human reading of the built PDF against PAPER.md is still",
+        "    required before release. (byte-identical PDFs are not promised)")
 
 
 if __name__ == "__main__":

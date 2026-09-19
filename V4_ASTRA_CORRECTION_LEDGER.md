@@ -520,3 +520,198 @@ Everything carried forward from Parts 1–3, plus:
    with a green verifier that an adversarial reader then broke. Four of the five broke
    the apparatus rather than the science. That is a narrowing, not a finish, and this
    file is the record of what has been tried — never a certificate.
+
+---
+---
+
+# Part 5 — the independent adversarial audit of the claim scan's RECALL
+
+Audit: an independent adversarial review against
+`f125dfac8ca1c0dacab663fe30999fa4c1ee7d3f`, returning **INDEPENDENT ADVERSARIAL AUDIT:
+RELEASE BLOCKED** — three blockers, B1, B2 and B3.
+
+No raw measurement changed. No reported scientific number changed. The endpoint is still
+`12/26, 7/26, 4/26`; the pre-registered raw tree is still
+`3114a270ccd78b0daaa2a1bc451dd15155d55c13`. **The manuscript was scientifically correct
+throughout, and remains byte-identical.** Everything in this part is about the apparatus.
+
+---
+
+## The finding under the finding
+
+Part 4 replaced a keyword blacklist with a declared claim domain, and the domain FAILS
+CLOSED: an endpoint quantity it cannot classify is refused, not skipped. That is true and
+it was not enough, because it only holds *once a quantity exists*. The auditor wrote nine
+reader-visible falsehoods for which one never did:
+
+| the sentence | why no quantity was instantiated |
+|---|---|
+| `Seven of the twenty-six eligible circuits have an interval that excludes zero.` | `twenty-six` is not in the number-word list, so there was no denominator token |
+| `Of the 26 eligible circuits in the pre-registered set, only seven have …` | seven words between denominator and numerator; the link window is three |
+| `The study resolves 26 eligible circuits, of which only seven have …` | same, across a relative clause |
+| `… excludes zero in just 27% of eligible circuits.` | a proportion has no denominator at all |
+| `… in only ７ / ２６ eligible circuits.` | full-width digits fold to spaces before anything counts |
+| `… in only seven (see §4.1) of the 26 eligible circuits.` | a digit inside the gap breaks the link |
+| `… in only __7__ / 26 eligible circuits.` | `_` is a word character, so the boundary guard rejected the numeral |
+| `Barely a quarter of the 26 eligible circuits …` | no numerator in any notation |
+| `\| Summary \| seven of the twenty-six eligible circuits exclude zero \| \| \|` | the same, inside the canonical table |
+
+Every one returned **13/13 PASS, exit 0**, with the false statement on page 1 of the
+built PDF and the canonical table still reading `12 / 26`. All nine reproduce against
+`f125dfa`; they were confirmed before anything was repaired.
+
+**These are recall failures, not classification failures.** The classifier was never
+asked. And the fix for a recall failure cannot be a better recogniser: four rounds have
+now widened one, and each widening was defeated by the next spelling. "Recognise every
+English sentence that could express seven of twenty-six" is not a question a regular
+expression answers, and the tenth spelling exists whether or not anyone here has thought
+of it.
+
+**B2 is why nobody noticed.** Part 4's coverage test started from `quantities()` and
+proved that everything it returned had been classified — which is also true of an empty
+set. Inserting the hostile sentence left stage 12 printing the identical line,
+`17 quantit(ies) … 0 ambiguous, 0 unclassified`, because the assertion was never in the
+measured universe. A recogniser cannot be used to measure its own recall.
+
+---
+
+## The architectural change: a closed-world registered surface
+
+The security question is no longer
+
+> can we recognise every possible English quantitative sentence?
+
+but
+
+> is every reader-visible unit of this frozen page explicitly accounted for?
+
+`visible_surface.py` parses `PAPER.md` into reader-visible structural units — a maximal
+run of consecutive non-blank lines, with headings, table rows and fenced blocks as units
+of their own. **It knows nothing about numbers, claims or vocabulary**, and a test asserts
+that as a structural fact about the file: the strings `quantities(`, `CLAIM_IDENTITIES`,
+`WORD_NUM`, `NUM_TOKEN`, `claim_inventory` and `DISTRIBUTION_STATS` do not appear in it.
+
+Each unit's identity is the SHA-256 of its normalised text — whitespace collapsed and
+**nothing else touched**, so `７` is not `7` and `≥` is not a space. `manuscript_surface.json`
+is the committed, ordered registry of those identities, each carrying exactly one
+disposition:
+
+| | |
+|---|---|
+| `BOUND` | carries release-critical identities reconstructed from raw on every run |
+| `CANONICAL` | the generated endpoint table, validated structurally against raw |
+| `PINNED_EXEMPTION` | historical or counterfactual text, exempted by exact passage identity |
+| `NON_CLAIM` | carries no identity in the release-critical registry |
+
+There is no fifth state, and a unit with no entry is `UNKNOWN`, which is a rejection. The
+registry is written only by `python visible_surface.py --write`, from a module that the
+verification path does not import — a test asserts that too. Changing `12 / 26` to
+`Seven of the twenty-six` does not remove the sentence from the universe; it changes that
+unit's hash, which is the same rejection by a different road.
+
+**The PDF gets the same treatment, one layer further back.** Binding the artifact to the
+manuscript it was built from proves only that the build works — an attacker who edits
+`PAPER.md` gets a faithful rendering of the edit. So stage 13 binds the PDF to the
+REGISTRY: every word of the extracted text must be a word the registered page carries, in
+the same multiplicity, and every registered word must reach a page. Measured on this
+build: **7,723 word tokens on each side, the two multisets equal, zero residue.** The
+rendering normalisation is declared (`<sub>` renders as its contents, fences and their
+info strings render as nothing, emphasis and escapes are markers) — it is not a tolerance,
+and there is no residue budget.
+
+---
+
+## Findings
+
+| ID | Severity | Defect | Structural repair | Preserved reproducers | Status |
+|---|---|---|---|---|---|
+| **B1** | BLOCKING | claim-domain detection fails open: arbitrary readable English never reaches `quantities()` | recall removed from the security boundary — a closed-world registered reader-visible surface, refused by hash, plus the same closed world over the PDF's words | mutations **AJ**–**AT** (nine auditor sentences + the injected row), **AK** through the real pandoc + Chromium path | **CLOSED** |
+| **B2** | BLOCKING | `silently unchecked = 0` measured the recogniser with the recogniser | coverage computed from the Markdown block structure, which cannot call the claim scan; the `len(found) >= 15` completeness claim deleted | three negative controls with no digits / no slash / no known vocabulary, and the headline sentence proved to move the inventory *and* to remain invisible to the recogniser | **CLOSED** |
+| **B3** | BLOCKING | §4.2's four distribution statistics had no disposition; `paper_check` matched `6.9` inside `26.9` | four new identities reconstructed from raw, read inside the one unit that states them; `paper_check` now matches complete number tokens | mutations **AU** (A8 verbatim), **AV** (same, through the PDF path), **AW**, **AX**, and five parametrised statistic attacks | **CLOSED** |
+| — | contract | a fixture that could not be built printed `NOT EXERCISED` and exited 0 | a skipped required mutation is an execution failure and fails the suite; it is never scored as a detection | a test that runs the real suite with pandoc and Chromium hidden and requires a nonzero exit | **CLOSED** |
+
+---
+
+## The four statistics, reconstructed
+
+Percentiles of the eligible circuits' decision risks, numpy's default linear
+interpolation — the convention is declared, because a percentile without one is not a
+number.
+
+| statistic | reconstructed | manuscript | bound by |
+|---|---|---|---|
+| median | 0.0000% | **median 0** | §4.2's own reader-visible unit |
+| p75 | 6.9053% | p75 = 6.9% | same unit, label-anchored |
+| p90 | 14.1700% | p90 = 14.2% | same unit, label-anchored |
+| max | 17.3147% | max = 17.3% | same unit, label-anchored |
+
+All four agree at the precision printed. Nothing in the manuscript was edited; had one
+disagreed, the contradiction would have been reported instead of repaired.
+
+**A live defect fell out of the `paper_check` repair.** With substring matching replaced
+by complete-number-token matching, `cc_n32 risk pct = 0.37` failed — because the
+manuscript never writes `0.37`. It writes `0.374089`, twice, and the old check passed on
+a prefix of it. The redundant two-decimal check is deleted, not repaired: the line beside
+it already binds the same computed value to the number the paper actually prints, at full
+precision. The manuscript was right; the checker was not.
+
+---
+
+## Attacking the repaired architecture
+
+Seven formulations invented after the repair, none of them in the audit report, none
+added to any vocabulary first:
+
+| | attack | caught by |
+|---|---|---|
+| S1 | `A minority of the eligible circuits carry a risk interval that is distinguishable from nothing at all.` — no digits at all | surface alone |
+| S2 | `… excludes zero in only ⅶ of the ⅹⅹⅵ eligible circuits.` — Unicode Roman numerals | surface alone |
+| S3 | `The pre-registered endpoint is met by 26.9% of eligible circuits.` — a percentage lifted from the canonical table | surface alone |
+| S4 | a nested blockquote inserted inside an existing quote block | surface alone |
+| S5 | §4.2's statistics restated qualitatively, with no false digits | surface, and the statistic binding |
+| S6 | an insertion INSIDE an existing sentence rather than as a new block | surface alone |
+| S7 | seven words added to a `### 4.2 Magnitude` heading | surface alone |
+
+Six of the seven are invisible to every claim recogniser in the repository, which is the
+result that matters: the registry is doing the work, not a phrase list.
+
+---
+
+## Preserved science — unchanged, reconfirmed a sixth time
+
+36 resolved / 3 unresolved / 26 eligible; **12/26, 7/26, 4/26**; ρ = −0.8329214038556598;
+ambiguity band ≈ 10.9 pp; k=20 risk 3.741473676562272%; 216/216 cross-machine; 13 with no
+seed-to-seed spread; 0 changing θ's side under 4,000 resamples.
+`results/raw/prereg` remains `3114a270ccd78b0daaa2a1bc451dd15155d55c13`.
+
+---
+
+## Open limitations — labelled, not closed
+
+Everything carried forward from Parts 1–4, plus:
+
+1. **The registry does not defend against someone who edits the manuscript and the
+   registry in one commit.** That is the trust boundary `raw_integrity.py`'s manifest
+   already has, and hashing does not close it. What the registry buys is that insertion
+   and alteration stop being SILENT: recall no longer depends on parsing English, and
+   every change to the page is a diff line carrying the text that changed.
+2. **`NON_CLAIM` is a declaration, not a measurement.** It says no identity in
+   `RELEASE_IDENTITIES` is asserted in that unit — not that the unit contains no numbers.
+   136 units are `NON_CLAIM` and **107 of them carry digits**; §4.3's ambiguity-band
+   quartiles are the clearest case, quantitative and registered and not independently
+   reconstructed. Stage 12 prints that count on every run so the size of the human
+   judgement made at freeze time is a number rather than a promise.
+3. **The PDF is bound by word multiset, not word ORDER.** A rearrangement of the same
+   words into a different claim would pass stage 13, and is caught only by stage 12 on the
+   source. Equality of multisets is a strong statement about content and a weak one about
+   syntax.
+4. **The unit is a block, not a sentence.** An edit inside a paragraph changes that
+   paragraph's hash and is refused, so this costs nothing in coverage — but the diff a
+   reviewer reads is a whole block, and a one-word change inside a long block is a
+   one-block diff.
+5. **A verifier only tests the attacks someone thought of.** Six audits have now ended
+   with a green verifier that an adversarial reader then broke. Five of the six broke the
+   apparatus rather than the science. This round moved a whole class of attack off the
+   boundary rather than patching instances of it, which is a better kind of narrowing —
+   and it is still a narrowing. This file is the record of what has been tried, never a
+   certificate.

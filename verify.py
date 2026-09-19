@@ -57,11 +57,17 @@ WHAT IT CHECKS — and what each stage does NOT establish (Astra V4, 2026-09-13)
                      and MC budget as the producer -- a binding, not an independent
                      recomputation.
    12 rendered       the canonical table a reader sees, vs a reconstruction from raw, for
-                     a manuscript inside the declared raw-HTML domain. Outside that
-                     domain it refuses rather than guessing at visibility.
-   13 published pdf  the PDF's numeric content vs the manuscript's, both directions, plus
-                     canonical rows in place and the version line. NOT semantic
-                     equivalence: a human reading of the built PDF is still required.
+                     a manuscript inside the declared raw-HTML domain; then every
+                     reader-visible unit of the page against the REGISTERED surface in
+                     `manuscript_surface.json`. A block nobody registered is refused
+                     before any recogniser reads it, so a false sentence does not have
+                     to contain a number to be caught. Outside the HTML domain it
+                     refuses rather than guessing at visibility.
+   13 published pdf  the PDF's numeric content vs the manuscript's, both directions, the
+                     canonical rows in place, the version line, and every WORD of the
+                     artifact against the registered surface in both directions. NOT
+                     semantic equivalence and NOT word order: a human reading of the
+                     built PDF is still required.
 
 THE FOURTH ROUND (2026-09-14, Astra differential against 3643bbc)
     Four of the ten repairs closed; six were partial, and one new build defect appeared.

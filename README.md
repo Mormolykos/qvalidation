@@ -210,6 +210,18 @@ about 45 seconds", which was true of v2 and describes neither the coverage nor t
 of the current verifier — stage 9 alone rebuilds the repository once per corruption in
 `mutation_test.MUTATIONS` and stage 11 replays a 400 × 400,000 bootstrap.
 
+**The reader-visible surface is registered.** `manuscript_surface.json` lists every
+reader-visible unit of `PAPER.md` — heading, paragraph, table row, blockquote, code block
+— by the SHA-256 of its normalised text, with one disposition each: `BOUND`, `CANONICAL`,
+`PINNED_EXEMPTION` or `NON_CLAIM`. Stage 12 refuses any unit that is not in that list, and
+stage 13 requires every word of the built PDF to be a word the registry carries, in the
+same multiplicity. A false sentence therefore does not have to contain a number, a slash,
+or any vocabulary this repository has heard of to be caught. Regenerate the registry
+deliberately with `python visible_surface.py --write` and **review the diff** — it is the
+statement that nothing else on the page moved. ⚠ It does not defend against someone who
+edits the manuscript and the registry in one commit; that is the same trust boundary
+`raw_integrity.py`'s manifest has.
+
 **What exit 0 does and does not mean.** Each stage's scope is stated in its own file
 header, and they are overlapping checks, not thirteen independent replications: several
 share the same raw loader, selection list and classification constants, so one defect can

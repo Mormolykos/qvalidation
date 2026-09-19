@@ -83,6 +83,27 @@ WHAT THIS DOES
        the sense the scanner defines, and `tests/test_v4_astra_regressions.py` prints the
        full disposition of the frozen manuscript so the word can be audited rather than
        believed.
+    8. Binds §4.2's four distribution statistics — median, p75, p90, max over the
+       eligible circuits' risks — to values reconstructed from raw, read inside the one
+       reader-visible unit that states them rather than found anywhere in the document.
+    9. Then stops reading, and asks `visible_surface` whether every reader-visible unit
+       of the page is REGISTERED. That check is what actually protects the manuscript;
+       1-8 are diagnostics that say WHICH claim is wrong when they can.
+
+WHY 1-8 ARE NOT THE SECURITY BOUNDARY ANY MORE (independent audit of f125dfa, B1/B2)
+    The claim domain above fails closed once a quantity exists. It has to instantiate one
+    first, and an independent auditor wrote nine reader-visible falsehoods for which it
+    never did: `Seven of the twenty-six …`, `just 27% of eligible circuits`, full-width
+    `７ / ２６`, `__7__ / 26`, `seven (see §4.1) of the 26`, `Barely a quarter of the 26`,
+    and three more. All thirteen stages passed and the sentence printed on page 1.
+
+    None of those is a classification failure. They are RECALL failures, and recall is
+    the part that has now failed four times, because "recognise every English sentence
+    that could express 7 of 26" is not a question a regex answers. So it is no longer
+    asked. `visible_surface` enumerates the page as Markdown structure — knowing nothing
+    about numbers, claims or vocabulary — and refuses any unit that is not in the
+    committed registry. Widening the recogniser below can make a diagnostic sharper; it
+    can no longer be the difference between catching an attack and missing it.
 
 USAGE
     python manuscript_binding.py
@@ -150,6 +171,33 @@ CLAIM_IDENTITIES = {
 # quantities.
 ENUMERATION = ("excl", "ge5", "ge10")
 LINK_WORDS = 3          # how far a numerator may stand from its denominator, in words
+
+# THE §4.2 DISTRIBUTION STATISTICS (independent audit, finding B3).
+#
+#     key -> (reader-facing label, the word the manuscript writes, percentile or None)
+#
+# "The distribution over eligible circuits has median 0, p75 = 6.9%, p90 = 14.2%,
+# max = 17.3%." Four scientific assertions over the eligible population, and until this
+# audit none of them had a disposition: they carry no `n / 26`, so the claim scan never
+# saw them, and `paper_check` looked for the string "6.9" ANYWHERE in the document —
+# which the canonical table's own "26.9%" satisfies as a substring.
+#
+# The convention is declared, because a percentile without one is not a number: numpy's
+# default LINEAR interpolation over the risks of the eligible circuits.
+DISTRIBUTION_STATS = {
+    "dist_median": ("median of the eligible-risk distribution", "median", 50),
+    "dist_p75": ("75th percentile of the eligible-risk distribution", "p75", 75),
+    "dist_p90": ("90th percentile of the eligible-risk distribution", "p90", 90),
+    "dist_max": ("maximum of the eligible-risk distribution", "max", None),
+}
+# A label, optional emphasis and `=`, then a COMPLETE number. The trailing guard is what
+# separates 6.9 from the 6.9 inside 26.9, and the leading one stops a match starting
+# mid-number; `paper_check`'s bare `"6.9" in PAPER` had neither.
+STAT_VALUE = r"\*{0,2}\s*=?\s*\*{0,2}\s*(?<![\d.])(\d+(?:\.\d+)?)(?![\d.]*\d)"
+
+#: every identity this release treats as release-critical. Each must have a registered
+#: home in the manuscript surface, or stage 12 refuses the document.
+RELEASE_IDENTITIES = tuple(CLAIM_IDENTITIES) + tuple(DISTRIBUTION_STATS)
 
 # PASSAGES WHERE THE MANUSCRIPT DELIBERATELY QUOTES NON-CURRENT ENDPOINT VALUES.
 #
@@ -530,6 +578,80 @@ def claim_failures(text, truth, n_elig, exempt_passages=(), exempt_spans=()):
     return fails, checked, sum(1 for q in found if q.disposition == "exempt")
 
 
+def distribution_from_raw():
+    """The §4.2 statistics, reconstructed from the raw per-seed data.
+
+    Percentiles of the decision risks of the ELIGIBLE circuits, numpy's default linear
+    interpolation, as percentages. Nothing is read from a summary table and no value is
+    stored in this file.
+    """
+    import numpy as np
+    from raw_endpoint import reconstruct, endpoint
+    circuits = [c.strip() for c in open(SELECTED, encoding="utf-8") if c.strip()]
+    elig, _excl, _ge5, _ge10 = endpoint(reconstruct(circuits))
+    risk = np.array([r["risk"] for r in elig], dtype=float) * 100
+    out = {}
+    for key, (_label, _word, pct) in DISTRIBUTION_STATS.items():
+        out[key] = float(risk.max()) if pct is None else float(np.percentile(risk, pct))
+    return out
+
+
+def read_distribution(text, strict=True):
+    """The four statistics as this unit states them: key -> (as written, value).
+
+    Read INSIDE one reader-visible unit and anchored to its own label, never searched for
+    across the document. `strict` requires the label to occur exactly once in the unit, so
+    a paragraph that mentions "median" twice is refused rather than guessed at.
+    """
+    out = {}
+    for key, (_label, word, _pct) in DISTRIBUTION_STATS.items():
+        hits = list(re.finditer(r"\b" + re.escape(word) + STAT_VALUE, text))
+        if len(hits) != 1:
+            if strict and hits:
+                out[key] = (None, None)
+            continue
+        out[key] = (hits[0].group(1), float(hits[0].group(1)))
+    return out
+
+
+def distribution_failures(doc_units, stats):
+    """Bind §4.2's four statistics to the unit that states them.
+
+    The unit is found STRUCTURALLY — the one reader-visible unit naming all four labels —
+    and the registry independently guarantees that unit is registered and unaltered. So
+    this function reads a value; it is not what establishes that the assertion exists.
+    Exactly one unit may carry them: zero means the claim has left the page, two means
+    the document says it twice and which one a reader believes is not decidable.
+    """
+    words = [w for _l, w, _p in DISTRIBUTION_STATS.values()]
+    carriers = [u for u in doc_units
+                if all(re.search(r"\b" + re.escape(w) + STAT_VALUE, u["text"])
+                       for w in words)]
+    if len(carriers) != 1:
+        return [f"{len(carriers)} reader-visible unit(s) state the eligible-risk "
+                f"distribution ({', '.join(words)}); exactly one must, or which figures "
+                f"a reader is being given is not decidable"], 0
+    text = carriers[0]["text"]
+    fails, bound = [], 0
+    for key, (label, word, _pct) in DISTRIBUTION_STATS.items():
+        got = read_distribution(text).get(key)
+        if not got or got[0] is None:
+            fails.append(f"the unit stating the eligible-risk distribution does not give "
+                         f"exactly one value for '{word}', so that statistic cannot be "
+                         f"bound")
+            continue
+        shown, value = got
+        places = len(shown.split(".")[1]) if "." in shown else 0
+        want = round(stats[key], places)
+        bound += 1
+        if abs(value - want) > 0.5 * 10 ** -places:
+            fails.append(f"visible prose attributes {word} = {shown} to the {label}, "
+                         f"which the raw data puts at {stats[key]:.4f} "
+                         f"({want:.{places}f} at the precision printed) — "
+                         f"…{' '.join(text.split())[:150]}")
+    return fails, bound
+
+
 def truth_from_raw():
     """Every declared identity's value, reconstructed from the raw per-seed data.
 
@@ -752,10 +874,60 @@ def main():
           f"{len(COUNTERFACTUAL_PASSAGES)} pinned counterfactual passage(s), "
           f"{tally['ambiguous']} ambiguous, {tally['unclassified']} unclassified")
 
+    # §4.2's four distribution statistics, bound to the one unit that states them.
+    import visible_surface as vs
+    doc_units = vs.units(raw)
+    stats = distribution_from_raw()
+    dfails, dbound = distribution_failures(doc_units, stats)
+    fails += dfails
+    print(f"  distribution: median {stats['dist_median']:.1f}%, p75 "
+          f"{stats['dist_p75']:.1f}%, p90 {stats['dist_p90']:.1f}%, max "
+          f"{stats['dist_max']:.1f}% reconstructed from raw;\n                {dbound} of "
+          f"{len(DISTRIBUTION_STATS)} bound to §4.2's own unit")
+
     if fails:
         vr.reject("VISIBLE_CLAIMS_MATCH_RAW",
                   "THE VISIBLE MANUSCRIPT DOES NOT MATCH THE RAW DATA", fails, limit=20)
-    vr.accept("  ✓ the table a reader sees states what the raw data produces.")
+
+    # THE CLOSED-WORLD SURFACE (independent audit, B1/B2). Everything above reads the
+    # manuscript looking for assertions it can recognise, and four rounds of audit have
+    # shown that recall is the part that keeps failing. This does not read anything: it
+    # asks whether every reader-visible unit of the page is registered, and refuses the
+    # ones that are not. A sentence does not have to contain a number, a slash, or any
+    # vocabulary this repository has heard of to be caught here.
+    sfails, tally, entries = vs.compare(doc_units, vs.load_ledger())
+    # How big the NON_CLAIM judgement is, as a number rather than a promise. With no
+    # surface failures the two sequences align one to one, so this counts the registered
+    # blocks that carry digits and assert no identity this apparatus reconstructs.
+    digits = 0 if sfails else sum(
+        1 for u, e in zip(doc_units, entries)
+        if e["disposition"] == "NON_CLAIM" and any(c.isdigit() for c in u["text"]))
+    print(f"\n  reader-visible surface: {len(doc_units)} unit(s) — "
+          f"{tally.get('BOUND', 0)} BOUND, {tally.get('CANONICAL', 0)} CANONICAL,"
+          f"\n                          {tally.get('PINNED_EXEMPTION', 0)} "
+          f"PINNED_EXEMPTION, {tally.get('NON_CLAIM', 0)} NON_CLAIM "
+          f"({digits} of them carry digits),"
+          f"\n                          {tally.get('UNKNOWN', 0)} UNKNOWN")
+
+    # Every release-critical identity must have a registered home. This is the other half
+    # of the coverage statement: the surface says nothing unregistered is on the page,
+    # this says nothing declared has fallen off it.
+    homes = vs.registered_claims(entries)
+    orphan = [k for k in RELEASE_IDENTITIES if k not in homes]
+    if orphan:
+        sfails.append(
+            f"{len(orphan)} release-critical identit(ies) have no registered unit in the "
+            f"manuscript surface — {', '.join(orphan)}. A declared identity with nowhere "
+            f"to live is an unbound claim, not an absent one.")
+    print(f"  release-critical identities: {len(RELEASE_IDENTITIES) - len(orphan)} of "
+          f"{len(RELEASE_IDENTITIES)} registered, {len(orphan)} unbound")
+
+    if sfails:
+        vr.reject("VISIBLE_SURFACE_REGISTERED",
+                  "THE READER-VISIBLE SURFACE IS NOT THE ONE THAT WAS REGISTERED",
+                  sfails, limit=12)
+    vr.accept("  ✓ the table a reader sees states what the raw data produces, and every",
+              "    reader-visible unit of the page is registered with a disposition.")
 
 
 if __name__ == "__main__":

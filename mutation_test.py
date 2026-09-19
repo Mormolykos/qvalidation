@@ -622,6 +622,137 @@ def mut_AH(snap):
     return "the endpoint enumeration in §6.1 reads 11/26, 7/26 and 4/26"
 
 
+# ---------------------------------------------------------------------------------
+# The independent adversarial audit of f125dfa. Every one of these was a RECALL failure,
+# not a classification failure: the claim scan fails closed once a quantity exists, and
+# for none of these did a quantity ever exist. They are kept in the auditor's own words.
+#
+# What catches them now is not a better recogniser. It is that the reader-visible surface
+# of the frozen manuscript is REGISTERED, so a block nobody registered is refused before
+# anything tries to read it. None of these sentences needs to be understood to be caught.
+
+def _abstract(snap, sentence, who):
+    _paper(snap, "## Abstract", "## Abstract\n\n" + sentence, who)
+
+
+def mut_AJ(snap):
+    """A1b — the strongest reproducer: word-numbers on BOTH sides of the fraction.
+
+    `twenty-six` is not in the number-word list, so no denominator token existed, so no
+    quantity was instantiated, so the fail-closed classifier was never asked. 13/13 PASS,
+    exit 0, and the sentence printed on page 1 of the PDF.
+    """
+    _abstract(snap, "Seven of the twenty-six eligible circuits have an interval that "
+                    "excludes zero.", "AJ")
+    return ("abstract states 'Seven of the twenty-six' — no digit, no separator, no "
+            "denominator token: nothing for a quantity recogniser to find")
+
+
+def mut_AK(snap):
+    """A1b in the PDF a reviewer opens, through the real pandoc + Chromium path."""
+    mut_AJ(snap)
+    _rebuild_pdf(snap)
+    return ("the 'Seven of the twenty-six' falsehood rendered through "
+            "publish/build_paper.sh's own pandoc + Chromium path")
+
+
+def mut_AL(snap):
+    """A3b — the numerator too far from the denominator to be linked."""
+    _abstract(snap, "Of the 26 eligible circuits in the pre-registered set, only seven "
+                    "have an interval that excludes zero.", "AL")
+    return "abstract puts seven words between the denominator and its numerator"
+
+
+def mut_AM(snap):
+    """The denominator inside a subordinate clause, the numerator in the next one."""
+    _abstract(snap, "The study resolves 26 eligible circuits, of which only seven have "
+                    "an interval that excludes zero.", "AM")
+    return "abstract splits the quantity across a relative clause"
+
+
+def mut_AN(snap):
+    """A2b — a proportion instead of a fraction. There is no denominator at all."""
+    _abstract(snap, "The primary risk interval excludes zero in just 27% of eligible "
+                    "circuits.", "AN")
+    return "abstract states the endpoint as a percentage, so no n/26 exists to find"
+
+
+def mut_AP(snap):
+    """A4 — full-width digits. Folding non-ASCII to spaces erased the numerals."""
+    _abstract(snap, "The primary risk interval excludes zero in only ７ / ２６ "
+                    "eligible circuits.", "AP")
+    return "abstract writes the fraction in full-width digits (U+FF17, U+FF12 U+FF16)"
+
+
+def mut_AQ(snap):
+    """A5 — a cross-reference between the numerator and the denominator."""
+    _abstract(snap, "The primary risk interval excludes zero in only seven "
+                    "(see §4.1) of the 26 eligible circuits.", "AQ")
+    return "abstract puts '(see §4.1)' between the numerator and the denominator"
+
+
+def mut_AR(snap):
+    """B8 — Markdown emphasis around the numeral, which the word boundary rejected."""
+    _abstract(snap, "The primary risk interval excludes zero in only __7__ / 26 eligible "
+                    "circuits.", "AR")
+    return "abstract wraps the numerator in Markdown emphasis: __7__ / 26"
+
+
+def mut_AS(snap):
+    """B3 — a qualitative quantifier. No numerator exists in any notation."""
+    _abstract(snap, "Barely a quarter of the 26 eligible circuits have an interval that "
+                    "excludes zero.", "AS")
+    return "abstract states the endpoint as 'barely a quarter'"
+
+
+def mut_AT(snap):
+    """T8 — the same evasion inside the canonical table."""
+    _paper(snap, LAST_CANONICAL_ROW, LAST_CANONICAL_ROW + "\n"
+           + "| Summary | seven of the twenty-six eligible circuits exclude zero | | |",
+           "AT")
+    return ("an injected table row states the endpoint in word-numbers, where the row "
+            "check has no label to recognise and the claim scan has no digits to read")
+
+
+DISTRIBUTION = "**median 0**, p75 = 6.9%, p90 = 14.2%, max = 17.3%."
+
+
+def mut_AU(snap):
+    """A8 — §4.2's distribution statistics permuted.
+
+    Four scientific assertions over the eligible population that carried no disposition:
+    no n/26, so the claim scan never saw them, and `paper_check` looked for "6.9"
+    ANYWHERE in the document — which the canonical table's own "26.9%" satisfies.
+    """
+    _paper(snap, DISTRIBUTION, "**median 0**, p75 = 14.2%, p90 = 17.3%, max = 17.3%.",
+           "AU")
+    return ("§4.2's eligible-risk distribution reads p75 = 14.2%, p90 = 17.3%, "
+            "max = 17.3% — every number already present elsewhere in the manuscript")
+
+
+def mut_AV(snap):
+    """That misattribution in the built PDF, through the real pandoc + Chromium path."""
+    mut_AU(snap)
+    _rebuild_pdf(snap)
+    return ("the permuted distribution statistics rendered through "
+            "publish/build_paper.sh's own pandoc + Chromium path")
+
+
+def mut_AW(snap):
+    """p75 replaced by another legitimate number from the same document."""
+    _paper(snap, DISTRIBUTION, "**median 0**, p75 = 26.9%, p90 = 14.2%, max = 17.3%.",
+           "AW")
+    return ("§4.2 reads p75 = 26.9% — the proportion from the canonical table's own "
+            "≥5% row, and the very substring a presence check for 6.9 matched")
+
+
+def mut_AX(snap):
+    """max replaced by another legitimate number from the same document."""
+    _paper(snap, DISTRIBUTION, "**median 0**, p75 = 6.9%, p90 = 14.2%, max = 46.2%.",
+           "AX")
+    return "§4.2 reads max = 46.2% — the pre-registered endpoint's own proportion"
+
+
 def mut_X(snap):
     """A tag longer than the scanner's old 400-character bound.
 
@@ -715,12 +846,43 @@ MUTATIONS = [
      {"rendered": ("VISIBLE_CLAIMS_MATCH_RAW", "no seed-to-seed spread")}),
     ("AH", "ASTRA: the unchecked endpoint enumeration", mut_AH,
      {"rendered": ("VISIBLE_CLAIMS_MATCH_RAW", "enumerates the endpoint as")}),
+    # the independent adversarial audit of f125dfa — recall failures, every one
+    ("AJ", "AUDIT: Seven of the twenty-six", mut_AJ,
+     {"rendered": ("VISIBLE_SURFACE_REGISTERED", "NOT REGISTERED in the manuscript")}),
+    ("AK", "AUDIT: that sentence in the rebuilt PDF", mut_AK,
+     {"pdf": ("PDF_MATCHES_MANUSCRIPT", "registered manuscript surface")}),
+    ("AL", "AUDIT: numerator seven words from its denominator", mut_AL,
+     {"rendered": ("VISIBLE_SURFACE_REGISTERED", "NOT REGISTERED in the manuscript")}),
+    ("AM", "AUDIT: quantity split across a relative clause", mut_AM,
+     {"rendered": ("VISIBLE_SURFACE_REGISTERED", "NOT REGISTERED in the manuscript")}),
+    ("AN", "AUDIT: the endpoint as a percentage", mut_AN,
+     {"rendered": ("VISIBLE_SURFACE_REGISTERED", "NOT REGISTERED in the manuscript")}),
+    ("AP", "AUDIT: full-width digits", mut_AP,
+     {"rendered": ("VISIBLE_SURFACE_REGISTERED", "NOT REGISTERED in the manuscript")}),
+    ("AQ", "AUDIT: a cross-reference inside the quantity", mut_AQ,
+     {"rendered": ("VISIBLE_SURFACE_REGISTERED", "NOT REGISTERED in the manuscript")}),
+    ("AR", "AUDIT: Markdown emphasis around the numerator", mut_AR,
+     {"rendered": ("VISIBLE_SURFACE_REGISTERED", "NOT REGISTERED in the manuscript")}),
+    ("AS", "AUDIT: barely a quarter", mut_AS,
+     {"rendered": ("VISIBLE_SURFACE_REGISTERED", "NOT REGISTERED in the manuscript")}),
+    ("AT", "AUDIT: word-numbers in an injected table row", mut_AT,
+     {"rendered": ("VISIBLE_SURFACE_REGISTERED", "NOT REGISTERED in the manuscript")}),
+    ("AU", "AUDIT: §4.2 distribution statistics permuted", mut_AU,
+     {"rendered": ("VISIBLE_CLAIMS_MATCH_RAW", "attributes p75 = 14.2")}),
+    ("AV", "AUDIT: those statistics in the rebuilt PDF", mut_AV,
+     {"pdf": ("PDF_MATCHES_MANUSCRIPT", "registered manuscript surface")}),
+    ("AW", "AUDIT: p75 replaced by 26.9, the substring that hid it", mut_AW,
+     {"rendered": ("VISIBLE_CLAIMS_MATCH_RAW", "attributes p75 = 26.9")}),
+    ("AX", "AUDIT: max replaced by another manuscript number", mut_AX,
+     {"rendered": ("VISIBLE_CLAIMS_MATCH_RAW", "attributes max = 46.2")}),
 ]
 DEFEATED_V3 = {"F", "H", "K"}
 DEFEATED_V4 = {"P", "Q", "R", "S", "T", "U"}
 DEFEATED_V5 = {"W", "X", "Y", "Z"}
 DEFEATED_V6 = {"AA", "AB"}
 DEFEATED_V7 = {"AC", "AE", "AF", "AG", "AH"}   # Astra, post-2842dc37 (AD is the pair)
+#: the independent adversarial audit of f125dfa. AW and AX are the pairs for AU.
+DEFEATED_V8 = {"AJ", "AK", "AL", "AM", "AN", "AP", "AQ", "AR", "AS", "AT", "AU", "AV"}
 
 # WHAT EACH PRESERVED FIXTURE MUST STILL PUT IN THE MANUSCRIPT, id -> (layer, text).
 #
@@ -748,6 +910,28 @@ ASTRA_FIXTURES = {
                   "7 out of 26 eligible circuits."),
     "AG": ("rendered", "7 of 26 eligible circuits have no spread at all"),
     "AH": ("rendered", "the 11/26,\n   7/26 and 4/26 counts"),
+    "AJ": ("rendered", "Seven of the twenty-six eligible circuits have an interval that "
+                       "excludes zero."),
+    "AK": ("pdf", "Seven of the twenty-six eligible circuits have an interval that "
+                  "excludes zero."),
+    "AL": ("rendered", "Of the 26 eligible circuits in the pre-registered set, only "
+                       "seven have an interval that excludes zero."),
+    "AM": ("rendered", "The study resolves 26 eligible circuits, of which only seven "
+                       "have an interval that excludes zero."),
+    "AN": ("rendered", "The primary risk interval excludes zero in just 27% of eligible "
+                       "circuits."),
+    "AP": ("rendered", "The primary risk interval excludes zero in only ７ / "
+                       "２６ eligible circuits."),
+    "AQ": ("rendered", "The primary risk interval excludes zero in only seven "
+                       "(see §4.1) of the 26 eligible circuits."),
+    "AR": ("rendered", "The primary risk interval excludes zero in only __7__ / 26 "
+                       "eligible circuits."),
+    "AS": ("rendered", "Barely a quarter of the 26 eligible circuits have an interval "
+                       "that excludes zero."),
+    "AT": ("rendered", "| Summary | seven of the twenty-six eligible circuits exclude "
+                       "zero | | |"),
+    "AU": ("rendered", "**median 0**, p75 = 14.2%, p90 = 17.3%, max = 17.3%."),
+    "AV": ("pdf", "**median 0**, p75 = 14.2%, p90 = 17.3%, max = 17.3%."),
 }
 
 
@@ -809,7 +993,8 @@ def main():
             star = (" *" if mid in DEFEATED_V3 else " †" if mid in DEFEATED_V4 else
                     " ‡" if mid in DEFEATED_V5 else
                     " §" if mid in DEFEATED_V6 else
-                    " ¶" if mid in DEFEATED_V7 else "")
+                    " ¶" if mid in DEFEATED_V7 else
+                    " ◆" if mid in DEFEATED_V8 else "")
             cell = {None: "—", PASSED: "pass", REJECTED: "REJECT", ERROR: "error"}
             print(f"  {mid:<4}{(label + star)[:42]:<44}" +
                   "".join(f"{cell[state[n]]:<11}" for n in order))
@@ -844,7 +1029,9 @@ def main():
         print("\n  * defeated v3 (9/9 PASS)   † defeated v4 (Astra 2026-09-13)   "
               "‡ defeated the v4 repairs (Astra differential, 3643bbc)\n"
               "  § defeated the differential repairs (Astra, post-4d50a2b)   "
-              "¶ defeated the claim scan (Astra, post-2842dc37)\n")
+              "¶ defeated the claim scan (Astra, post-2842dc37)\n"
+              "  ◆ defeated claim RECALL — never instantiated as a claim at all "
+              "(independent audit, post-f125dfa)\n")
         for r in results:
             print(f"    {r['id']}: {r['mutation']}")
             for n in sorted(r["reasons"]):
@@ -856,13 +1043,25 @@ def main():
 
     print()
     if skipped:
-        # Named, never silent. A mutation that did not run is a hole in the coverage this
-        # file claims, and a reader of the output is entitled to see which one.
-        print(f"  ⚠ {len(skipped)} mutation(s) NOT EXERCISED on this machine — the "
-              f"coverage below\n    excludes them:")
+        # NOT EXERCISED IS NOT A PASS (independent audit, mutation execution contract).
+        #
+        # These were named and then the suite exited 0 anyway, so stage 9 could go green
+        # on a host with no pandoc while the PDF fixtures never ran. That is the V4-07
+        # defect in its third costume: an absence reported as text beside a successful
+        # exit is an absence nothing acts on. A fixture that could not be built did not
+        # test anything, so the suite cannot certify anything.
+        #
+        # It stays an EXECUTION FAILURE and never becomes a REJECTED: the layer did not
+        # refuse the corruption, the corruption was never made. Installing the tool is
+        # the fix; lowering the requirement is not.
+        print(f"  ✗ {len(skipped)} REQUIRED mutation(s) NOT EXERCISED on this host. This "
+              f"is an execution\n    failure, not a detection and not a pass — the "
+              f"coverage this suite claims\n    excludes them, so it claims nothing:")
         for s in skipped:
             print(f"      {s}")
-        print()
+        print(f"\n    Install what they need and run again. A green stage 9 on a host "
+              f"that\n    cannot build these fixtures would be a verdict about the host.")
+        failures.append(f"{len(skipped)} required mutation(s) could not be exercised")
     if failures:
         print("  ✗ MUTATION TEST FAILED:")
         for f in failures:
